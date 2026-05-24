@@ -18,29 +18,30 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   Widget build(BuildContext context) {
     final appSettings = ref.watch(appSettingProvider);
 
+    final l10n = context.appLocalizations;
     return BaseScaffold(
-      title: 'Settings',
+      title: l10n.settings,
       body: ListView(
         children: [
           // Relay Settings
           ...generateSection(
-            title: 'Relay Settings',
+            title: l10n.relaySettings,
             items: [
               ListItem.open(
                 leading: const Icon(Icons.dns),
-                title: const Text('Relay Type'),
+                title: Text(l10n.relayType),
                 subtitle: Text(
                   appSettings.relayConfig.type == RelayType.defaultRelay
-                      ? 'Default Relay'
-                      : 'Custom Relay',
+                      ? l10n.defaultRelay
+                      : l10n.customRelay,
                 ),
                 delegate: OpenDelegate(
                   widget: OptionsDialog<RelayType>(
-                    title: 'Relay Type',
+                    title: l10n.relayType,
                     options: RelayType.values,
                     value: appSettings.relayConfig.type,
                     textBuilder: (v) =>
-                        v == RelayType.defaultRelay ? 'Default Relay' : 'Custom Relay',
+                        v == RelayType.defaultRelay ? l10n.defaultRelay : l10n.customRelay,
                     onChanged: (v) {
                       ref.read(appSettingProvider.notifier).update(
                             (s) => s.copyWith(
@@ -56,8 +57,8 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 ListItem(
                   leading: const Icon(Icons.link),
                   title: TextField(
-                    decoration: const InputDecoration(
-                      hintText: 'Relay Address',
+                    decoration: InputDecoration(
+                      hintText: l10n.relayAddress,
                       border: InputBorder.none,
                       isDense: true,
                     ),
@@ -82,18 +83,26 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
           // Theme Settings
           ...generateSection(
-            title: 'Theme',
+            title: l10n.theme,
             items: [
               ListItem.open(
                 leading: const Icon(Icons.brightness_6),
-                title: const Text('Theme Mode'),
-                subtitle: Text(appSettings.themeMode.name),
+                title: Text(l10n.themeMode),
+                subtitle: Text(appSettings.themeMode == ThemeModeOption.light
+                    ? l10n.light
+                    : appSettings.themeMode == ThemeModeOption.dark
+                        ? l10n.dark
+                        : l10n.system),
                 delegate: OpenDelegate(
                   widget: OptionsDialog<ThemeModeOption>(
-                    title: 'Theme Mode',
+                    title: l10n.themeMode,
                     options: ThemeModeOption.values,
                     value: appSettings.themeMode,
-                    textBuilder: (v) => v.name,
+                    textBuilder: (v) => v == ThemeModeOption.light
+                        ? l10n.light
+                        : v == ThemeModeOption.dark
+                            ? l10n.dark
+                            : l10n.system,
                     onChanged: (v) {
                       ref.read(appSettingProvider.notifier).update(
                             (s) => s.copyWith(themeMode: v),
@@ -105,7 +114,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               const Divider(height: 0, indent: 56),
               ListItem.switchItem(
                 leading: const Icon(Icons.dark_mode),
-                title: const Text('Pure Black Mode'),
+                title: Text(l10n.pureBlackMode),
                 delegate: SwitchDelegate(
                   value: appSettings.pureBlackMode,
                   onChanged: (v) {
@@ -122,32 +131,17 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
           // App Settings
           ...generateSection(
-            title: 'Application',
+            title: l10n.application,
             items: [
-              ListItem.open(
+              ListItem(
                 leading: const Icon(Icons.language),
-                title: const Text('Language'),
-                subtitle: Text(
-                  appSettings.locale == 'zh' ? '中文' : 'English',
-                ),
-                delegate: OpenDelegate(
-                  widget: OptionsDialog<String>(
-                    title: 'Language',
-                    options: const ['en', 'zh'],
-                    value: appSettings.locale ?? 'en',
-                    textBuilder: (v) => v == 'zh' ? '中文' : 'English',
-                    onChanged: (v) {
-                      ref.read(appSettingProvider.notifier).update(
-                            (s) => s.copyWith(locale: v),
-                          );
-                    },
-                  ),
-                ),
+                title: Text(l10n.language),
+                subtitle: _buildLanguageChips(context, appSettings.locale, ref),
               ),
               const Divider(height: 0, indent: 56),
               ListItem.switchItem(
                 leading: const Icon(Icons.update),
-                title: const Text('Auto Check Update'),
+                title: Text(l10n.checkUpdate),
                 delegate: SwitchDelegate(
                   value: appSettings.autoCheckUpdate,
                   onChanged: (v) {
@@ -164,25 +158,23 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
           // About
           ...generateSection(
-            title: 'About',
+            title: l10n.about,
             items: [
               ListItem(
                 leading: const Icon(Icons.info),
-                title: const Text('FlCroc'),
+                title: Text(l10n.appName),
                 subtitle: Text('v${globalState.packageInfo.version}'),
               ),
               const Divider(height: 0, indent: 56),
               ListItem(
                 leading: const Icon(Icons.description),
-                title: const Text('Description'),
-                subtitle: const Text(
-                  'A cross-platform file transfer GUI client powered by croc.',
-                ),
+                title: Text(l10n.description),
+                subtitle: Text(l10n.desc),
               ),
               const Divider(height: 0, indent: 56),
               ListItem(
                 leading: const Icon(Icons.code),
-                title: const Text('Check Update'),
+                title: Text(l10n.checkUpdate),
                 onTap: () {
                   globalState.openUrl(
                     'https://github.com/schollz/croc/releases',
@@ -193,6 +185,53 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           ),
 
           const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLanguageChips(
+      BuildContext context, String? currentLocale, WidgetRef ref) {
+    // locale=null → default (zh), locale='en' → English, locale='zh' → 中文
+    final selectedKey = currentLocale ?? 'default';
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Wrap(
+        spacing: 8,
+        children: [
+          ChoiceChip(
+            label: const Text('默认'),
+            selected: selectedKey == 'default',
+            onSelected: (v) {
+              if (v) {
+                ref.read(appSettingProvider.notifier).update(
+                      (s) => s.copyWith(locale: null),
+                    );
+              }
+            },
+          ),
+          ChoiceChip(
+            label: const Text('English'),
+            selected: selectedKey == 'en',
+            onSelected: (v) {
+              if (v) {
+                ref.read(appSettingProvider.notifier).update(
+                      (s) => s.copyWith(locale: 'en'),
+                    );
+              }
+            },
+          ),
+          ChoiceChip(
+            label: const Text('中文'),
+            selected: selectedKey == 'zh',
+            onSelected: (v) {
+              if (v) {
+                ref.read(appSettingProvider.notifier).update(
+                      (s) => s.copyWith(locale: 'zh'),
+                    );
+              }
+            },
+          ),
         ],
       ),
     );

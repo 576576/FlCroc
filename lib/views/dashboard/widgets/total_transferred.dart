@@ -15,29 +15,26 @@ class TotalTransferredWidget extends ConsumerWidget {
         transfers.fold<int>(0, (a, t) => a + t.totalSize);
     final transferCount = transfers.length;
 
-    return SizedBox(
-      height: 120,
-      child: CommonCard(
-        info: const Info(iconData: Icons.data_usage, label: 'Total Transferred'),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              totalSize.fileSize,
-              style: context.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+    return CommonCard(
+      info: const Info(iconData: Icons.data_usage, label: 'Total Transferred'),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            totalSize.fileSize,
+            style: context.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(height: 4),
-            Text(
-              '$transferCount transfers',
-              style: context.textTheme.bodySmall?.copyWith(
-                color: context.colorScheme.onSurfaceVariant,
-              ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$transferCount transfers',
+            style: context.textTheme.bodySmall?.copyWith(
+              color: context.colorScheme.onSurfaceVariant,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

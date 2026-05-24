@@ -118,8 +118,9 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.appLocalizations;
     return CommonScaffold(
-      title: 'Receive Files',
+      title: l10n.receiveFiles,
       body: ListView(
         children: [
           const SizedBox(height: 32),
@@ -139,7 +140,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Enter Code Phrase',
+                      l10n.enterCodePhrase,
                       style: context.textTheme.titleLarge,
                     ),
                     const SizedBox(height: 16),
@@ -161,7 +162,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                       child: FilledButton.icon(
                         onPressed: _isReceiving ? null : _startReceive,
                         icon: const Icon(Icons.download),
-                        label: const Text('Start Receive'),
+                        label: Text(l10n.startReceive),
                       ),
                     ),
                   ],
@@ -174,12 +175,12 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
 
           // Options
           _buildSection(
-            'Options',
+            l10n.options,
             Icons.tune,
             [
               ListItem.switchItem(
                 leading: const Icon(Icons.file_copy),
-                title: const Text('Overwrite'),
+                title: Text(l10n.overwrite),
                 delegate: SwitchDelegate(
                   value: _receiveConfig.overwrite,
                   onChanged: (v) {
@@ -192,7 +193,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
               const Divider(height: 0, indent: 56),
               ListItem.switchItem(
                 leading: const Icon(Icons.wifi_off),
-                title: const Text('Local Only'),
+                title: Text(l10n.localOnly),
                 delegate: SwitchDelegate(
                   value: _receiveConfig.onlyLocal,
                   onChanged: (v) {
@@ -215,7 +216,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                 _openScanner();
               },
               icon: const Icon(Icons.qr_code_scanner),
-              label: const Text('Scan QR Code'),
+              label: Text(l10n.scanQRCode),
             ),
           ),
         ],

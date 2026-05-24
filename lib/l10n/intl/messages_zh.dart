@@ -19,14 +19,26 @@ const Map<String, String> zhMessages = {
   'crocStatus': 'Croc 状态',
 
   // Send
+  'sendFiles': '发送文件',
   'selectFiles': '选择文件',
   'startSend': '开始发送',
   'codePhrase': '代码短语',
   'enterCodePhrase': '输入代码短语',
+  'textHint': '输入或粘贴要发送的文本...',
+  'customCodeHint': '自定义代码（可选）',
+  'generate': '生成',
+  'files': '文件',
+  'fileMode': '文件',
+  'textMode': '文本',
+
+  // Receive
+  'receiveFiles': '接收文件',
   'startReceive': '开始接收',
   'scanQRCode': '扫描二维码',
+  'options': '选项',
 
   // Relay
+  'relayType': '中继类型',
   'relaySettings': '中继设置',
   'relayAddress': '中继地址',
   'relayPassword': '中继密码',
@@ -46,6 +58,7 @@ const Map<String, String> zhMessages = {
   'about': '关于',
   'application': '应用',
   'appVersion': '应用版本',
+  'description': '描述',
   'desc': '基于 croc 的跨平台文件传输 GUI 客户端，简单易用。',
 
   // Transfer options
@@ -84,4 +97,5 @@ const Map<String, String> zhMessages = {
   'retry': '重试',
   'edit': '编辑',
   'done': '完成',
+  'availableWidgets': '可用组件',
 };

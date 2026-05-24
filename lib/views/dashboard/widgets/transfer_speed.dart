@@ -14,29 +14,26 @@ class TransferSpeedWidget extends ConsumerWidget {
     final totalSpeed =
         speeds.values.fold<double>(0, (a, b) => a + b);
 
-    return SizedBox(
-      height: 120,
-      child: CommonCard(
-        info: const Info(iconData: Icons.speed, label: 'Transfer Speed'),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              totalSpeed.transferSpeed,
-              style: context.textTheme.headlineMedium?.copyWith(
-                color: context.colorScheme.primary,
-                fontWeight: FontWeight.bold,
-              ),
+    return CommonCard(
+      info: const Info(iconData: Icons.speed, label: 'Transfer Speed'),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            totalSpeed.transferSpeed,
+            style: context.textTheme.headlineMedium?.copyWith(
+              color: context.colorScheme.primary,
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(height: 4),
-            Text(
-              '${speeds.length} active',
-              style: context.textTheme.bodySmall?.copyWith(
-                color: context.colorScheme.onSurfaceVariant,
-              ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${speeds.length} active',
+            style: context.textTheme.bodySmall?.copyWith(
+              color: context.colorScheme.onSurfaceVariant,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

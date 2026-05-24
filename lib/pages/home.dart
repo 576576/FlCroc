@@ -14,82 +14,106 @@ class HomePage extends StatelessWidget {
       builder: (context, ref, child) {
         final navigationItems = Navigation().getItems();
         final currentLabel = ref.watch(currentPageProvider);
-
-        final currentIndex = navigationItems
-            .indexWhere((item) => item.label == currentLabel);
+        final currentIndex =
+            navigationItems.indexWhere((item) => item.label == currentLabel);
         final safeIndex = currentIndex >= 0 ? currentIndex : 0;
+        final isMobile = MediaQuery.of(context).size.width < maxMobileWidth;
 
-        final bottomNav = NavigationBar(
-          destinations: navigationItems
-              .map((e) => NavigationDestination(
-                    icon: e.icon,
-                    label: e.label.name,
-                  ))
-              .toList(),
-          onDestinationSelected: (index) {
-            appController.toPage(navigationItems[index].label);
-          },
-          selectedIndex: safeIndex,
-        );
-
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final isMobile = constraints.maxWidth < maxMobileWidth;
-
-            if (isMobile) {
-              return AnnotatedRegion<SystemUiOverlayStyle>(
-                value: SystemUiOverlayStyle(
-                  systemNavigationBarColor:
-                      context.colorScheme.surfaceContainer,
+        if (isMobile) {
+          return Column(
+            children: [
+              Flexible(
+                flex: 1,
+                child: IndexedStack(
+                  index: safeIndex,
+                  children:
+                      navigationItems.map((e) => e.builder(context)).toList(),
                 ),
-                child: Scaffold(
-                  body: IndexedStack(
-                    index: safeIndex,
-                    children: navigationItems
-                        .map((e) => e.builder(context))
-                        .toList(),
-                  ),
-                  bottomNavigationBar: MediaQuery.removePadding(
-                    removeTop: true,
-                    removeBottom: true,
-                    context: context,
-                    child: bottomNav,
-                  ),
-                ),
-              );
-            }
-
-            // Desktop/tablet: sidebar layout
-            return Scaffold(
-              body: Row(
-                children: [
-                  NavigationRail(
-                    selectedIndex: safeIndex,
-                    onDestinationSelected: (index) {
-                      appController
-                          .toPage(navigationItems[index].label);
-                    },
-                    labelType: NavigationRailLabelType.all,
-                    destinations: navigationItems
-                        .map((e) => NavigationRailDestination(
-                              icon: e.icon,
-                              label: Text(e.label.name),
-                            ))
-                        .toList(),
-                  ),
-                  const VerticalDivider(width: 1),
-                  Expanded(
-                    child: IndexedStack(
-                      index: safeIndex,
-                      children: navigationItems
-                          .map((e) => e.builder(context))
-                          .toList(),
-                    ),
-                  ),
-                ],
               ),
-            );
-          },
+              NavigationBar(
+                destinations: navigationItems
+                    .map((e) => NavigationDestination(
+                          icon: e.icon,
+                          label: context.appLocalizations.pageLabel(e.label),
+                        ))
+                    .toList(),
+                onDestinationSelected: (index) =>
+                    appController.toPage(navigationItems[index].label),
+                selectedIndex: safeIndex,
+              ),
+            ],
+          );
+        }
+
+        // Desktop sidebar
+        final labelStyle = context.textTheme.labelMedium?.copyWith(
+          overflow: TextOverflow.ellipsis,
+        );
+        return Row(
+          children: [
+            Material(
+              color: context.colorScheme.surfaceContainer,
+              child: SafeArea(
+                child: SizedBox(
+                  width: 88,
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 10),
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: Image.asset(
+                            'assets/images/icon.png',
+                            width: 64,
+                            height: 64,
+                            errorBuilder: (_, __, ___) => Icon(Icons.upload_file,
+                                size: 40, color: context.colorScheme.primary),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: NavigationRail(
+                          backgroundColor: Colors.transparent,
+                          selectedLabelTextStyle: labelStyle?.copyWith(
+                            color: context.colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          unselectedLabelTextStyle: labelStyle?.copyWith(
+                            color: context.colorScheme.onSurface,
+                          ),
+                          destinations: navigationItems
+                              .map((e) => NavigationRailDestination(
+                                    icon: e.icon,
+                                    label: Text(
+                                      context.appLocalizations.pageLabel(e.label),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ))
+                              .toList(),
+                          onDestinationSelected: (index) =>
+                              appController.toPage(
+                                  navigationItems[index].label),
+                          selectedIndex: safeIndex,
+                          labelType: NavigationRailLabelType.all,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const VerticalDivider(width: 1),
+            Expanded(
+              child: IndexedStack(
+                index: safeIndex,
+                children:
+                    navigationItems.map((e) => e.builder(context)).toList(),
+              ),
+            ),
+          ],
         );
       },
     );

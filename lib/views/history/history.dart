@@ -18,9 +18,10 @@ class HistoryView extends ConsumerWidget {
             t.status == TransferStatus.failed ||
             t.status == TransferStatus.cancelled)
         .toList();
+    final l10n = context.appLocalizations;
 
     return BaseScaffold(
-      title: 'History',
+      title: l10n.history,
       actions: [
         if (completed.isNotEmpty)
           IconButton(
@@ -31,8 +32,8 @@ class HistoryView extends ConsumerWidget {
           ),
       ],
       body: completed.isEmpty
-          ? const NullStatusWidget(
-              message: 'No history',
+          ? NullStatusWidget(
+              message: l10n.noHistory,
               icon: Icons.history,
             )
           : ListView.builder(
@@ -61,20 +62,21 @@ class HistoryView extends ConsumerWidget {
   }
 
   Widget _buildStatusChip(TransferStatus status, BuildContext context) {
+    final l10n = context.appLocalizations;
     Color color;
     String label;
     switch (status) {
       case TransferStatus.completed:
         color = Colors.green;
-        label = 'Done';
+        label = l10n.completed;
         break;
       case TransferStatus.failed:
         color = Colors.red;
-        label = 'Failed';
+        label = l10n.failed;
         break;
       case TransferStatus.cancelled:
         color = Colors.orange;
-        label = 'Cancelled';
+        label = l10n.cancelled;
         break;
       default:
         color = context.colorScheme.primary;

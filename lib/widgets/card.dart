@@ -45,7 +45,7 @@ class CommonCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (info != null) _buildInfo(context),
-              child,
+              Flexible(child: child),
             ],
           ),
         ),

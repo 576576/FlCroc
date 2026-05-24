@@ -176,13 +176,14 @@ class _SendViewState extends ConsumerState<SendView> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.appLocalizations;
     return CommonScaffold(
-      title: 'Send Files',
+      title: l10n.sendFiles,
       actions: [
         if (_selectedFiles.isNotEmpty || (_isTextMode && _textController.text.isNotEmpty))
           FilledButtonWidget(
             onPressed: _isSending ? null : _startSend,
-            text: 'Start Send',
+            text: l10n.startSend,
             icon: Icons.send,
           ),
         const SizedBox(width: 8),
@@ -193,9 +194,9 @@ class _SendViewState extends ConsumerState<SendView> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(value: false, label: Text('File'), icon: Icon(Icons.insert_drive_file)),
-                ButtonSegment(value: true, label: Text('Text'), icon: Icon(Icons.text_snippet)),
+              segments: [
+                ButtonSegment(value: false, label: Text(l10n.fileMode), icon: const Icon(Icons.insert_drive_file)),
+                ButtonSegment(value: true, label: Text(l10n.textMode), icon: const Icon(Icons.text_snippet)),
               ],
               selected: {_isTextMode},
               onSelectionChanged: (v) => setState(() => _isTextMode = v.first),
@@ -209,22 +210,22 @@ class _SendViewState extends ConsumerState<SendView> {
               child: TextField(
                 controller: _textController,
                 maxLines: 5,
-                decoration: const InputDecoration(
-                  hintText: 'Type or paste text to send...',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.text_fields),
+                decoration: InputDecoration(
+                  hintText: l10n.textHint,
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.text_fields),
                 ),
               ),
             ),
           ] else ...[
             // File Selection
             _buildSection(
-              'Files',
+              l10n.files,
               Icons.insert_drive_file,
               [
                 if (_selectedFiles.isEmpty)
-                  const NullStatusWidget(
-                    message: 'No files selected',
+                  NullStatusWidget(
+                    message: l10n.noFiles,
                     icon: Icons.cloud_upload_outlined,
                   )
                 else
@@ -240,7 +241,7 @@ class _SendViewState extends ConsumerState<SendView> {
                   child: OutlinedButton.icon(
                     onPressed: _pickFiles,
                     icon: const Icon(Icons.add),
-                    label: const Text('Select Files'),
+                    label: Text(l10n.selectFiles),
                   ),
                 ),
               ],
@@ -251,7 +252,7 @@ class _SendViewState extends ConsumerState<SendView> {
 
           // Code Phrase
           _buildSection(
-            'Code Phrase',
+            l10n.codePhrase,
             Icons.vpn_key,
             [
               Padding(
@@ -260,9 +261,9 @@ class _SendViewState extends ConsumerState<SendView> {
                   children: [
                     Expanded(
                       child: TextField(
-                        decoration: const InputDecoration(
-                          hintText: 'Custom code (optional)',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          hintText: l10n.customCodeHint,
+                          border: const OutlineInputBorder(),
                           isDense: true,
                         ),
                         onChanged: (v) => _customCode = v,
@@ -271,7 +272,7 @@ class _SendViewState extends ConsumerState<SendView> {
                     const SizedBox(width: 8),
                     FilledButton.tonal(
                       onPressed: _generateCode,
-                      child: const Text('Generate'),
+                      child: Text(l10n.generate),
                     ),
                   ],
                 ),
@@ -297,7 +298,7 @@ class _SendViewState extends ConsumerState<SendView> {
                             onPressed: () {
                               Clipboard.setData(ClipboardData(text: _codePhrase));
                               if (mounted) {
-                                context.showSnackBar('Code copied!');
+                                context.showSnackBar(l10n.codeCopied);
                               }
                             },
                             icon: const Icon(Icons.copy),
@@ -325,15 +326,15 @@ class _SendViewState extends ConsumerState<SendView> {
 
           // Transfer Options
           _buildSection(
-            'Transfer Options',
+            l10n.transferOptions,
             Icons.tune,
             [
               ListItem.open(
                 leading: const Icon(Icons.show_chart),
-                title: Text('Encryption Curve: ${_sendConfig.curve}'),
+                title: Text('${l10n.encryptionCurve}: ${_sendConfig.curve}'),
                 delegate: OpenDelegate(
                   widget: OptionsDialog<String>(
-                    title: 'Encryption Curve',
+                    title: l10n.encryptionCurve,
                     options: availableCurves,
                     value: _sendConfig.curve,
                     textBuilder: (v) => v,
@@ -348,10 +349,10 @@ class _SendViewState extends ConsumerState<SendView> {
               const Divider(height: 0, indent: 56),
               ListItem.open(
                 leading: const Icon(Icons.tag),
-                title: Text('Hash: ${_sendConfig.hashAlgorithm}'),
+                title: Text('${l10n.hashAlgorithm}: ${_sendConfig.hashAlgorithm}'),
                 delegate: OpenDelegate(
                   widget: OptionsDialog<String>(
-                    title: 'Hash Algorithm',
+                    title: l10n.hashAlgorithm,
                     options: availableHashAlgos,
                     value: _sendConfig.hashAlgorithm,
                     textBuilder: (v) => v,
@@ -366,7 +367,7 @@ class _SendViewState extends ConsumerState<SendView> {
               const Divider(height: 0, indent: 56),
               ListItem.switchItem(
                 leading: const Icon(Icons.compress),
-                title: const Text('Compression'),
+                title: Text(l10n.compression),
                 delegate: SwitchDelegate(
                   value: !_sendConfig.noCompress,
                   onChanged: (v) {
@@ -379,7 +380,7 @@ class _SendViewState extends ConsumerState<SendView> {
               const Divider(height: 0, indent: 56),
               ListItem.switchItem(
                 leading: const Icon(Icons.folder_zip),
-                title: const Text('Zip Folder'),
+                title: Text(l10n.zipFolder),
                 delegate: SwitchDelegate(
                   value: _sendConfig.zipFolder,
                   onChanged: (v) {
@@ -392,7 +393,7 @@ class _SendViewState extends ConsumerState<SendView> {
               const Divider(height: 0, indent: 56),
               ListItem.switchItem(
                 leading: const Icon(Icons.wifi_off),
-                title: const Text('Local Only'),
+                title: Text(l10n.localOnly),
                 delegate: SwitchDelegate(
                   value: _sendConfig.onlyLocal,
                   onChanged: (v) {

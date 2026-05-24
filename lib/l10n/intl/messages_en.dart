@@ -19,14 +19,26 @@ const Map<String, String> enMessages = {
   'crocStatus': 'Croc Status',
 
   // Send
+  'sendFiles': 'Send Files',
   'selectFiles': 'Select Files',
   'startSend': 'Start Send',
   'codePhrase': 'Code Phrase',
-  'enterCodePhrase': 'Enter code phrase',
+  'enterCodePhrase': 'Enter Code Phrase',
+  'textHint': 'Type or paste text to send...',
+  'customCodeHint': 'Custom code (optional)',
+  'generate': 'Generate',
+  'files': 'Files',
+  'fileMode': 'File',
+  'textMode': 'Text',
+
+  // Receive
+  'receiveFiles': 'Receive Files',
   'startReceive': 'Start Receive',
   'scanQRCode': 'Scan QR Code',
+  'options': 'Options',
 
   // Relay
+  'relayType': 'Relay Type',
   'relaySettings': 'Relay Settings',
   'relayAddress': 'Relay Address',
   'relayPassword': 'Relay Password',
@@ -46,6 +58,7 @@ const Map<String, String> enMessages = {
   'about': 'About',
   'application': 'Application',
   'appVersion': 'App Version',
+  'description': 'Description',
   'desc': 'A cross-platform file transfer GUI client powered by croc, simple and easy to use.',
 
   // Transfer options
@@ -84,4 +97,5 @@ const Map<String, String> enMessages = {
   'retry': 'Retry',
   'edit': 'Edit',
   'done': 'Done',
+  'availableWidgets': 'Available Widgets',
 };

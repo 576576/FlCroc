@@ -32,13 +32,16 @@ class _ApplicationState extends ConsumerState<Application> {
   Widget build(BuildContext context) {
     return Consumer(
       builder: (_, ref, child) {
+        final locale = ref.watch(
+          appSettingProvider.select((state) => state.locale),
+        );
         final themeProps = ref.watch(themeSettingProvider);
         final appSettings = ref.watch(appSettingProvider);
 
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           navigatorKey: globalState.navigatorKey,
-          localizationsDelegates: [
+          localizationsDelegates: const [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
@@ -48,9 +51,7 @@ class _ApplicationState extends ConsumerState<Application> {
             return ThemeManager(child: child!);
           },
           title: appName,
-          locale: appSettings.locale != null
-              ? Locale(appSettings.locale!)
-              : null,
+          locale: locale != null ? Locale(locale) : const Locale('zh', 'CN'),
           supportedLocales: AppLocalizations.supportedLocales,
           themeMode: _getThemeMode(appSettings.themeMode),
           theme: _buildLightTheme(themeProps),

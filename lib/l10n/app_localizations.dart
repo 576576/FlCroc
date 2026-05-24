@@ -35,6 +35,7 @@ class AppLocalizations {
 
   static const List<Locale> supportedLocales = [
     Locale('en'),
+    Locale('zh'),
     Locale('zh', 'CN'),
   ];
 
@@ -57,13 +58,24 @@ class AppLocalizations {
   String get recentTransfers => _('recentTransfers');
   String get crocStatus => _('crocStatus');
 
+  String get sendFiles => _('sendFiles');
   String get selectFiles => _('selectFiles');
   String get startSend => _('startSend');
   String get codePhrase => _('codePhrase');
   String get enterCodePhrase => _('enterCodePhrase');
+  String get textHint => _('textHint');
+  String get customCodeHint => _('customCodeHint');
+  String get generate => _('generate');
+  String get files => _('files');
+  String get fileMode => _('fileMode');
+  String get textMode => _('textMode');
+
+  String get receiveFiles => _('receiveFiles');
   String get startReceive => _('startReceive');
   String get scanQRCode => _('scanQRCode');
+  String get options => _('options');
 
+  String get relayType => _('relayType');
   String get relaySettings => _('relaySettings');
   String get relayAddress => _('relayAddress');
   String get relayPassword => _('relayPassword');
@@ -81,6 +93,7 @@ class AppLocalizations {
   String get about => _('about');
   String get application => _('application');
   String get appVersion => _('appVersion');
+  String get description => _('description');
   String get desc => _('desc');
 
   String get transferOptions => _('transferOptions');
@@ -115,6 +128,43 @@ class AppLocalizations {
   String get retry => _('retry');
   String get edit => _('edit');
   String get done => _('done');
+  String get availableWidgets => _('availableWidgets');
+
+  /// Map [PageLabel] to its localized display name.
+  String pageLabel(Enum label) {
+    switch (label.name) {
+      case 'dashboard':
+        return dashboard;
+      case 'send':
+        return send;
+      case 'receive':
+        return receive;
+      case 'history':
+        return history;
+      case 'settings':
+        return settings;
+      default:
+        return label.name;
+    }
+  }
+
+  /// Map [DashboardWidget] to its localized display name.
+  String dashboardWidgetName(Enum widget) {
+    switch (widget.name) {
+      case 'transferSpeed':
+        return transferSpeed;
+      case 'totalTransferred':
+        return totalTransferred;
+      case 'quickSend':
+        return quickSend;
+      case 'recentTransfers':
+        return recentTransfers;
+      case 'crocStatus':
+        return crocStatus;
+      default:
+        return widget.name;
+    }
+  }
 }
 
 // ────────────────────────────────────────────────────────────
@@ -139,7 +189,7 @@ class _AppLocalizationsDelegate
   @override
   Future<AppLocalizations> load(Locale locale) async {
     final messages = _lookupMap[locale.languageCode] ??
-        _lookupMap['en']!;
+        _lookupMap['zh']!;
     return AppLocalizations._(locale, messages);
   }
 
