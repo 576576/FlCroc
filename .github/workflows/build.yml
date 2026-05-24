@@ -15,12 +15,10 @@ concurrency:
 env:
   CROC_TAG: v10.4.4
   CROC_REPO: https://github.com/schollz/croc.git
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  GO_VERSION: '1.25'
 
 jobs:
-  # ═══════════════════════════════════════════════════════════
-  #  Test
-  # ═══════════════════════════════════════════════════════════
+  # ---- Test ----
   test:
     runs-on: ubuntu-latest
     steps:
@@ -31,27 +29,33 @@ jobs:
           channel: stable
           cache: true
 
-      - run: flutter pub get
-      - run: dart run build_runner build --delete-conflicting-outputs
-      - run: flutter test
+      - name: Install dependencies
+        run: flutter pub get
 
-  # ═══════════════════════════════════════════════════════════
-  #  Android ARM64-v8a APK  (croc built from source via Go)
-  # ═══════════════════════════════════════════════════════════
+      - name: Run tests
+        run: flutter test
+
+  # ---- Android ARM64-v8a APK ----
   build-android:
     needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Clone croc source
-        run: |
-          git clone --depth 1 --branch $CROC_TAG $CROC_REPO /tmp/croc_src
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Clone croc source
+        run: |
+          git clone --depth 1 --branch "$CROC_TAG" "$CROC_REPO" /tmp/croc_src
 
       - name: Setup Android NDK
         uses: nttld/setup-ndk@v1
@@ -59,20 +63,14 @@ jobs:
           ndk-version: r27c
           add-to-path: false
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
       - name: Build croc bridge (.so) for Android ARM64
         run: |
           cd go_bridge
           go mod edit -replace github.com/schollz/croc/v10=/tmp/croc_src
           go mod tidy
-          export ANDROID_NDK_HOME=$ANDROID_NDK
-          export TOOLCHAIN=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64
-          export CC=$TOOLCHAIN/bin/aarch64-linux-android21-clang
+          export ANDROID_NDK_HOME="${ANDROID_NDK_ROOT:-$ANDROID_NDK}"
+          export TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
+          export CC="$TOOLCHAIN/bin/aarch64-linux-android21-clang"
           export CGO_ENABLED=1
           export GOOS=android
           export GOARCH=arm64
@@ -84,125 +82,151 @@ jobs:
       - name: Verify .so
         run: ls -lh android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so
 
-      - run: flutter pub get
-      - run: flutter build apk --release --target-platform android-arm64
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release --target-platform android-arm64
 
       - uses: actions/upload-artifact@v4
         with:
           name: FlCroc-android-arm64-v8a
           path: build/app/outputs/flutter-apk/app-release.apk
 
-  # ═══════════════════════════════════════════════════════════
-  #  Windows AMD64  (croc.exe built from source via Go)
-  # ═══════════════════════════════════════════════════════════
+  # ---- Windows AMD64 ----
   build-windows:
     needs: test
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
     steps:
       - uses: actions/checkout@v4
-
-      - name: Clone croc source
-        run: |
-          git clone --depth 1 --branch $env:CROC_TAG $env:CROC_REPO $env:TEMP\croc_src
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: ${{ env.GO_VERSION }}
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
+      - name: Clone croc source
+        run: |
+          git clone --depth 1 --branch "$env:CROC_TAG" "$env:CROC_REPO" "$env:RUNNER_TEMP\croc_src"
 
       - name: Build croc.exe from source
-        shell: pwsh
         run: |
-          $src = "$env:TEMP\croc_src"
-          Set-Location $src
+          Push-Location "$env:RUNNER_TEMP\croc_src"
           $env:CGO_ENABLED = "0"
           $env:GOOS = "windows"
           $env:GOARCH = "amd64"
           go build -ldflags="-s -w" -o "$env:GITHUB_WORKSPACE\windows\runner\croc.exe" .
-          Write-Host "croc.exe built"
+          Pop-Location
 
       - name: Verify croc.exe
-        run: ls -lh windows/runner/croc.exe
+        run: |
+          if (Test-Path windows\runner\croc.exe) {
+            Get-Item windows\runner\croc.exe | Select-Object Length, FullName
+          } else {
+            Write-Error "croc.exe not found!"
+          }
 
-      - run: flutter pub get
-      - run: flutter config --enable-windows-desktop
-      - run: flutter build windows --release
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
 
-      - name: Package
-        shell: pwsh
-        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath FlCroc-windows-amd64.zip
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Windows
+        run: flutter build windows --release
+
+      - name: Package zip
+        run: |
+          $src = "build\windows\x64\runner\Release"
+          Compress-Archive -Path "$src\*" -DestinationPath FlCroc-windows-amd64.zip
 
       - uses: actions/upload-artifact@v4
         with:
           name: FlCroc-windows-amd64
           path: FlCroc-windows-amd64.zip
 
-  # ═══════════════════════════════════════════════════════════
-  #  Linux AMD64  (croc built from source via Go → .deb)
-  # ═══════════════════════════════════════════════════════════
+  # ---- Linux AMD64 ----
   build-linux:
     needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Clone croc source
-        run: |
-          git clone --depth 1 --branch $CROC_TAG $CROC_REPO /tmp/croc_src
-
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: ${{ env.GO_VERSION }}
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
-      - name: Install Linux build deps
+      - name: Clone croc source
         run: |
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config \
-            libgtk-3-dev liblzma-dev dpkg-dev
+          git clone --depth 1 --branch "$CROC_TAG" "$CROC_REPO" /tmp/croc_src
 
       - name: Build croc from source
         run: |
           cd /tmp/croc_src
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
             go build -ldflags="-s -w" -o /tmp/croc .
-          mkdir -p linux/flutter/ephemeral
-          cp /tmp/croc linux/flutter/ephemeral/croc
-          chmod +x linux/flutter/ephemeral/croc
+          mkdir -p "$GITHUB_WORKSPACE/linux/flutter/ephemeral"
+          cp /tmp/croc "$GITHUB_WORKSPACE/linux/flutter/ephemeral/croc"
+          chmod +x "$GITHUB_WORKSPACE/linux/flutter/ephemeral/croc"
 
       - name: Verify croc
-        run: ls -lh linux/flutter/ephemeral/croc && file linux/flutter/ephemeral/croc
+        run: |
+          ls -lh linux/flutter/ephemeral/croc
+          file linux/flutter/ephemeral/croc
 
-      - run: flutter pub get
-      - run: flutter config --enable-linux-desktop
-      - run: flutter build linux --release
+      - name: Install Linux build deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Linux
+        run: flutter build linux --release
 
       - name: Create .deb package
         run: |
           APPNAME=flcroc
           VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
-          PKG_DIR=build/linux_deb/${APPNAME}_${VERSION}_amd64
-          mkdir -p ${PKG_DIR}/DEBIAN
-          mkdir -p ${PKG_DIR}/opt/${APPNAME}
-          mkdir -p ${PKG_DIR}/usr/share/applications
-          mkdir -p ${PKG_DIR}/usr/share/icons/hicolor/256x256/apps
-          cp -r build/linux/x64/release/bundle/* ${PKG_DIR}/opt/${APPNAME}/
+          PKG_DIR="build/linux_deb/${APPNAME}_${VERSION}_amd64"
+          mkdir -p "${PKG_DIR}/DEBIAN"
+          mkdir -p "${PKG_DIR}/opt/${APPNAME}"
+          mkdir -p "${PKG_DIR}/usr/share/applications"
+          mkdir -p "${PKG_DIR}/usr/local/bin"
 
-          printf 'Package: flcroc\nVersion: %s\nSection: utils\nPriority: optional\nArchitecture: amd64\nMaintainer: FlCroc Team\nDescription: FlCroc - GUI client for croc file transfer\n A cross-platform Flutter GUI for croc, enabling easy and secure\n file transfers between computers with Material 3 design.\n' "$VERSION" > ${PKG_DIR}/DEBIAN/control
+          cp -r build/linux/x64/release/bundle/* "${PKG_DIR}/opt/${APPNAME}/"
 
-          cat > ${PKG_DIR}/usr/share/applications/flcroc.desktop << 'DESKTOP'
+          cat > "${PKG_DIR}/DEBIAN/control" << EOF
+          Package: flcroc
+          Version: ${VERSION}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: FlCroc Team
+          Description: FlCroc - GUI client for croc file transfer
+           A cross-platform Flutter GUI for croc, enabling easy and secure
+           file transfers between computers with Material 3 design.
+          EOF
+
+          cat > "${PKG_DIR}/usr/share/applications/flcroc.desktop" << 'DESKTOP'
           [Desktop Entry]
           Name=FlCroc
           Comment=Secure file transfer GUI
@@ -213,18 +237,15 @@ jobs:
           Categories=Utility;Network;
           DESKTOP
 
-          mkdir -p ${PKG_DIR}/usr/local/bin
-          ln -s /opt/${APPNAME}/fl_croc ${PKG_DIR}/usr/local/bin/flcroc
-          dpkg-deb --build ${PKG_DIR}
+          ln -s "/opt/${APPNAME}/fl_croc" "${PKG_DIR}/usr/local/bin/flcroc"
+          dpkg-deb --build "${PKG_DIR}"
 
       - uses: actions/upload-artifact@v4
         with:
           name: FlCroc-linux-amd64-deb
           path: build/linux_deb/flcroc_*_amd64.deb
 
-  # ═══════════════════════════════════════════════════════════
-  #  Release (on tag push)
-  # ═══════════════════════════════════════════════════════════
+  # ---- Release (on tag push) ----
   release:
     needs: [build-android, build-windows, build-linux]
     if: startsWith(github.ref, 'refs/tags/v')
@@ -236,7 +257,8 @@ jobs:
         with:
           path: artifacts
 
-      - run: ls -R artifacts
+      - name: List artifacts
+        run: find artifacts -type f -ls
 
       - uses: softprops/action-gh-release@v2
         with:
