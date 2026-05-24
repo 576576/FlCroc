@@ -1,21 +1,18 @@
 # FlCroc
 
 <p align="center">
-  <img src="assets/images/icon.png" width="128" alt="FlCroc"/>
-</p>
-
-<p align="center">
   <strong>🐊 A Flutter GUI for <a href="https://github.com/schollz/croc">croc</a> — easily and securely transfer files between computers</strong>
 </p>
 
 <p align="center">
+  <a href="docs/README_zh.md">📖 中文文档</a> &nbsp;|&nbsp;
   Inspired by <a href="https://github.com/chen08209/FlClash">FlClash</a>'s elegant Material 3 design.
 </p>
 
 ## Features
 
 - **Dashboard** — Transfer speed monitoring, total statistics, quick actions
-- **Send Files** — Multi-file selection, auto-generated or custom code phrase, QR code display
+- **Send Files** — Multi-file selection, auto-generated or custom code phrase, QR code display, text sending
 - **Receive Files** — Enter code phrase or scan QR code to receive
 - **History** — Track all sent and received transfers
 - **Settings** — Relay server configuration, theme customization, language switching
@@ -32,11 +29,11 @@ lib/
 ├── application.dart       # MaterialApp with ThemeManager
 ├── controller.dart        # AppController singleton
 ├── state.dart             # GlobalState singleton
-├── common/                # Utilities, constants, extensions (~15 files)
+├── common/                # Utilities, constants, extensions
 ├── enum/                  # All enums
 ├── models/                # Freezed data models
 ├── providers/             # Riverpod providers
-├── core/                  # Backend interface (FFI + process)
+├── core/                  # Backend (FFI + process)
 ├── manager/               # State managers (theme)
 ├── l10n/                  # Localization (en, zh_CN)
 ├── pages/                 # HomePage (responsive nav)
@@ -46,7 +43,7 @@ lib/
 │   ├── receive/           # File receive interface
 │   ├── history/           # Transfer history
 │   └── settings/          # App settings
-├── widgets/               # Reusable widgets (~15 files)
+├── widgets/               # Reusable widgets
 └── go_bridge/             # Go FFI bridge to croc
 ```
 
@@ -54,22 +51,30 @@ lib/
 
 ### Prerequisites
 - Flutter SDK ^3.12.0
-- Go 1.25+ (for building the bridge library)
-- croc CLI (bundled or installed separately)
+- Go 1.25+ (for building the Go FFI bridge for Android)
+- croc CLI (auto-downloaded via setup script for desktop)
 
-### Install Dependencies
+### Install
 ```bash
 flutter pub get
 dart run build_runner build
 ```
 
-### Build Go Bridge
+### Download croc (desktop)
+```bash
+# Windows
+.\setup_croc.ps1
+
+# Linux/macOS
+./setup_croc.sh
+```
+
+### Build Go Bridge (Android)
 ```bash
 cd go_bridge
-# Windows
-.\build.bat
-# Linux/macOS
-./build.sh linux amd64
+# Android ARM64
+.\build.bat android arm64    # Windows
+./build.sh android arm64     # Linux/macOS
 ```
 
 ### Run
@@ -85,11 +90,11 @@ flutter build apk
 # Windows
 flutter build windows
 
-# macOS
-flutter build macos
-
 # Linux
 flutter build linux
+
+# macOS
+flutter build macos
 ```
 
 ## Tech Stack
@@ -99,12 +104,23 @@ flutter build linux
 | Framework | Flutter (Dart) |
 | State | Riverpod + Freezed |
 | UI | Material 3 |
-| Backend | Go FFI (c-shared library) |
-| Storage | SharedPreferences + Drift |
+| Backend | Go FFI (c-shared) + process |
+| Storage | SharedPreferences |
+| Scanner | mobile_scanner |
+| QR | qr_flutter |
+
+## CI/CD
+
+GitHub Actions automatically builds for all platforms on push:
+- **Android ARM64** — Go cross-compile → APK
+- **Windows AMD64** — bundled croc.exe → zip
+- **Linux AMD64** — bundled croc → .deb
+
+See `.github/workflows/build.yml`.
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) for details.
+[GNU General Public License v3.0](LICENSE)
 
 ## Acknowledgments
 

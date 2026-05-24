@@ -1,8 +1,6 @@
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/controller.dart';
-import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/providers/providers.dart';
-import 'package:fl_croc/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

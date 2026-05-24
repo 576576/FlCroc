@@ -1,7 +1,6 @@
 import 'package:fl_croc/common/constant.dart';
 import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/models/models.dart';
-import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'config.freezed.dart';
@@ -20,7 +19,7 @@ abstract class AppSettingProps with _$AppSettingProps {
   const factory AppSettingProps({
     String? locale,
     @Default(defaultDashboardWidgets)
-    @JsonKey(fromJson: _dashboardWidgetsFromJson)
+    @DashboardWidgetListConverter()
     List<DashboardWidget> dashboardWidgets,
     @Default(false) bool autoLaunch,
     @Default(false) bool silentLaunch,
@@ -45,6 +44,19 @@ List<DashboardWidget> _dashboardWidgetsFromJson(List<dynamic>? list) {
   } catch (_) {
     return defaultDashboardWidgets;
   }
+}
+
+class DashboardWidgetListConverter
+    implements JsonConverter<List<DashboardWidget>, List<dynamic>> {
+  const DashboardWidgetListConverter();
+
+  @override
+  List<DashboardWidget> fromJson(List<dynamic> json) =>
+      _dashboardWidgetsFromJson(json);
+
+  @override
+  List<dynamic> toJson(List<DashboardWidget> list) =>
+      list.map((w) => w.name).toList();
 }
 
 @freezed

@@ -1,10 +1,6 @@
 import 'package:fl_croc/common/common.dart';
-import 'package:fl_croc/enum/enum.dart';
-import 'package:fl_croc/models/models.dart';
-import 'package:fl_croc/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 
 class CommonScaffold extends StatefulWidget {
   final String? title;

@@ -1,5 +1,4 @@
 import 'package:fl_croc/common/navigation.dart';
-import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/models/models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

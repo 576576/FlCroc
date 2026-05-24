@@ -16,6 +16,8 @@ abstract class SendOptions with _$SendOptions {
     @Default(false) bool gitIgnore,
     @Default(false) bool onlyLocal,
     @Default(false) bool disableLocal,
+    @Default(false) bool sendingText,
+    @Default('') String textContent,
     @Default('') String socks5Proxy,
     @Default('') String httpProxy,
     @Default('') String throttleUpload,

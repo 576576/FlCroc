@@ -1,6 +1,5 @@
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/enum/enum.dart';
-import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/state.dart';
 import 'package:fl_croc/widgets/widgets.dart';

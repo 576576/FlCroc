@@ -5,8 +5,8 @@ import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/widgets/widgets.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 class ReceiveView extends ConsumerStatefulWidget {
   const ReceiveView({super.key});
@@ -20,6 +20,16 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   bool _isReceiving = false;
   ReceiveConfig _receiveConfig = const ReceiveConfig();
 
+  void _openScanner() async {
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => const _QRScannerPage(),
+      ),
+    );
+    if (result != null && mounted) {
+      _codeController.text = result;
+    }
+  }
   void _startReceive() {
     final code = _codeController.text.trim();
     if (code.isEmpty) return;
@@ -202,7 +212,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: OutlinedButton.icon(
               onPressed: () {
-                // TODO: Open QR scanner
+                _openScanner();
               },
               icon: const Icon(Icons.qr_code_scanner),
               label: const Text('Scan QR Code'),
@@ -234,6 +244,60 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
         ),
         ...children,
       ],
+    );
+  }
+}
+
+/// Full-screen QR code scanner page.
+/// Returns the scanned code phrase as a String via Navigator.pop.
+class _QRScannerPage extends StatefulWidget {
+  const _QRScannerPage();
+
+  @override
+  State<_QRScannerPage> createState() => _QRScannerPageState();
+}
+
+class _QRScannerPageState extends State<_QRScannerPage> {
+  final MobileScannerController _scannerController = MobileScannerController();
+  bool _hasScanned = false;
+
+  @override
+  void dispose() {
+    _scannerController.dispose();
+    super.dispose();
+  }
+
+  void _onDetect(BarcodeCapture capture) {
+    if (_hasScanned) return;
+    final barcode = capture.barcodes.firstOrNull;
+    if (barcode?.rawValue != null) {
+      _hasScanned = true;
+      Navigator.of(context).pop(barcode!.rawValue!);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Scan QR Code'),
+        actions: [
+          IconButton(
+            icon: Icon(
+              _scannerController.torchEnabled ? Icons.flash_on : Icons.flash_off,
+            ),
+            onPressed: () => _scannerController.toggleTorch(),
+          ),
+          IconButton(
+            icon: const Icon(Icons.flip_camera_android),
+            onPressed: () => _scannerController.switchCamera(),
+          ),
+        ],
+      ),
+      body: MobileScanner(
+        controller: _scannerController,
+        onDetect: _onDetect,
+      ),
     );
   }
 }

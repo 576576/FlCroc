@@ -86,7 +86,7 @@ class CoreLib extends CoreInterface {
 
   @override
   Stream<TransferProgress> sendFiles(SendOptions options) async* {
-    if (!_isAvailable) {
+    if (!_isAvailable || _lib == null) {
       yield const TransferProgress(
         transferId: '',
         status: TransferProgressStatus.failed,
@@ -95,26 +95,109 @@ class CoreLib extends CoreInterface {
       return;
     }
 
-    yield const TransferProgress(
-      transferId: '',
+    final transferId = DateTime.now().millisecondsSinceEpoch.toString();
+    yield TransferProgress(
+      transferId: transferId,
       status: TransferProgressStatus.initializing,
     );
 
     try {
-      yield const TransferProgress(
-        transferId: '',
+      yield TransferProgress(
+        transferId: transferId,
         status: TransferProgressStatus.connecting,
       );
 
-      // When the Go bridge is built and loaded, use FFI to call CrocSendFiles
-      // For now, yield placeholder
-      yield const TransferProgress(
-        transferId: 'ffi-pending',
+      // Call CrocSendFiles
+      final sendFunc = _lib!.lookupFunction<
+          Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>),
+          Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>)>('CrocSendFiles');
+
+      final pathsJson = jsonEncode(options.filePaths);
+      final optsJson = jsonEncode({
+        'code_phrase': options.codePhrase ?? '',
+        'curve': options.curve,
+        'hash_algorithm': options.hashAlgorithm,
+        'no_compress': options.noCompress,
+        'overwrite': options.overwrite,
+        'zip_folder': options.zipFolder,
+        'git_ignore': options.gitIgnore,
+        'only_local': options.onlyLocal,
+        'disable_local': options.disableLocal,
+        'relay_address': options.relayAddress ?? '',
+        'relay_password': options.relayPassword ?? '',
+        'exclude': options.exclude,
+      });
+
+      final pathsPtr = pathsJson.toNativeUtf8();
+      final optsPtr = optsJson.toNativeUtf8();
+      final resultPtr = sendFunc(pathsPtr, optsPtr);
+      final resultJson = resultPtr.toDartString();
+
+      malloc.free(pathsPtr);
+      malloc.free(optsPtr);
+      malloc.free(resultPtr);
+
+      final result = jsonDecode(resultJson) as Map<String, dynamic>;
+      if (result.containsKey('error')) {
+        yield TransferProgress(
+          transferId: transferId,
+          status: TransferProgressStatus.failed,
+          error: result['error'] as String?,
+        );
+        return;
+      }
+
+      final codePhrase = result['code_phrase'] as String?;
+      yield TransferProgress(
+        transferId: transferId,
         status: TransferProgressStatus.transferring,
+        codePhrase: codePhrase,
       );
+
+      // Poll progress until complete
+      final pollFunc = _lib!.lookupFunction<
+          Pointer<Utf8> Function(),
+          Pointer<Utf8> Function()>('CrocPollProgress');
+
+      while (true) {
+        await Future.delayed(const Duration(milliseconds: 200));
+        final pollPtr = pollFunc();
+        final pollJson = pollPtr.toDartString();
+        malloc.free(pollPtr);
+
+        if (pollJson == 'null' || pollJson == '{}') continue;
+
+        final event = jsonDecode(pollJson) as Map<String, dynamic>;
+        final type = event['type'] as int? ?? 0;
+
+        if (type == 2) {
+          // complete
+          yield TransferProgress(
+            transferId: transferId,
+            status: TransferProgressStatus.completed,
+          );
+          return;
+        } else if (type == 3) {
+          // error
+          yield TransferProgress(
+            transferId: transferId,
+            status: TransferProgressStatus.failed,
+            error: event['error'] as String?,
+          );
+          return;
+        } else if (type == 1) {
+          // progress
+          yield TransferProgress(
+            transferId: transferId,
+            status: TransferProgressStatus.transferring,
+            totalFiles: (event['total_files'] as int?) ?? 0,
+            totalSize: (event['total_size'] as int?) ?? 0,
+          );
+        }
+      }
     } catch (e) {
       yield TransferProgress(
-        transferId: '',
+        transferId: transferId,
         status: TransferProgressStatus.failed,
         error: e.toString(),
       );
@@ -123,7 +206,7 @@ class CoreLib extends CoreInterface {
 
   @override
   Stream<TransferProgress> receiveFiles(ReceiveOptions options) async* {
-    if (!_isAvailable) {
+    if (!_isAvailable || _lib == null) {
       yield const TransferProgress(
         transferId: '',
         status: TransferProgressStatus.failed,
@@ -132,24 +215,95 @@ class CoreLib extends CoreInterface {
       return;
     }
 
-    yield const TransferProgress(
-      transferId: '',
+    final transferId = DateTime.now().millisecondsSinceEpoch.toString();
+    yield TransferProgress(
+      transferId: transferId,
       status: TransferProgressStatus.initializing,
     );
 
     try {
-      yield const TransferProgress(
-        transferId: '',
+      yield TransferProgress(
+        transferId: transferId,
         status: TransferProgressStatus.connecting,
       );
 
-      yield const TransferProgress(
-        transferId: 'ffi-pending',
+      final recvFunc = _lib!.lookupFunction<
+          Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>),
+          Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>)>('CrocReceiveFiles');
+
+      final optsJson = jsonEncode({
+        'overwrite': options.overwrite,
+        'only_local': options.onlyLocal,
+        'output_path': options.outputPath,
+        'relay_address': options.relayAddress ?? '',
+        'relay_password': options.relayPassword ?? '',
+      });
+
+      final codePtr = options.codePhrase.toNativeUtf8();
+      final optsPtr = optsJson.toNativeUtf8();
+      final resultPtr = recvFunc(codePtr, optsPtr);
+      final resultJson = resultPtr.toDartString();
+
+      malloc.free(codePtr);
+      malloc.free(optsPtr);
+      malloc.free(resultPtr);
+
+      final result = jsonDecode(resultJson) as Map<String, dynamic>;
+      if (result.containsKey('error')) {
+        yield TransferProgress(
+          transferId: transferId,
+          status: TransferProgressStatus.failed,
+          error: result['error'] as String?,
+        );
+        return;
+      }
+
+      yield TransferProgress(
+        transferId: transferId,
         status: TransferProgressStatus.transferring,
       );
+
+      // Poll progress
+      final pollFunc = _lib!.lookupFunction<
+          Pointer<Utf8> Function(),
+          Pointer<Utf8> Function()>('CrocPollProgress');
+
+      while (true) {
+        await Future.delayed(const Duration(milliseconds: 200));
+        final pollPtr = pollFunc();
+        final pollJson = pollPtr.toDartString();
+        malloc.free(pollPtr);
+
+        if (pollJson == 'null' || pollJson == '{}') continue;
+
+        final event = jsonDecode(pollJson) as Map<String, dynamic>;
+        final type = event['type'] as int? ?? 0;
+
+        if (type == 2) {
+          yield TransferProgress(
+            transferId: transferId,
+            status: TransferProgressStatus.completed,
+          );
+          return;
+        } else if (type == 3) {
+          yield TransferProgress(
+            transferId: transferId,
+            status: TransferProgressStatus.failed,
+            error: event['error'] as String?,
+          );
+          return;
+        } else if (type == 1) {
+          yield TransferProgress(
+            transferId: transferId,
+            status: TransferProgressStatus.transferring,
+            totalFiles: (event['total_files'] as int?) ?? 0,
+            totalSize: (event['total_size'] as int?) ?? 0,
+          );
+        }
+      }
     } catch (e) {
       yield TransferProgress(
-        transferId: '',
+        transferId: transferId,
         status: TransferProgressStatus.failed,
         error: e.toString(),
       );

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/core/interface.dart';

@@ -12,7 +12,9 @@ _$AppSettingPropsImpl _$$AppSettingPropsImplFromJson(
   locale: json['locale'] as String?,
   dashboardWidgets: json['dashboardWidgets'] == null
       ? defaultDashboardWidgets
-      : _dashboardWidgetsFromJson(json['dashboardWidgets'] as List?),
+      : const DashboardWidgetListConverter().fromJson(
+          json['dashboardWidgets'] as List,
+        ),
   autoLaunch: json['autoLaunch'] as bool? ?? false,
   silentLaunch: json['silentLaunch'] as bool? ?? false,
   minimizeOnExit: json['minimizeOnExit'] as bool? ?? false,
@@ -37,9 +39,9 @@ Map<String, dynamic> _$$AppSettingPropsImplToJson(
   _$AppSettingPropsImpl instance,
 ) => <String, dynamic>{
   'locale': instance.locale,
-  'dashboardWidgets': instance.dashboardWidgets
-      .map((e) => _$DashboardWidgetEnumMap[e]!)
-      .toList(),
+  'dashboardWidgets': const DashboardWidgetListConverter().toJson(
+    instance.dashboardWidgets,
+  ),
   'autoLaunch': instance.autoLaunch,
   'silentLaunch': instance.silentLaunch,
   'minimizeOnExit': instance.minimizeOnExit,
@@ -70,14 +72,6 @@ const _$FontFamilyEnumMap = {
   FontFamily.system: 'system',
   FontFamily.notoSans: 'notoSans',
   FontFamily.roboto: 'roboto',
-};
-
-const _$DashboardWidgetEnumMap = {
-  DashboardWidget.transferSpeed: 'transferSpeed',
-  DashboardWidget.totalTransferred: 'totalTransferred',
-  DashboardWidget.quickSend: 'quickSend',
-  DashboardWidget.recentTransfers: 'recentTransfers',
-  DashboardWidget.crocStatus: 'crocStatus',
 };
 
 _$ThemePropsImpl _$$ThemePropsImplFromJson(Map<String, dynamic> json) =>

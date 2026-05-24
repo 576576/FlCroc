@@ -1,4 +1,3 @@
-import 'package:fl_croc/common/context.dart';
 import 'package:fl_croc/common/navigator.dart';
 import 'package:fl_croc/widgets/switch_delegate.dart';
 import 'package:flutter/material.dart';
@@ -101,7 +100,7 @@ class ListItem extends StatelessWidget {
                 ],
               ),
             ),
-            if (trailing != null) trailing!,
+            ?trailing,
           ],
         ),
       ),

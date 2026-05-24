@@ -1,4 +1,3 @@
-import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/widgets/dialog.dart';
 import 'package:flutter/material.dart';
 
@@ -23,21 +22,23 @@ class OptionsDialog<T> extends StatelessWidget {
     return CommonDialog(
       title: title,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: options.map((option) {
-          return RadioListTile<T>(
-            title: Text(textBuilder(option)),
-            value: option,
-            groupValue: value,
-            onChanged: (v) {
-              if (v != null) {
-                onChanged(v);
-                Navigator.pop(context);
-              }
-            },
-          );
-        }).toList(),
+      child: RadioGroup<T>(
+        groupValue: value,
+        onChanged: (v) {
+          if (v != null) {
+            onChanged(v);
+            Navigator.pop(context);
+          }
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: options.map((option) {
+            return RadioListTile<T>(
+              title: Text(textBuilder(option)),
+              value: option,
+            );
+          }).toList(),
+        ),
       ),
     );
   }

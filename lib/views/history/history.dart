@@ -1,6 +1,6 @@
 import 'package:fl_croc/common/common.dart';
+import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
-import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/widgets/widgets.dart';
 import 'package:flutter/material.dart';
@@ -25,7 +25,7 @@ class HistoryView extends ConsumerWidget {
         if (completed.isNotEmpty)
           IconButton(
             onPressed: () {
-              // Clear history
+              appController.clearHistory();
             },
             icon: const Icon(Icons.delete_sweep_outlined),
           ),
@@ -83,7 +83,7 @@ class HistoryView extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(

@@ -1,13 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui';
 
 import 'package:fl_croc/common/common.dart';
-import 'package:fl_croc/enum/enum.dart';
-import 'package:fl_croc/l10n/app_localizations.dart';
 import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/providers/providers.dart';
-import 'package:fl_croc/widgets/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';

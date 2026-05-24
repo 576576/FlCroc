@@ -3,7 +3,6 @@ import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/core/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/models/models.dart';
-import 'package:fl_croc/state.dart';
 import 'package:fl_croc/widgets/widgets.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -23,7 +22,15 @@ class _SendViewState extends ConsumerState<SendView> {
   String _codePhrase = '';
   String _customCode = '';
   bool _isSending = false;
+  bool _isTextMode = false;
+  final _textController = TextEditingController();
   SendConfig _sendConfig = const SendConfig();
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickFiles() async {
     final result = await FilePicker.platform.pickFiles(
@@ -51,19 +58,26 @@ class _SendViewState extends ConsumerState<SendView> {
   }
 
   void _startSend() {
-    if (_selectedFiles.isEmpty) return;
+    final isText = _isTextMode;
+    final textContent = _textController.text.trim();
+    if (!isText && _selectedFiles.isEmpty) return;
+    if (isText && textContent.isEmpty) return;
     final code = _customCode.isNotEmpty ? _customCode : _codePhrase;
     if (code.isEmpty) return;
 
     setState(() => _isSending = true);
-final files = _selectedFiles
-        .map((f) => FileItem(
-              name: f.name,
-              path: f.path ?? '',
-              size: f.size,
-            ))
-        .toList();
-    final totalSize = files.fold<int>(0, (a, f) => a + f.size);
+    final files = isText
+        ? [FileItem(name: 'text.txt', path: '', size: textContent.length)]
+        : _selectedFiles
+              .map((f) => FileItem(
+                    name: f.name,
+                    path: f.path ?? '',
+                    size: f.size,
+                  ))
+              .toList();
+    final totalSize = isText
+        ? textContent.length
+        : files.fold<int>(0, (a, f) => a + f.size);
 
     final record = TransferRecord(
       id: appController.generateId(),
@@ -78,8 +92,15 @@ final files = _selectedFiles
 
     // Wire up the real croc backend
     final options = SendOptions(
-      filePaths: _selectedFiles.map((f) => f.path ?? '').where((p) => p.isNotEmpty).toList(),
+      filePaths: isText
+          ? []
+          : _selectedFiles
+              .map((f) => f.path ?? '')
+              .where((p) => p.isNotEmpty)
+              .toList(),
       codePhrase: code,
+      sendingText: isText,
+      textContent: isText ? textContent : '',
       curve: _sendConfig.curve,
       hashAlgorithm: _sendConfig.hashAlgorithm,
       noCompress: _sendConfig.noCompress,
@@ -158,7 +179,7 @@ final files = _selectedFiles
     return CommonScaffold(
       title: 'Send Files',
       actions: [
-        if (_selectedFiles.isNotEmpty)
+        if (_selectedFiles.isNotEmpty || (_isTextMode && _textController.text.isNotEmpty))
           FilledButtonWidget(
             onPressed: _isSending ? null : _startSend,
             text: 'Start Send',
@@ -168,34 +189,63 @@ final files = _selectedFiles
       ],
       body: ListView(
         children: [
-          // File Selection
-          _buildSection(
-            'Files',
-            Icons.insert_drive_file,
-            [
-              if (_selectedFiles.isEmpty)
-                const NullStatusWidget(
-                  message: 'No files selected',
-                  icon: Icons.cloud_upload_outlined,
-                )
-              else
-                ..._selectedFiles.map(
-                  (f) => ListTile(
-                    leading: const Icon(Icons.insert_drive_file),
-                    title: Text(f.name),
-                    trailing: Text(f.size.fileSize),
-                  ),
-                ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: OutlinedButton.icon(
-                  onPressed: _pickFiles,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Select Files'),
+          // Send Mode Toggle
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: false, label: Text('File'), icon: Icon(Icons.insert_drive_file)),
+                ButtonSegment(value: true, label: Text('Text'), icon: Icon(Icons.text_snippet)),
+              ],
+              selected: {_isTextMode},
+              onSelectionChanged: (v) => setState(() => _isTextMode = v.first),
+            ),
+          ),
+
+          if (_isTextMode) ...[
+            // Text Input
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: TextField(
+                controller: _textController,
+                maxLines: 5,
+                decoration: const InputDecoration(
+                  hintText: 'Type or paste text to send...',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.text_fields),
                 ),
               ),
-            ],
-          ),
+            ),
+          ] else ...[
+            // File Selection
+            _buildSection(
+              'Files',
+              Icons.insert_drive_file,
+              [
+                if (_selectedFiles.isEmpty)
+                  const NullStatusWidget(
+                    message: 'No files selected',
+                    icon: Icons.cloud_upload_outlined,
+                  )
+                else
+                  ..._selectedFiles.map(
+                    (f) => ListTile(
+                      leading: const Icon(Icons.insert_drive_file),
+                      title: Text(f.name),
+                      trailing: Text(f.size.fileSize),
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: OutlinedButton.icon(
+                    onPressed: _pickFiles,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Select Files'),
+                  ),
+                ),
+              ],
+            ),
+          ],
 
           const Divider(),
 

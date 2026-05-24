@@ -1,8 +1,4 @@
-import 'dart:async';
-import 'dart:math';
-
 import 'package:fl_croc/common/common.dart';
-import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/models/models.dart';
 import 'package:flutter/material.dart';
 

@@ -1,0 +1,253 @@
+name: Build All Platforms
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CROC_VERSION: v10.4.4
+  FLUTTER_VERSION: 3.32.x
+
+jobs:
+  # ═══════════════════════════════════════════════════════════
+  #  Test
+  # ═══════════════════════════════════════════════════════════
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - run: flutter test
+
+  # ═══════════════════════════════════════════════════════════
+  #  Android ARM64-v8a APK  (Go FFI → libcroc_bridge.so)
+  # ═══════════════════════════════════════════════════════════
+  build-android:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r27c
+          add-to-path: false
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Cross-compile croc bridge for Android ARM64
+        run: |
+          cd go_bridge
+          go mod download
+          export ANDROID_NDK_HOME=$ANDROID_NDK
+          export TOOLCHAIN=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64
+          export CC=$TOOLCHAIN/bin/aarch64-linux-android21-clang
+          export CGO_ENABLED=1
+          export GOOS=android
+          export GOARCH=arm64
+          mkdir -p ../android/app/src/main/jniLibs/arm64-v8a
+          go build -buildmode=c-shared \
+            -o ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so \
+            -ldflags="-s -w" .
+
+      - name: Verify .so exists
+        run: ls -lh android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build Android APK (release)
+        run: flutter build apk --release --target-platform android-arm64
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlCroc-android-arm64-v8a
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  # ═══════════════════════════════════════════════════════════
+  #  Windows AMD64  (bundled croc.exe)
+  # ═══════════════════════════════════════════════════════════
+  build-windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Download croc for Windows
+        shell: pwsh
+        run: |
+          $url = "https://github.com/schollz/croc/releases/download/$env:CROC_VERSION/croc_$env:CROC_VERSION_Windows-64bit_GUI.zip"
+          $zip = "$env:TEMP\croc.zip"
+          Invoke-WebRequest -Uri $url -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath "$env:TEMP\croc_extract" -Force
+          $bin = Get-ChildItem "$env:TEMP\croc_extract" -Recurse -Filter croc.exe | Select-Object -First 1
+          Copy-Item $bin.FullName windows/runner/croc.exe
+          Write-Host "croc.exe copied to windows/runner/"
+
+      - name: Verify croc.exe
+        run: ls -lh windows/runner/croc.exe
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Enable Windows build
+        run: flutter config --enable-windows-desktop
+
+      - name: Build Windows (release)
+        run: flutter build windows --release
+
+      - name: Package Windows artifact
+        shell: pwsh
+        run: |
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath FlCroc-windows-amd64.zip
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlCroc-windows-amd64
+          path: FlCroc-windows-amd64.zip
+
+  # ═══════════════════════════════════════════════════════════
+  #  Linux AMD64  (bundled croc → .deb)
+  # ═══════════════════════════════════════════════════════════
+  build-linux:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Linux build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev dpkg-dev
+
+      - name: Download croc for Linux
+        run: |
+          curl -L -o /tmp/croc.tar.gz \
+            "https://github.com/schollz/croc/releases/download/${CROC_VERSION}/croc_${CROC_VERSION}_Linux-64bit_GUI.tar.gz"
+          mkdir -p /tmp/croc_extract
+          tar -xzf /tmp/croc.tar.gz -C /tmp/croc_extract
+          BIN=$(find /tmp/croc_extract -type f -name croc | head -1)
+          mkdir -p linux/flutter/ephemeral
+          cp "$BIN" linux/flutter/ephemeral/croc
+          chmod +x linux/flutter/ephemeral/croc
+          echo "croc copied to linux/flutter/ephemeral/"
+
+      - name: Verify croc
+        run: ls -lh linux/flutter/ephemeral/croc && file linux/flutter/ephemeral/croc
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Enable Linux build
+        run: flutter config --enable-linux-desktop
+
+      - name: Build Linux (release)
+        run: flutter build linux --release
+
+      - name: Create .deb package
+        run: |
+          APPNAME=flcroc
+          VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
+          PKG_DIR=build/linux_deb/${APPNAME}_${VERSION}_amd64
+          mkdir -p ${PKG_DIR}/DEBIAN
+          mkdir -p ${PKG_DIR}/opt/${APPNAME}
+          mkdir -p ${PKG_DIR}/usr/share/applications
+          mkdir -p ${PKG_DIR}/usr/share/icons/hicolor/256x256/apps
+
+          # Copy Flutter bundle
+          cp -r build/linux/x64/release/bundle/* ${PKG_DIR}/opt/${APPNAME}/
+
+          # DEBIAN/control
+          printf 'Package: flcroc\nVersion: %s\nSection: utils\nPriority: optional\nArchitecture: amd64\nMaintainer: FlCroc Team\nDescription: FlCroc - GUI client for croc file transfer\n A cross-platform Flutter GUI for croc, enabling easy and secure\n file transfers between computers with Material 3 design.\n' "$VERSION" > ${PKG_DIR}/DEBIAN/control
+
+          # Desktop entry
+          cat > ${PKG_DIR}/usr/share/applications/flcroc.desktop << 'DESKTOP'
+          [Desktop Entry]
+          Name=FlCroc
+          Comment=Secure file transfer GUI
+          Exec=/opt/flcroc/fl_croc
+          Icon=flcroc
+          Terminal=false
+          Type=Application
+          Categories=Utility;Network;
+          DESKTOP
+
+          # Symlink to /usr/local/bin
+          mkdir -p ${PKG_DIR}/usr/local/bin
+          ln -s /opt/${APPNAME}/fl_croc ${PKG_DIR}/usr/local/bin/flcroc
+
+          # Build .deb
+          dpkg-deb --build ${PKG_DIR}
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlCroc-linux-amd64-deb
+          path: build/linux_deb/flcroc_*_amd64.deb
+
+  # ═══════════════════════════════════════════════════════════
+  #  Release (on tag push)
+  # ═══════════════════════════════════════════════════════════
+  release:
+    needs: [build-android, build-windows, build-linux]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure
+        run: ls -R artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/FlCroc-android-arm64-v8a/app-release.apk
+            artifacts/FlCroc-windows-amd64/FlCroc-windows-amd64.zip
+            artifacts/FlCroc-linux-amd64-deb/*.deb
+          draft: false
+          generate_release_notes: true

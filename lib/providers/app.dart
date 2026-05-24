@@ -1,6 +1,5 @@
 import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/models/models.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -54,6 +53,10 @@ class AppStateNotifier extends StateNotifier<AppState> {
 
   void updateSpeeds(Map<String, double> speeds) {
     state = state.copyWith(speeds: speeds);
+  }
+
+  void clearTransfers() {
+    state = state.copyWith(transfers: []);
   }
 }
 

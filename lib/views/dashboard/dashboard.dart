@@ -1,5 +1,3 @@
-import 'package:fl_croc/common/common.dart';
-import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/providers/providers.dart';
@@ -59,7 +57,7 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
       actions: [
         ValueListenableBuilder(
           valueListenable: _isEditNotifier,
-          builder: (_, isEdit, __) {
+          builder: (_, isEdit, _) {
             return IconButton(
               onPressed: () {
                 _isEditNotifier.value = !isEdit;

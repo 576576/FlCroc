@@ -22,7 +22,7 @@ AppSettingProps _$AppSettingPropsFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$AppSettingProps {
   String? get locale => throw _privateConstructorUsedError;
-  @JsonKey(fromJson: _dashboardWidgetsFromJson)
+  @DashboardWidgetListConverter()
   List<DashboardWidget> get dashboardWidgets =>
       throw _privateConstructorUsedError;
   bool get autoLaunch => throw _privateConstructorUsedError;
@@ -55,8 +55,7 @@ abstract class $AppSettingPropsCopyWith<$Res> {
   @useResult
   $Res call({
     String? locale,
-    @JsonKey(fromJson: _dashboardWidgetsFromJson)
-    List<DashboardWidget> dashboardWidgets,
+    @DashboardWidgetListConverter() List<DashboardWidget> dashboardWidgets,
     bool autoLaunch,
     bool silentLaunch,
     bool minimizeOnExit,
@@ -177,8 +176,7 @@ abstract class _$$AppSettingPropsImplCopyWith<$Res>
   @useResult
   $Res call({
     String? locale,
-    @JsonKey(fromJson: _dashboardWidgetsFromJson)
-    List<DashboardWidget> dashboardWidgets,
+    @DashboardWidgetListConverter() List<DashboardWidget> dashboardWidgets,
     bool autoLaunch,
     bool silentLaunch,
     bool minimizeOnExit,
@@ -282,7 +280,7 @@ class __$$AppSettingPropsImplCopyWithImpl<$Res>
 class _$AppSettingPropsImpl implements _AppSettingProps {
   const _$AppSettingPropsImpl({
     this.locale,
-    @JsonKey(fromJson: _dashboardWidgetsFromJson)
+    @DashboardWidgetListConverter()
     final List<DashboardWidget> dashboardWidgets = defaultDashboardWidgets,
     this.autoLaunch = false,
     this.silentLaunch = false,
@@ -303,7 +301,8 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
   final String? locale;
   final List<DashboardWidget> _dashboardWidgets;
   @override
-  @JsonKey(fromJson: _dashboardWidgetsFromJson)
+  @JsonKey()
+  @DashboardWidgetListConverter()
   List<DashboardWidget> get dashboardWidgets {
     if (_dashboardWidgets is EqualUnmodifiableListView)
       return _dashboardWidgets;
@@ -417,7 +416,7 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
 abstract class _AppSettingProps implements AppSettingProps {
   const factory _AppSettingProps({
     final String? locale,
-    @JsonKey(fromJson: _dashboardWidgetsFromJson)
+    @DashboardWidgetListConverter()
     final List<DashboardWidget> dashboardWidgets,
     final bool autoLaunch,
     final bool silentLaunch,
@@ -437,7 +436,7 @@ abstract class _AppSettingProps implements AppSettingProps {
   @override
   String? get locale;
   @override
-  @JsonKey(fromJson: _dashboardWidgetsFromJson)
+  @DashboardWidgetListConverter()
   List<DashboardWidget> get dashboardWidgets;
   @override
   bool get autoLaunch;

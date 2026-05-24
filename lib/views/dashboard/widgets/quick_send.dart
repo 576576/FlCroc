@@ -1,4 +1,5 @@
-import 'package:fl_croc/common/common.dart';
+import 'package:fl_croc/controller.dart';
+import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/widgets/widgets.dart';
 import 'package:flutter/material.dart';
@@ -15,7 +16,7 @@ class QuickSendWidget extends StatelessWidget {
         child: Center(
           child: FilledButton.icon(
             onPressed: () {
-              // handled by page navigation
+              appController.navigateTo(PageLabel.send);
             },
             icon: const Icon(Icons.add),
             label: const Text('Send Files'),

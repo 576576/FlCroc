@@ -13,8 +13,6 @@ class TotalTransferredWidget extends ConsumerWidget {
     final transfers = ref.watch(transfersProvider);
     final totalSize =
         transfers.fold<int>(0, (a, t) => a + t.totalSize);
-    final totalTransferred =
-        transfers.fold<int>(0, (a, t) => a + (t.transferredSize ?? 0));
     final transferCount = transfers.length;
 
     return SizedBox(

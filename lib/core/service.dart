@@ -180,7 +180,10 @@ class CoreService extends CoreInterface {
     try {
       final args = <String>[
         'send',
-        ...options.filePaths,
+        if (options.sendingText) ...[
+          '--text', options.textContent,
+        ] else
+          ...options.filePaths,
         '--code', code,
         '--curve', options.curve,
         '--hash', options.hashAlgorithm,

@@ -31,6 +31,8 @@ mixin _$SendOptions {
   bool get gitIgnore => throw _privateConstructorUsedError;
   bool get onlyLocal => throw _privateConstructorUsedError;
   bool get disableLocal => throw _privateConstructorUsedError;
+  bool get sendingText => throw _privateConstructorUsedError;
+  String get textContent => throw _privateConstructorUsedError;
   String get socks5Proxy => throw _privateConstructorUsedError;
   String get httpProxy => throw _privateConstructorUsedError;
   String get throttleUpload => throw _privateConstructorUsedError;
@@ -66,6 +68,8 @@ abstract class $SendOptionsCopyWith<$Res> {
     bool gitIgnore,
     bool onlyLocal,
     bool disableLocal,
+    bool sendingText,
+    String textContent,
     String socks5Proxy,
     String httpProxy,
     String throttleUpload,
@@ -100,6 +104,8 @@ class _$SendOptionsCopyWithImpl<$Res, $Val extends SendOptions>
     Object? gitIgnore = null,
     Object? onlyLocal = null,
     Object? disableLocal = null,
+    Object? sendingText = null,
+    Object? textContent = null,
     Object? socks5Proxy = null,
     Object? httpProxy = null,
     Object? throttleUpload = null,
@@ -149,6 +155,14 @@ class _$SendOptionsCopyWithImpl<$Res, $Val extends SendOptions>
                 ? _value.disableLocal
                 : disableLocal // ignore: cast_nullable_to_non_nullable
                       as bool,
+            sendingText: null == sendingText
+                ? _value.sendingText
+                : sendingText // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            textContent: null == textContent
+                ? _value.textContent
+                : textContent // ignore: cast_nullable_to_non_nullable
+                      as String,
             socks5Proxy: null == socks5Proxy
                 ? _value.socks5Proxy
                 : socks5Proxy // ignore: cast_nullable_to_non_nullable
@@ -199,6 +213,8 @@ abstract class _$$SendOptionsImplCopyWith<$Res>
     bool gitIgnore,
     bool onlyLocal,
     bool disableLocal,
+    bool sendingText,
+    String textContent,
     String socks5Proxy,
     String httpProxy,
     String throttleUpload,
@@ -232,6 +248,8 @@ class __$$SendOptionsImplCopyWithImpl<$Res>
     Object? gitIgnore = null,
     Object? onlyLocal = null,
     Object? disableLocal = null,
+    Object? sendingText = null,
+    Object? textContent = null,
     Object? socks5Proxy = null,
     Object? httpProxy = null,
     Object? throttleUpload = null,
@@ -281,6 +299,14 @@ class __$$SendOptionsImplCopyWithImpl<$Res>
             ? _value.disableLocal
             : disableLocal // ignore: cast_nullable_to_non_nullable
                   as bool,
+        sendingText: null == sendingText
+            ? _value.sendingText
+            : sendingText // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        textContent: null == textContent
+            ? _value.textContent
+            : textContent // ignore: cast_nullable_to_non_nullable
+                  as String,
         socks5Proxy: null == socks5Proxy
             ? _value.socks5Proxy
             : socks5Proxy // ignore: cast_nullable_to_non_nullable
@@ -324,6 +350,8 @@ class _$SendOptionsImpl implements _SendOptions {
     this.gitIgnore = false,
     this.onlyLocal = false,
     this.disableLocal = false,
+    this.sendingText = false,
+    this.textContent = '',
     this.socks5Proxy = '',
     this.httpProxy = '',
     this.throttleUpload = '',
@@ -372,6 +400,12 @@ class _$SendOptionsImpl implements _SendOptions {
   final bool disableLocal;
   @override
   @JsonKey()
+  final bool sendingText;
+  @override
+  @JsonKey()
+  final String textContent;
+  @override
+  @JsonKey()
   final String socks5Proxy;
   @override
   @JsonKey()
@@ -395,7 +429,7 @@ class _$SendOptionsImpl implements _SendOptions {
 
   @override
   String toString() {
-    return 'SendOptions(filePaths: $filePaths, codePhrase: $codePhrase, curve: $curve, hashAlgorithm: $hashAlgorithm, noCompress: $noCompress, overwrite: $overwrite, zipFolder: $zipFolder, gitIgnore: $gitIgnore, onlyLocal: $onlyLocal, disableLocal: $disableLocal, socks5Proxy: $socks5Proxy, httpProxy: $httpProxy, throttleUpload: $throttleUpload, exclude: $exclude, relayAddress: $relayAddress, relayPassword: $relayPassword)';
+    return 'SendOptions(filePaths: $filePaths, codePhrase: $codePhrase, curve: $curve, hashAlgorithm: $hashAlgorithm, noCompress: $noCompress, overwrite: $overwrite, zipFolder: $zipFolder, gitIgnore: $gitIgnore, onlyLocal: $onlyLocal, disableLocal: $disableLocal, sendingText: $sendingText, textContent: $textContent, socks5Proxy: $socks5Proxy, httpProxy: $httpProxy, throttleUpload: $throttleUpload, exclude: $exclude, relayAddress: $relayAddress, relayPassword: $relayPassword)';
   }
 
   @override
@@ -424,6 +458,10 @@ class _$SendOptionsImpl implements _SendOptions {
                 other.onlyLocal == onlyLocal) &&
             (identical(other.disableLocal, disableLocal) ||
                 other.disableLocal == disableLocal) &&
+            (identical(other.sendingText, sendingText) ||
+                other.sendingText == sendingText) &&
+            (identical(other.textContent, textContent) ||
+                other.textContent == textContent) &&
             (identical(other.socks5Proxy, socks5Proxy) ||
                 other.socks5Proxy == socks5Proxy) &&
             (identical(other.httpProxy, httpProxy) ||
@@ -451,6 +489,8 @@ class _$SendOptionsImpl implements _SendOptions {
     gitIgnore,
     onlyLocal,
     disableLocal,
+    sendingText,
+    textContent,
     socks5Proxy,
     httpProxy,
     throttleUpload,
@@ -485,6 +525,8 @@ abstract class _SendOptions implements SendOptions {
     final bool gitIgnore,
     final bool onlyLocal,
     final bool disableLocal,
+    final bool sendingText,
+    final String textContent,
     final String socks5Proxy,
     final String httpProxy,
     final String throttleUpload,
@@ -516,6 +558,10 @@ abstract class _SendOptions implements SendOptions {
   bool get onlyLocal;
   @override
   bool get disableLocal;
+  @override
+  bool get sendingText;
+  @override
+  String get textContent;
   @override
   String get socks5Proxy;
   @override
