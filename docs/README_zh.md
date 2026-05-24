@@ -51,8 +51,7 @@ lib/
 
 ### 环境要求
 - Flutter SDK ^3.12.0
-- Go 1.25+ (仅 Android 构建 Go FFI 桥接库时需要)
-- croc 命令行工具 (桌面端通过安装脚本自动下载)
+- Go 1.25+（必需 — croc 从源码编译）
 
 ### 安装依赖
 ```bash
@@ -60,21 +59,24 @@ flutter pub get
 dart run build_runner build
 ```
 
-### 下载 croc (桌面端)
+### 从源码构建 croc（全平台）
 ```bash
-# Windows
-.\setup_croc.ps1
+# 克隆 croc 仓库
+git clone --depth 1 --branch v10.4.4 https://github.com/schollz/croc.git /tmp/croc_src
 
-# Linux / macOS
-./setup_croc.sh
-```
+# 桌面端：构建独立二进制
+cd /tmp/croc_src
+CGO_ENABLED=0 go build -ldflags="-s -w" -o croc .
+cp croc linux/flutter/ephemeral/croc        # Linux
+cp croc.exe windows/runner/croc.exe         # Windows (交叉编译 GOOS=windows)
 
-### 构建 Go 桥接库 (Android)
-```bash
+# Android：构建 Go CGO 共享库（需要 Android NDK）
 cd go_bridge
-# Android ARM64
-.\build.bat android arm64     # Windows
-./build.sh android arm64      # Linux / macOS
+go mod edit -replace github.com/schollz/croc/v10=/tmp/croc_src
+go mod tidy
+CGO_ENABLED=1 GOOS=android GOARCH=arm64 \
+  CC=$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang \
+  go build -buildmode=c-shared -o ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so .
 ```
 
 ### 运行

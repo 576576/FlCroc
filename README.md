@@ -51,8 +51,7 @@ lib/
 
 ### Prerequisites
 - Flutter SDK ^3.12.0
-- Go 1.25+ (for building the Go FFI bridge for Android)
-- croc CLI (auto-downloaded via setup script for desktop)
+- Go 1.25+ (required — croc is built from source)
 
 ### Install
 ```bash
@@ -60,21 +59,24 @@ flutter pub get
 dart run build_runner build
 ```
 
-### Download croc (desktop)
+### Build croc from source (all platforms)
 ```bash
-# Windows
-.\setup_croc.ps1
+# Clone croc repository
+git clone --depth 1 --branch v10.4.4 https://github.com/schollz/croc.git /tmp/croc_src
 
-# Linux/macOS
-./setup_croc.sh
-```
+# Desktop: build standalone binary
+cd /tmp/croc_src
+CGO_ENABLED=0 go build -ldflags="-s -w" -o croc .
+cp croc linux/flutter/ephemeral/croc        # Linux
+cp croc.exe windows/runner/croc.exe         # Windows (cross-compile with GOOS=windows)
 
-### Build Go Bridge (Android)
-```bash
+# Android: build Go CGO shared library (requires Android NDK)
 cd go_bridge
-# Android ARM64
-.\build.bat android arm64    # Windows
-./build.sh android arm64     # Linux/macOS
+go mod edit -replace github.com/schollz/croc/v10=/tmp/croc_src
+go mod tidy
+CGO_ENABLED=1 GOOS=android GOARCH=arm64 \
+  CC=$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang \
+  go build -buildmode=c-shared -o ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so .
 ```
 
 ### Run
