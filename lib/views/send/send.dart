@@ -1,0 +1,385 @@
+import 'package:fl_croc/common/common.dart';
+import 'package:fl_croc/controller.dart';
+import 'package:fl_croc/core/controller.dart';
+import 'package:fl_croc/enum/enum.dart';
+import 'package:fl_croc/models/models.dart';
+import 'package:fl_croc/state.dart';
+import 'package:fl_croc/widgets/widgets.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+
+class SendView extends ConsumerStatefulWidget {
+  const SendView({super.key});
+
+  @override
+  ConsumerState<SendView> createState() => _SendViewState();
+}
+
+class _SendViewState extends ConsumerState<SendView> {
+  List<PlatformFile> _selectedFiles = [];
+  String _codePhrase = '';
+  String _customCode = '';
+  bool _isSending = false;
+  SendConfig _sendConfig = const SendConfig();
+
+  Future<void> _pickFiles() async {
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+    );
+    if (result != null && result.files.isNotEmpty) {
+      setState(() {
+        _selectedFiles = result.files;
+      });
+    }
+  }
+
+  void _generateCode() {
+    // Generate a random code phrase (3 words, like croc does)
+    const adjectives = ['happy', 'blue', 'fast', 'cool', 'red', 'big'];
+    const nouns = ['tiger', 'eagle', 'shark', 'wolf', 'bear', 'hawk'];
+    const verbs = ['run', 'fly', 'swim', 'jump', 'dash', 'zoom'];
+    final rng = DateTime.now().millisecond;
+    final adj = adjectives[rng % adjectives.length];
+    final noun = nouns[(rng * 2) % nouns.length];
+    final verb = verbs[(rng * 3) % verbs.length];
+    setState(() {
+      _codePhrase = '$adj-$noun-$verb';
+    });
+  }
+
+  void _startSend() {
+    if (_selectedFiles.isEmpty) return;
+    final code = _customCode.isNotEmpty ? _customCode : _codePhrase;
+    if (code.isEmpty) return;
+
+    setState(() => _isSending = true);
+final files = _selectedFiles
+        .map((f) => FileItem(
+              name: f.name,
+              path: f.path ?? '',
+              size: f.size,
+            ))
+        .toList();
+    final totalSize = files.fold<int>(0, (a, f) => a + f.size);
+
+    final record = TransferRecord(
+      id: appController.generateId(),
+      direction: TransferDirection.sent,
+      status: TransferStatus.transferring,
+      files: files,
+      totalSize: totalSize,
+      startTime: DateTime.now(),
+      codePhrase: code,
+    );
+    appController.addTransferRecord(record);
+
+    // Wire up the real croc backend
+    final options = SendOptions(
+      filePaths: _selectedFiles.map((f) => f.path ?? '').where((p) => p.isNotEmpty).toList(),
+      codePhrase: code,
+      curve: _sendConfig.curve,
+      hashAlgorithm: _sendConfig.hashAlgorithm,
+      noCompress: _sendConfig.noCompress,
+      overwrite: _sendConfig.overwrite,
+      zipFolder: _sendConfig.zipFolder,
+      onlyLocal: _sendConfig.onlyLocal,
+      disableLocal: _sendConfig.disableLocal,
+    );
+
+    coreController.sendFiles(options).listen(
+      (progress) {
+        if (!mounted) return;
+        switch (progress.status) {
+          case TransferProgressStatus.transferring:
+            appController.updateTransferRecord(
+              record.copyWith(
+                status: TransferStatus.transferring,
+                transferredSize: progress.transferredSize,
+              ),
+            );
+            break;
+          case TransferProgressStatus.completed:
+            setState(() => _isSending = false);
+            appController.updateTransferRecord(
+              record.copyWith(
+                status: TransferStatus.completed,
+                transferredSize: totalSize,
+                endTime: DateTime.now(),
+              ),
+            );
+            break;
+          case TransferProgressStatus.failed:
+            setState(() => _isSending = false);
+            appController.updateTransferRecord(
+              record.copyWith(
+                status: TransferStatus.failed,
+                endTime: DateTime.now(),
+              ),
+            );
+            if (progress.error != null && mounted) {
+              context.showSnackBar(progress.error!);
+            }
+            break;
+          case TransferProgressStatus.cancelled:
+            setState(() => _isSending = false);
+            appController.updateTransferRecord(
+              record.copyWith(
+                status: TransferStatus.cancelled,
+                endTime: DateTime.now(),
+              ),
+            );
+            break;
+          default:
+            break;
+        }
+      },
+      onError: (e) {
+        if (!mounted) return;
+        setState(() => _isSending = false);
+        appController.updateTransferRecord(
+          record.copyWith(
+            status: TransferStatus.failed,
+            endTime: DateTime.now(),
+          ),
+        );
+        context.showSnackBar('Send failed: $e');
+      },
+      onDone: () {
+        if (mounted) setState(() => _isSending = false);
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CommonScaffold(
+      title: 'Send Files',
+      actions: [
+        if (_selectedFiles.isNotEmpty)
+          FilledButtonWidget(
+            onPressed: _isSending ? null : _startSend,
+            text: 'Start Send',
+            icon: Icons.send,
+          ),
+        const SizedBox(width: 8),
+      ],
+      body: ListView(
+        children: [
+          // File Selection
+          _buildSection(
+            'Files',
+            Icons.insert_drive_file,
+            [
+              if (_selectedFiles.isEmpty)
+                const NullStatusWidget(
+                  message: 'No files selected',
+                  icon: Icons.cloud_upload_outlined,
+                )
+              else
+                ..._selectedFiles.map(
+                  (f) => ListTile(
+                    leading: const Icon(Icons.insert_drive_file),
+                    title: Text(f.name),
+                    trailing: Text(f.size.fileSize),
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: OutlinedButton.icon(
+                  onPressed: _pickFiles,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Select Files'),
+                ),
+              ),
+            ],
+          ),
+
+          const Divider(),
+
+          // Code Phrase
+          _buildSection(
+            'Code Phrase',
+            Icons.vpn_key,
+            [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        decoration: const InputDecoration(
+                          hintText: 'Custom code (optional)',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        onChanged: (v) => _customCode = v,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.tonal(
+                      onPressed: _generateCode,
+                      child: const Text('Generate'),
+                    ),
+                  ],
+                ),
+              ),
+              if (_codePhrase.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _codePhrase,
+                              style: context.textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: _codePhrase));
+                              if (mounted) {
+                                context.showSnackBar('Code copied!');
+                              }
+                            },
+                            icon: const Icon(Icons.copy),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              if (_codePhrase.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Center(
+                    child: QrImageView(
+                      data: _codePhrase,
+                      version: QrVersions.auto,
+                      size: 160,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+
+          const Divider(),
+
+          // Transfer Options
+          _buildSection(
+            'Transfer Options',
+            Icons.tune,
+            [
+              ListItem.open(
+                leading: const Icon(Icons.show_chart),
+                title: Text('Encryption Curve: ${_sendConfig.curve}'),
+                delegate: OpenDelegate(
+                  widget: OptionsDialog<String>(
+                    title: 'Encryption Curve',
+                    options: availableCurves,
+                    value: _sendConfig.curve,
+                    textBuilder: (v) => v,
+                    onChanged: (v) {
+                      setState(() {
+                        _sendConfig = _sendConfig.copyWith(curve: v);
+                      });
+                    },
+                  ),
+                ),
+              ),
+              const Divider(height: 0, indent: 56),
+              ListItem.open(
+                leading: const Icon(Icons.tag),
+                title: Text('Hash: ${_sendConfig.hashAlgorithm}'),
+                delegate: OpenDelegate(
+                  widget: OptionsDialog<String>(
+                    title: 'Hash Algorithm',
+                    options: availableHashAlgos,
+                    value: _sendConfig.hashAlgorithm,
+                    textBuilder: (v) => v,
+                    onChanged: (v) {
+                      setState(() {
+                        _sendConfig = _sendConfig.copyWith(hashAlgorithm: v);
+                      });
+                    },
+                  ),
+                ),
+              ),
+              const Divider(height: 0, indent: 56),
+              ListItem.switchItem(
+                leading: const Icon(Icons.compress),
+                title: const Text('Compression'),
+                delegate: SwitchDelegate(
+                  value: !_sendConfig.noCompress,
+                  onChanged: (v) {
+                    setState(() {
+                      _sendConfig = _sendConfig.copyWith(noCompress: !v);
+                    });
+                  },
+                ),
+              ),
+              const Divider(height: 0, indent: 56),
+              ListItem.switchItem(
+                leading: const Icon(Icons.folder_zip),
+                title: const Text('Zip Folder'),
+                delegate: SwitchDelegate(
+                  value: _sendConfig.zipFolder,
+                  onChanged: (v) {
+                    setState(() {
+                      _sendConfig = _sendConfig.copyWith(zipFolder: v);
+                    });
+                  },
+                ),
+              ),
+              const Divider(height: 0, indent: 56),
+              ListItem.switchItem(
+                leading: const Icon(Icons.wifi_off),
+                title: const Text('Local Only'),
+                delegate: SwitchDelegate(
+                  value: _sendConfig.onlyLocal,
+                  onChanged: (v) {
+                    setState(() {
+                      _sendConfig = _sendConfig.copyWith(onlyLocal: v);
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSection(String title, IconData icon, List<Widget> children) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: context.colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: context.textTheme.titleSmall?.copyWith(
+                  color: context.colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        ...children,
+      ],
+    );
+  }
+}
