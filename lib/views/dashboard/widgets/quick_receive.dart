@@ -5,8 +5,8 @@ import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 
-class QuickSendWidget extends StatelessWidget {
-  const QuickSendWidget({super.key});
+class QuickReceiveWidget extends StatelessWidget {
+  const QuickReceiveWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -14,14 +14,14 @@ class QuickSendWidget extends StatelessWidget {
     return SizedBox(
       height: 120,
       child: CommonCard(
-        info: Info(iconData: Icons.upload_file, label: l10n.quickSend),
+        info: Info(iconData: Icons.download, label: l10n.quickReceive),
         child: Center(
           child: FilledButton.icon(
             onPressed: () {
-              appController.navigateTo(PageLabel.send);
+              appController.navigateTo(PageLabel.receive);
             },
-            icon: const Icon(Icons.add),
-            label: Text(l10n.send),
+            icon: const Icon(Icons.qr_code_scanner),
+            label: Text(l10n.receive),
           ),
         ),
       ),

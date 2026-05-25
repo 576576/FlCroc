@@ -1,4 +1,5 @@
 import 'package:fl_croc/common/common.dart';
+import 'package:fl_croc/core/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/state.dart';
@@ -14,6 +15,18 @@ class SettingsView extends ConsumerStatefulWidget {
 }
 
 class _SettingsViewState extends ConsumerState<SettingsView> {
+  String _crocVersion = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCrocVersion();
+  }
+
+  Future<void> _loadCrocVersion() async {
+    final v = await coreController.getVersion();
+    if (mounted) setState(() => _crocVersion = v);
+  }
   @override
   Widget build(BuildContext context) {
     final appSettings = ref.watch(appSettingProvider);
@@ -27,30 +40,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           ...generateSection(
             title: l10n.relaySettings,
             items: [
-              ListItem.open(
+              ListItem(
                 leading: const Icon(Icons.dns),
                 title: Text(l10n.relayType),
-                subtitle: Text(
-                  appSettings.relayConfig.type == RelayType.defaultRelay
-                      ? l10n.defaultRelay
-                      : l10n.customRelay,
-                ),
-                delegate: OpenDelegate(
-                  widget: OptionsDialog<RelayType>(
-                    title: l10n.relayType,
-                    options: RelayType.values,
-                    value: appSettings.relayConfig.type,
-                    textBuilder: (v) =>
-                        v == RelayType.defaultRelay ? l10n.defaultRelay : l10n.customRelay,
-                    onChanged: (v) {
-                      ref.read(appSettingProvider.notifier).update(
-                            (s) => s.copyWith(
-                              relayConfig: s.relayConfig.copyWith(type: v),
-                            ),
-                          );
-                    },
-                  ),
-                ),
+                subtitle: _buildRelayChips(appSettings.relayConfig.type, ref),
               ),
               if (appSettings.relayConfig.type == RelayType.customRelay) ...[
                 const Divider(height: 0, indent: 56),
@@ -85,31 +78,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           ...generateSection(
             title: l10n.theme,
             items: [
-              ListItem.open(
+              ListItem(
                 leading: const Icon(Icons.brightness_6),
                 title: Text(l10n.themeMode),
-                subtitle: Text(appSettings.themeMode == ThemeModeOption.light
-                    ? l10n.light
-                    : appSettings.themeMode == ThemeModeOption.dark
-                        ? l10n.dark
-                        : l10n.system),
-                delegate: OpenDelegate(
-                  widget: OptionsDialog<ThemeModeOption>(
-                    title: l10n.themeMode,
-                    options: ThemeModeOption.values,
-                    value: appSettings.themeMode,
-                    textBuilder: (v) => v == ThemeModeOption.light
-                        ? l10n.light
-                        : v == ThemeModeOption.dark
-                            ? l10n.dark
-                            : l10n.system,
-                    onChanged: (v) {
-                      ref.read(appSettingProvider.notifier).update(
-                            (s) => s.copyWith(themeMode: v),
-                          );
-                    },
-                  ),
-                ),
+                subtitle: _buildThemeModeChips(appSettings.themeMode, ref),
               ),
               const Divider(height: 0, indent: 56),
               ListItem.switchItem(
@@ -167,6 +139,14 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ),
               const Divider(height: 0, indent: 56),
               ListItem(
+                leading: const Icon(Icons.link),
+                title: Text(l10n.crocVersion),
+                subtitle: Text(_crocVersion.isNotEmpty
+                    ? _crocVersion
+                    : l10n.loading),
+              ),
+              const Divider(height: 0, indent: 56),
+              ListItem(
                 leading: const Icon(Icons.description),
                 title: Text(l10n.description),
                 subtitle: Text(l10n.desc),
@@ -177,7 +157,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 title: Text(l10n.checkUpdate),
                 onTap: () {
                   globalState.openUrl(
-                    'https://github.com/schollz/croc/releases',
+                    'https://github.com/576576/FlCroc',
                   );
                 },
               ),
@@ -233,6 +213,62 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRelayChips(RelayType current, WidgetRef ref) {
+    final l10n = context.appLocalizations;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Wrap(
+        spacing: 8,
+        children: RelayType.values.map((type) {
+          final selected = type == current;
+          return ChoiceChip(
+            label: Text(
+              type == RelayType.defaultRelay ? l10n.defaultRelay : l10n.customRelay,
+            ),
+            selected: selected,
+            onSelected: (v) {
+              if (v) {
+                ref.read(appSettingProvider.notifier).update(
+                      (s) => s.copyWith(
+                        relayConfig: s.relayConfig.copyWith(type: type),
+                      ),
+                    );
+              }
+            },
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildThemeModeChips(ThemeModeOption current, WidgetRef ref) {
+    final l10n = context.appLocalizations;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Wrap(
+        spacing: 8,
+        children: ThemeModeOption.values.map((mode) {
+          final selected = mode == current;
+          return ChoiceChip(
+            label: Text(mode == ThemeModeOption.light
+                ? l10n.light
+                : mode == ThemeModeOption.dark
+                    ? l10n.dark
+                    : l10n.system),
+            selected: selected,
+            onSelected: (v) {
+              if (v) {
+                ref.read(appSettingProvider.notifier).update(
+                      (s) => s.copyWith(themeMode: mode),
+                    );
+              }
+            },
+          );
+        }).toList(),
       ),
     );
   }

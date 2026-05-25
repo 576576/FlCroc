@@ -145,6 +145,12 @@ jobs:
       - name: Build Windows
         run: flutter build windows --release
 
+      - name: Bundle croc.exe into build output
+        run: |
+          $outDir = "build\windows\x64\runner\Release"
+          Copy-Item "windows\runner\croc.exe" "$outDir\croc.exe" -Force
+          Write-Host "Bundled croc.exe into $outDir"
+
       - name: Package zip
         run: |
           $src = "build\windows\x64\runner\Release"
@@ -202,6 +208,12 @@ jobs:
       - name: Build Linux
         run: flutter build linux --release
 
+      - name: Bundle croc into build output
+        run: |
+          cp linux/flutter/ephemeral/croc build/linux/x64/release/bundle/croc
+          chmod +x build/linux/x64/release/bundle/croc
+          echo "Bundled croc into bundle"
+
       - name: Create .deb package
         run: |
           APPNAME=flcroc
@@ -213,6 +225,8 @@ jobs:
           mkdir -p "${PKG_DIR}/usr/local/bin"
 
           cp -r build/linux/x64/release/bundle/* "${PKG_DIR}/opt/${APPNAME}/"
+          chmod +x "${PKG_DIR}/opt/${APPNAME}/fl_croc"
+          chmod +x "${PKG_DIR}/opt/${APPNAME}/croc" 2>/dev/null || true
 
           cat > "${PKG_DIR}/DEBIAN/control" << EOF
           Package: flcroc

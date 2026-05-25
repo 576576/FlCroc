@@ -10,12 +10,12 @@ class TransferSpeedWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.appLocalizations;
     final speeds = ref.watch(appStateProvider).speeds;
-    final totalSpeed =
-        speeds.values.fold<double>(0, (a, b) => a + b);
+    final totalSpeed = speeds.values.fold<double>(0, (a, b) => a + b);
 
     return CommonCard(
-      info: const Info(iconData: Icons.speed, label: 'Transfer Speed'),
+      info: Info(iconData: Icons.speed, label: l10n.transferSpeed),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -28,7 +28,7 @@ class TransferSpeedWidget extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '${speeds.length} active',
+            '${speeds.length} ${l10n.active}',
             style: context.textTheme.bodySmall?.copyWith(
               color: context.colorScheme.onSurfaceVariant,
             ),

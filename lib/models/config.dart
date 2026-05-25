@@ -10,8 +10,8 @@ const List<DashboardWidget> defaultDashboardWidgets = [
   DashboardWidget.transferSpeed,
   DashboardWidget.totalTransferred,
   DashboardWidget.quickSend,
+  DashboardWidget.quickReceive,
   DashboardWidget.recentTransfers,
-  DashboardWidget.crocStatus,
 ];
 
 @freezed

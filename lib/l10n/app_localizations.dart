@@ -55,6 +55,7 @@ class AppLocalizations {
   String get transferSpeed => _('transferSpeed');
   String get totalTransferred => _('totalTransferred');
   String get quickSend => _('quickSend');
+  String get quickReceive => _('quickReceive');
   String get recentTransfers => _('recentTransfers');
   String get crocStatus => _('crocStatus');
 
@@ -63,12 +64,26 @@ class AppLocalizations {
   String get startSend => _('startSend');
   String get codePhrase => _('codePhrase');
   String get enterCodePhrase => _('enterCodePhrase');
+  String get phraseHintCroc => _('phraseHintCroc');
+  String get phraseHintRandom => _('phraseHintRandom');
   String get textHint => _('textHint');
   String get customCodeHint => _('customCodeHint');
   String get generate => _('generate');
   String get files => _('files');
   String get fileMode => _('fileMode');
   String get textMode => _('textMode');
+  String get clearFiles => _('clearFiles');
+  String get clearText => _('clearText');
+  String get autoGeneratePhrase => _('autoGeneratePhrase');
+  String get phraseMode => _('phraseMode');
+  String get phraseModeDefault => _('phraseModeDefault');
+  String get phraseModeCroc => _('phraseModeCroc');
+  String get phraseModeOn => _('phraseModeOn');
+  String get phraseModeNever => _('phraseModeNever');
+  String get sending => _('sending');
+  String get pending => _('pending');
+  String get enterPhraseWarning => _('enterPhraseWarning');
+  String get noCrocBackend => _('noCrocBackend');
 
   String get receiveFiles => _('receiveFiles');
   String get startReceive => _('startReceive');
@@ -93,6 +108,7 @@ class AppLocalizations {
   String get about => _('about');
   String get application => _('application');
   String get appVersion => _('appVersion');
+  String get crocVersion => _('crocVersion');
   String get description => _('description');
   String get desc => _('desc');
 
@@ -129,6 +145,9 @@ class AppLocalizations {
   String get edit => _('edit');
   String get done => _('done');
   String get availableWidgets => _('availableWidgets');
+  String get active => _('active');
+  String get transfersUnit => _('transfersUnit');
+  String get noTransfersYet => _('noTransfersYet');
 
   /// Map [PageLabel] to its localized display name.
   String pageLabel(Enum label) {
@@ -157,10 +176,10 @@ class AppLocalizations {
         return totalTransferred;
       case 'quickSend':
         return quickSend;
+      case 'quickReceive':
+        return quickReceive;
       case 'recentTransfers':
         return recentTransfers;
-      case 'crocStatus':
-        return crocStatus;
       default:
         return widget.name;
     }

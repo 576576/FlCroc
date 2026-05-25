@@ -36,8 +36,8 @@ enum DashboardWidget {
   transferSpeed,
   totalTransferred,
   quickSend,
+  quickReceive,
   recentTransfers,
-  crocStatus,
 }
 
 enum RelayType { defaultRelay, customRelay }

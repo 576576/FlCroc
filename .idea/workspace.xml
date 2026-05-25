@@ -5,23 +5,23 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="87ef0a2c-22ed-453e-b80b-d6a7dfee16ed" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.github/workflows/build.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/build.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/android/app/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/android/app/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/src/main/AndroidManifest.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/application.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/application.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/common/context.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/common/context.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/images/icon.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/images/icon.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/enum/enum.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/enum/enum.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/l10n/app_localizations.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/l10n/app_localizations.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/l10n/intl/messages_en.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/l10n/intl/messages_en.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/l10n/intl/messages_zh.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/l10n/intl/messages_zh.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/pages/home.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/pages/home.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/models/config.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/models/config.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/views/dashboard/dashboard.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/dashboard/dashboard.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/views/dashboard/widgets/quick_send.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/dashboard/widgets/quick_send.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/views/dashboard/widgets/recent_transfers.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/dashboard/widgets/recent_transfers.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/views/dashboard/widgets/total_transferred.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/dashboard/widgets/total_transferred.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/views/dashboard/widgets/transfer_speed.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/dashboard/widgets/transfer_speed.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/views/history/history.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/history/history.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/views/receive/receive.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/receive/receive.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/views/dashboard/widgets/widgets.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/dashboard/widgets/widgets.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/views/send/send.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/send/send.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/views/settings/settings.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/settings/settings.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/widgets/card.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/widgets/card.dart" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

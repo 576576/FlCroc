@@ -10,13 +10,13 @@ class TotalTransferredWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.appLocalizations;
     final transfers = ref.watch(transfersProvider);
-    final totalSize =
-        transfers.fold<int>(0, (a, t) => a + t.totalSize);
+    final totalSize = transfers.fold<int>(0, (a, t) => a + t.totalSize);
     final transferCount = transfers.length;
 
     return CommonCard(
-      info: const Info(iconData: Icons.data_usage, label: 'Total Transferred'),
+      info: Info(iconData: Icons.data_usage, label: l10n.totalTransferred),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -29,7 +29,7 @@ class TotalTransferredWidget extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '$transferCount transfers',
+            '$transferCount ${l10n.transfersUnit}',
             style: context.textTheme.bodySmall?.copyWith(
               color: context.colorScheme.onSurfaceVariant,
             ),

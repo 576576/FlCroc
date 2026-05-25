@@ -1,82 +1,60 @@
-# FlCroc
+# 🐊 FlCroc
 
 <p align="center">
-  <strong>🐊 A Flutter GUI for <a href="https://github.com/schollz/croc">croc</a> — easily and securely transfer files between computers</strong>
+  <img src="assets/images/icon.png" alt="FlCroc" width="96" height="96" />
 </p>
 
 <p align="center">
-  <a href="docs/README_zh.md">📖 中文文档</a> &nbsp;|&nbsp;
-  Inspired by <a href="https://github.com/chen08209/FlClash">FlClash</a>'s elegant Material 3 design.
+  <strong>A Flutter GUI for <a href="https://github.com/schollz/croc">croc</a></strong>
+  <br>
+  <em>Easily and securely transfer files between any two computers</em>
 </p>
 
-## Features
+<p align="center">
+  <a href="#-features">Features</a> ·
+  <a href="#-screenshots">Screenshots</a> ·
+  <a href="#-getting-started">Getting Started</a> ·
+  <a href="#-build">Build</a> ·
+  <a href="#-architecture">Architecture</a>
+</p>
 
-- **Dashboard** — Transfer speed monitoring, total statistics, quick actions
-- **Send Files** — Multi-file selection, auto-generated or custom code phrase, QR code display, text sending
-- **Receive Files** — Enter code phrase or scan QR code to receive
-- **History** — Track all sent and received transfers
-- **Settings** — Relay server configuration, theme customization, language switching
-- **Cross-platform** — Android, Windows, macOS, Linux
-- **End-to-end encryption** — Powered by croc's PAKE protocol
+<p align="center">
+  <img alt="Platforms" src="https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux%20%7C%20macOS-blue" />
+  <img alt="License" src="https://img.shields.io/github/license/576576/FlCroc?color=green" />
+  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.44-02569B?logo=flutter" />
+</p>
 
-## Architecture
+---
 
-FlCroc follows FlClash's proven architecture patterns:
+## ✨ Features
 
-```
-lib/
-├── main.dart              # Entry point (Riverpod ProviderScope)
-├── application.dart       # MaterialApp with ThemeManager
-├── controller.dart        # AppController singleton
-├── state.dart             # GlobalState singleton
-├── common/                # Utilities, constants, extensions
-├── enum/                  # All enums
-├── models/                # Freezed data models
-├── providers/             # Riverpod providers
-├── core/                  # Backend (FFI + process)
-├── manager/               # State managers (theme)
-├── l10n/                  # Localization (en, zh_CN)
-├── pages/                 # HomePage (responsive nav)
-├── views/                 # Feature views
-│   ├── dashboard/         # Dashboard with SuperGrid widgets
-│   ├── send/              # File send interface
-│   ├── receive/           # File receive interface
-│   ├── history/           # Transfer history
-│   └── settings/          # App settings
-├── widgets/               # Reusable widgets
-└── go_bridge/             # Go FFI bridge to croc
-```
+- **📊 Dashboard** — Transfer speed monitoring, total statistics, drag-to-reorder widget grid
+- **📤 Send** — Multi-file selection, text sending, auto-generated code phrase, QR code display
+- **📥 Receive** — Code phrase input, QR code scanner, auto-accept
+- **📜 History** — Track all transfers with status chips and statistics
+- **⚙️ Settings** — Relay server config, theme customization (light/dark/pure black), language switching
+- **🌍 i18n** — English & 中文, extensible
+- **🔒 Secure** — End-to-end encryption via croc's PAKE protocol
+- **🖥️ Cross-platform** — Android, Windows, Linux, macOS
 
-## Getting Started
+## 📸 Screenshots
+
+| Desktop | Mobile |
+|---------|--------|
+| *Coming soon* | *Coming soon* |
+
+## 🚀 Getting Started
 
 ### Prerequisites
-- Flutter SDK ^3.12.0
-- Go 1.25+ (required — croc is built from source)
+- Flutter SDK ≥ 3.12
+- Go ≥ 1.23 (for croc FFI bridge)
 
 ### Install
 ```bash
+git clone https://github.com/576576/FlCroc.git
+cd FlCroc
 flutter pub get
-dart run build_runner build
-```
-
-### Build croc from source (all platforms)
-```bash
-# Clone croc repository
-git clone --depth 1 --branch v10.4.4 https://github.com/schollz/croc.git /tmp/croc_src
-
-# Desktop: build standalone binary
-cd /tmp/croc_src
-CGO_ENABLED=0 go build -ldflags="-s -w" -o croc .
-cp croc linux/flutter/ephemeral/croc        # Linux
-cp croc.exe windows/runner/croc.exe         # Windows (cross-compile with GOOS=windows)
-
-# Android: build Go CGO shared library (requires Android NDK)
-cd go_bridge
-go mod edit -replace github.com/schollz/croc/v10=/tmp/croc_src
-go mod tidy
-CGO_ENABLED=1 GOOS=android GOARCH=arm64 \
-  CC=$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang \
-  go build -buildmode=c-shared -o ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so .
+dart run build_runner build --delete-conflicting-outputs
 ```
 
 ### Run
@@ -84,47 +62,77 @@ CGO_ENABLED=1 GOOS=android GOARCH=arm64 \
 flutter run
 ```
 
-### Build
+## 🔨 Build
+
+### Android
 ```bash
-# Android
-flutter build apk
-
-# Windows
-flutter build windows
-
-# Linux
-flutter build linux
-
-# macOS
-flutter build macos
+flutter build apk --release
 ```
 
-## Tech Stack
+### Windows
+```bash
+flutter build windows --release
+```
 
-| Component | Technology |
-|-----------|-----------|
-| Framework | Flutter (Dart) |
-| State | Riverpod + Freezed |
-| UI | Material 3 |
-| Backend | Go FFI (c-shared) + process |
+### Linux
+```bash
+flutter build linux --release
+```
+
+### macOS
+```bash
+flutter build macos --release
+```
+
+> ℹ️ **croc is built from source** during CI and bundled into every release artifact. You don't need to install croc separately — it ships inside the app.
+
+## 🏗️ Architecture
+
+```
+lib/
+├── main.dart              # Entry point (Riverpod ProviderScope)
+├── application.dart       # MaterialApp with ThemeManager & i18n
+├── controller.dart        # AppController singleton
+├── state.dart             # GlobalState singleton
+├── common/                # Utilities, constants, extensions
+├── enum/                  # Enums (PageLabel, DashboardWidget, etc.)
+├── models/                # Freezed data models
+├── providers/             # Riverpod state providers
+├── core/                  # Croc backend (FFI bridge + process)
+├── manager/               # Theme manager
+├── l10n/                  # Localization (en, zh)
+├── pages/                 # HomePage (responsive sidebar/navbar)
+├── views/                 # Feature views
+│   ├── dashboard/         # Dashboard + drag-reorder widget grid
+│   ├── send/              # Send files & text
+│   ├── receive/           # Receive with QR scanner
+│   ├── history/           # Transfer history
+│   └── settings/          # App configuration
+└── widgets/               # Reusable Material 3 widgets
+```
+
+## 🧰 Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| UI Framework | Flutter 3.44 · Material 3 |
+| State | Riverpod · Freezed |
+| Backend | Go CGO FFI (`c-shared`) + process |
 | Storage | SharedPreferences |
 | Scanner | mobile_scanner |
 | QR | qr_flutter |
+| CI/CD | GitHub Actions |
 
-## CI/CD
+## 🤝 Acknowledgments
 
-GitHub Actions automatically builds for all platforms on push:
-- **Android ARM64** — Go cross-compile → APK
-- **Windows AMD64** — bundled croc.exe → zip
-- **Linux AMD64** — bundled croc → .deb
+FlCroc's UI architecture is heavily inspired by **[FlClash](https://github.com/chen08209/FlClash)** — an elegant, well-structured Flutter application. The core file transfer engine is powered by **[croc](https://github.com/schollz/croc)**.
 
-See `.github/workflows/build.yml`.
-
-## License
+## 📄 License
 
 [GNU General Public License v3.0](LICENSE)
 
-## Acknowledgments
+---
 
-- [FlClash](https://github.com/chen08209/FlClash) — UI architecture inspiration
-- [croc](https://github.com/schollz/croc) — Core file transfer engine
+<p align="center">
+  Made with ❤️ by <a href="https://github.com/576576">576576</a>
+</p>

@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/enum/enum.dart';
-import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/widgets/widgets.dart';
 import 'package:flutter/material.dart';
@@ -89,8 +88,8 @@ class _DashboardViewState extends ConsumerState<DashboardView>
       DashboardWidget.transferSpeed: const TransferSpeedWidget(),
       DashboardWidget.totalTransferred: const TotalTransferredWidget(),
       DashboardWidget.quickSend: const QuickSendWidget(),
+      DashboardWidget.quickReceive: const QuickReceiveWidget(),
       DashboardWidget.recentTransfers: const RecentTransfersWidget(),
-      DashboardWidget.crocStatus: const CrocStatusWidget(),
     };
   }
 
