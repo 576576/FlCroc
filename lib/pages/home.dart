@@ -2,7 +2,6 @@ import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/providers/providers.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class HomePage extends StatelessWidget {
@@ -67,7 +66,7 @@ class HomePage extends StatelessWidget {
                             'assets/images/icon.png',
                             width: 64,
                             height: 64,
-                            errorBuilder: (_, __, ___) => Icon(Icons.upload_file,
+                            errorBuilder: (_, _, _) => Icon(Icons.upload_file,
                                 size: 40, color: context.colorScheme.primary),
                           ),
                         ),

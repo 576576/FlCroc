@@ -24,7 +24,7 @@ class SendView extends ConsumerStatefulWidget {
 }
 
 class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMixin {
-  List<PlatformFile> _selectedFiles = [];
+  final List<PlatformFile> _selectedFiles = [];
   bool _isTextMode = false;
   PhraseMode _phraseMode = PhraseMode.defaultMode;
   SendPhase _phase = SendPhase.idle;
@@ -208,7 +208,6 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     final l10n = context.appLocalizations;
-    final hasContent = !_isTextMode ? _selectedFiles.isNotEmpty : _textController.text.trim().isNotEmpty;
 
     return CommonScaffold(
       title: l10n.send,

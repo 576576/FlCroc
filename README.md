@@ -46,10 +46,12 @@
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Flutter SDK ≥ 3.12
 - Go ≥ 1.23 (for croc FFI bridge)
 
 ### Install
+
 ```bash
 git clone https://github.com/576576/FlCroc.git
 cd FlCroc
@@ -58,6 +60,7 @@ dart run build_runner build --delete-conflicting-outputs
 ```
 
 ### Run
+
 ```bash
 flutter run
 ```
@@ -65,21 +68,25 @@ flutter run
 ## 🔨 Build
 
 ### Android
+
 ```bash
 flutter build apk --release
 ```
 
 ### Windows
+
 ```bash
 flutter build windows --release
 ```
 
 ### Linux
+
 ```bash
 flutter build linux --release
 ```
 
 ### macOS
+
 ```bash
 flutter build macos --release
 ```

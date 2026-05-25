@@ -103,7 +103,7 @@ class _DashboardViewState extends ConsumerState<DashboardView>
       actions: [
         ValueListenableBuilder<bool>(
           valueListenable: _isEditNotifier,
-          builder: (_, isEdit, __) => IconButton(
+          builder: (_, isEdit, _) => IconButton(
             onPressed: _toggleEdit,
             icon: Icon(isEdit ? Icons.check : Icons.edit_outlined),
             tooltip: isEdit ? l10n.done : l10n.edit,
@@ -112,7 +112,7 @@ class _DashboardViewState extends ConsumerState<DashboardView>
       ],
       body: ValueListenableBuilder<List<DashboardWidget>>(
         valueListenable: _currentWidgetsNotifier,
-        builder: (_, widgets, __) {
+        builder: (_, widgets, _) {
           return ValueListenableBuilder<bool>(
             valueListenable: _isEditNotifier,
             builder: (_, isEdit, _) {
