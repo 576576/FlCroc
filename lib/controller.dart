@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fl_croc/core/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/providers/providers.dart';
@@ -23,6 +24,14 @@ class AppController {
   Future<void> attach(BuildContext context, WidgetRef ref) async {
     _ref = ref;
     isAttach = true;
+
+    // Initialize croc backend (FFI or process-based)
+    final ok = await coreController.init();
+    if (ok) {
+      await updateCoreStatus(CoreStatus.connected);
+    } else {
+      await updateCoreStatus(CoreStatus.disconnected);
+    }
   }
 
   void detach() {
