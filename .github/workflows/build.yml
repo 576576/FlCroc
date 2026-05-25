@@ -13,8 +13,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CROC_TAG: v10.4.4
-  CROC_REPO: https://github.com/schollz/croc.git
   GO_VERSION: '1.25'
 
 jobs:
@@ -53,10 +51,6 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Clone croc source
-        run: |
-          git clone --depth 1 --branch "$CROC_TAG" "$CROC_REPO" /tmp/croc_src
-
       - name: Setup Android NDK
         uses: nttld/setup-ndk@v1
         with:
@@ -66,7 +60,6 @@ jobs:
       - name: Build croc bridge (.so) for Android ARM64
         run: |
           cd go_bridge
-          go mod edit -replace github.com/schollz/croc/v10=/tmp/croc_src
           go mod tidy
           export ANDROID_NDK_HOME="${ANDROID_NDK_ROOT:-$ANDROID_NDK}"
           export TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
@@ -113,13 +106,9 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Clone croc source
-        run: |
-          git clone --depth 1 --branch "$env:CROC_TAG" "$env:CROC_REPO" "$env:RUNNER_TEMP\croc_src"
-
       - name: Build croc.exe from source
         run: |
-          Push-Location "$env:RUNNER_TEMP\croc_src"
+          Push-Location lib\croc
           $env:CGO_ENABLED = "0"
           $env:GOOS = "windows"
           $env:GOARCH = "amd64"
@@ -173,13 +162,9 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Clone croc source
-        run: |
-          git clone --depth 1 --branch "$CROC_TAG" "$CROC_REPO" /tmp/croc_src
-
       - name: Build croc from source
         run: |
-          cd /tmp/croc_src
+          cd lib/croc
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
             go build -ldflags="-s -w" -o /tmp/croc .
           mkdir -p "$GITHUB_WORKSPACE/linux/flutter/ephemeral"

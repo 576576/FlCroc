@@ -175,16 +175,18 @@ class CoreService extends CoreInterface {
       status: TransferProgressStatus.initializing,
     );
 
-    final code = options.codePhrase ?? await generateCodePhrase();
+    final code = options.codePhrase;
 
     try {
       final args = <String>[
         'send',
-        if (options.sendingText) ...[
+        if (options.sendingText && options.textContent.isNotEmpty) ...[
           '--text', options.textContent,
-        ] else
+        ] else if (!options.sendingText)
           ...options.filePaths,
-        '--code', code,
+        if (code != null && code.isNotEmpty) ...[
+          '--code', code,
+        ],
         '--curve', options.curve,
         '--hash', options.hashAlgorithm,
         if (options.noCompress) '--no-compress',

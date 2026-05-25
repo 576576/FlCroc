@@ -48,7 +48,7 @@
 ### Prerequisites
 
 - Flutter SDK ≥ 3.12
-- Go ≥ 1.23 (for croc FFI bridge)
+- Go ≥ 1.23 (croc source is vendored at `lib/croc/`)
 
 ### Install
 
@@ -67,31 +67,33 @@ flutter run
 
 ## 🔨 Build
 
-### Android
+croc source is vendored at `lib/croc/` (v10.4.4). The Go bridge in `go_bridge/` references it via a `replace` directive.
 
+### Android
 ```bash
 flutter build apk --release
 ```
 
 ### Windows
-
 ```bash
+# Build croc.exe from vendored source first
+cd lib\croc && go build -ldflags="-s -w" -o ..\windows\runner\croc.exe . && cd ..\..
 flutter build windows --release
 ```
 
 ### Linux
-
 ```bash
+# Build croc from vendored source first
+cd lib/croc && go build -ldflags="-s -w" -o ../linux/flutter/ephemeral/croc . && cd ../..
 flutter build linux --release
 ```
 
 ### macOS
-
 ```bash
 flutter build macos --release
 ```
 
-> ℹ️ **croc is built from source** during CI and bundled into every release artifact. You don't need to install croc separately — it ships inside the app.
+> ℹ️ **croc is vendored** — built from source and bundled into every release artifact. Users don't need to install croc separately.
 
 ## 🏗️ Architecture
 
@@ -106,6 +108,8 @@ lib/
 ├── models/                # Freezed data models
 ├── providers/             # Riverpod state providers
 ├── core/                  # Croc backend (FFI bridge + process)
+├── go_bridge/             # Go CGO bridge module
+├── lib/croc/              # Vendored croc source (v10.4.4)
 ├── manager/               # Theme manager
 ├── l10n/                  # Localization (en, zh)
 ├── pages/                 # HomePage (responsive sidebar/navbar)
