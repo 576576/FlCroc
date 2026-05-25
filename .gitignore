@@ -121,3 +121,4 @@ app.*.symbols
 .github/workflows/build-android.yml
 .github/workflows/build-linux.yml
 .github/workflows/build-windows.yml
+lib/croc/.github
