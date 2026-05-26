@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/core/interface.dart';
+import 'package:fl_croc/core/lib.dart';
 import 'package:fl_croc/models/models.dart';
 import 'package:path/path.dart' as p;
 
@@ -128,13 +129,7 @@ class CoreService extends CoreInterface {
 
   @override
   Future<String> getVersion() async {
-    if (_crocPath == null) return 'unknown';
-    try {
-      final result = await Process.run(_crocPath!, ['--version']);
-      return result.stdout.toString().trim();
-    } catch (e) {
-      return 'error: $e';
-    }
+    return CoreLib.builtinCrocVersion;
   }
 
   @override

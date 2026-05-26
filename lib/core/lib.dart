@@ -9,13 +9,18 @@ import 'package:fl_croc/core/interface.dart';
 import 'package:fl_croc/models/models.dart';
 
 /// FFI binding for the Go croc bridge shared library.
-/// Used primarily on Android where process spawning is limited.
 ///
-/// On desktop platforms, CoreService (process-based) is preferred.
+/// Uses the vendored croc at `lib/croc/` via the Go bridge in `go_bridge/`.
 class CoreLib extends CoreInterface {
   static CoreLib? _instance;
   DynamicLibrary? _lib;
   bool _isAvailable = false;
+
+  /// Built-in croc version (synced with lib/croc vendored source).
+  static const builtinCrocVersion = 'croc v10.4.4';
+
+  // Cached FFI function for freeing Go-allocated strings
+  void Function(Pointer<Utf8>)? _freeGoString;
 
   CoreLib._internal();
 
@@ -32,6 +37,10 @@ class CoreLib extends CoreInterface {
     try {
       _lib = _loadLibrary();
       if (_lib == null) return false;
+      // Cache the free function
+      _freeGoString = _lib!.lookupFunction<
+          Void Function(Pointer<Utf8>),
+          void Function(Pointer<Utf8>)>('CrocFreeString');
       _isAvailable = true;
       return true;
     } catch (e) {
@@ -73,19 +82,8 @@ class CoreLib extends CoreInterface {
 
   @override
   Future<String> getVersion() async {
-    final lib = _lib;
-    if (!_isAvailable || lib == null) return 'unknown';
-    try {
-      final func = lib.lookupFunction<
-          Pointer<Utf8> Function(),
-          Pointer<Utf8> Function()>('CrocGetVersion');
-      final ptr = func();
-      final version = ptr.toDartString();
-      malloc.free(ptr);
-      return version;
-    } catch (e) {
-      return 'error: $e';
-    }
+    // Return static built-in version — avoids FFI call
+    return builtinCrocVersion;
   }
 
   @override
@@ -149,9 +147,9 @@ class CoreLib extends CoreInterface {
       final resultPtr = sendFunc(pathsPtr, optsPtr);
       final resultJson = resultPtr.toDartString();
 
-      malloc.free(pathsPtr);
-      malloc.free(optsPtr);
-      malloc.free(resultPtr);
+      malloc.free(pathsPtr);  // Dart-allocated
+      malloc.free(optsPtr);   // Dart-allocated
+      _freeGoString?.call(resultPtr);  // Go-allocated
 
       final result = jsonDecode(resultJson) as Map<String, dynamic>;
       if (result.containsKey('error')) {
@@ -179,7 +177,7 @@ class CoreLib extends CoreInterface {
         await Future.delayed(const Duration(milliseconds: 200));
         final pollPtr = pollFunc();
         final pollJson = pollPtr.toDartString();
-        malloc.free(pollPtr);
+        _freeGoString?.call(pollPtr);  // Go-allocated
 
         if (pollJson == 'null' || pollJson == '{}') continue;
 
@@ -261,9 +259,9 @@ class CoreLib extends CoreInterface {
       final resultPtr = recvFunc(codePtr, optsPtr);
       final resultJson = resultPtr.toDartString();
 
-      malloc.free(codePtr);
-      malloc.free(optsPtr);
-      malloc.free(resultPtr);
+      malloc.free(codePtr);  // Dart-allocated
+      malloc.free(optsPtr);   // Dart-allocated
+      _freeGoString?.call(resultPtr);  // Go-allocated
 
       final result = jsonDecode(resultJson) as Map<String, dynamic>;
       if (result.containsKey('error')) {
@@ -289,7 +287,7 @@ class CoreLib extends CoreInterface {
         await Future.delayed(const Duration(milliseconds: 200));
         final pollPtr = pollFunc();
         final pollJson = pollPtr.toDartString();
-        malloc.free(pollPtr);
+        _freeGoString?.call(pollPtr);  // Go-allocated
 
         if (pollJson == 'null' || pollJson == '{}') continue;
 
