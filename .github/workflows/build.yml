@@ -83,13 +83,20 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
 
+      - name: Get version
+        id: ver
+        run: echo "version=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)" >> $GITHUB_OUTPUT
+
       - name: Build APK
         run: flutter build apk --release --target-platform android-arm64
 
+      - name: Rename artifact
+        run: mv build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.version }}-android-arm64.apk
+
       - uses: actions/upload-artifact@v4
         with:
-          name: FlCroc-android-arm64-v8a
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: FlCroc-${{ steps.ver.outputs.version }}-android-arm64
+          path: FlCroc-${{ steps.ver.outputs.version }}-android-arm64.apk
 
   # ---- Windows AMD64 ----
   build-windows:
@@ -133,6 +140,10 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
 
+      - name: Get version
+        id: ver
+        run: echo "version=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)" >> $env:GITHUB_OUTPUT
+
       - name: Build Windows
         run: flutter build windows --release
 
@@ -143,14 +154,12 @@ jobs:
           Write-Host "Bundled bridge .dll into $outDir"
 
       - name: Package zip
-        run: |
-          $src = "build\windows\x64\runner\Release"
-          Compress-Archive -Path "$src\*" -DestinationPath FlCroc-windows-amd64.zip
+        run: Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FlCroc-windows-amd64
-          path: FlCroc-windows-amd64.zip
+          name: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64
+          path: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip
 
   # ---- Linux AMD64 ----
   build-linux:
@@ -192,6 +201,10 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
 
+      - name: Get version
+        id: ver
+        run: echo "version=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)" >> $GITHUB_OUTPUT
+
       - name: Build Linux
         run: flutter build linux --release
 
@@ -199,21 +212,16 @@ jobs:
         run: |
           mkdir -p build/linux/x64/release/bundle/lib
           cp linux/flutter/ephemeral/libcroc_bridge.so build/linux/x64/release/bundle/lib/libcroc_bridge.so
-          echo "Bundled croc into bundle"
 
       - name: Create .deb package
         run: |
           APPNAME=flcroc
-          VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
+          VERSION=${{ steps.ver.outputs.version }}
+          DEB_NAME="FlCroc-${VERSION}-linux-amd64.deb"
           PKG_DIR="build/linux_deb/${APPNAME}_${VERSION}_amd64"
-          mkdir -p "${PKG_DIR}/DEBIAN"
-          mkdir -p "${PKG_DIR}/opt/${APPNAME}"
-          mkdir -p "${PKG_DIR}/usr/share/applications"
-          mkdir -p "${PKG_DIR}/usr/local/bin"
-
+          mkdir -p "${PKG_DIR}/DEBIAN" "${PKG_DIR}/opt/${APPNAME}" "${PKG_DIR}/usr/share/applications" "${PKG_DIR}/usr/local/bin"
           cp -r build/linux/x64/release/bundle/* "${PKG_DIR}/opt/${APPNAME}/"
           chmod +x "${PKG_DIR}/opt/${APPNAME}/fl_croc"
-
           cat > "${PKG_DIR}/DEBIAN/control" << EOF
           Package: flcroc
           Version: ${VERSION}
@@ -225,7 +233,6 @@ jobs:
            A cross-platform Flutter GUI for croc, enabling easy and secure
            file transfers between computers with Material 3 design.
           EOF
-
           cat > "${PKG_DIR}/usr/share/applications/flcroc.desktop" << 'DESKTOP'
           [Desktop Entry]
           Name=FlCroc
@@ -236,14 +243,14 @@ jobs:
           Type=Application
           Categories=Utility;Network;
           DESKTOP
-
           ln -s "/opt/${APPNAME}/fl_croc" "${PKG_DIR}/usr/local/bin/flcroc"
           dpkg-deb --build "${PKG_DIR}"
+          mv "${PKG_DIR}.deb" "${DEB_NAME}"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FlCroc-linux-amd64-deb
-          path: build/linux_deb/flcroc_*_amd64.deb
+          name: FlCroc-${{ steps.ver.outputs.version }}-linux-amd64
+          path: FlCroc-${{ steps.ver.outputs.version }}-linux-amd64.deb
 
   # ---- Release (on tag push) ----
   release:
@@ -253,18 +260,62 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "Commit message: $COMMIT_MSG"
+
+          if echo "$COMMIT_MSG" | grep -qE '^release-[0-9]+\.[0-9]+\.[0-9]+'; then
+            VERSION=$(echo "$COMMIT_MSG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+            echo "release_name=FlCroc $VERSION" >> $GITHUB_OUTPUT
+          elif echo "$COMMIT_MSG" | grep -qE '^beta-[0-9]+\.[0-9]+\.[0-9]+'; then
+            VERSION=$(echo "$COMMIT_MSG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "tag=v$VERSION-beta" >> $GITHUB_OUTPUT
+            echo "release_name=FlCroc Beta $VERSION" >> $GITHUB_OUTPUT
+          else
+            VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            TAG_NAME="${{ github.ref_name }}"
+            echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+            echo "release_name=FlCroc $VERSION" >> $GITHUB_OUTPUT
+          fi
+
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+          merge-multiple: true
 
       - name: List artifacts
         run: find artifacts -type f -ls
 
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.release_name }}
+          body: |
+            ## 📦 ${{ steps.version.outputs.release_name }}
+
+            Cross-platform file transfer GUI powered by croc.
+
+            ### Downloads
+            | Platform | File |
+            |----------|------|
+            | 🪟 Windows | `FlCroc-${{ steps.version.outputs.version }}-windows-amd64.zip` |
+            | 🐧 Linux | `FlCroc-${{ steps.version.outputs.version }}-linux-amd64.deb` |
+            | 🤖 Android | `FlCroc-${{ steps.version.outputs.version }}-android-arm64.apk` |
+
+            ### What's Changed
+            (auto-generated release notes below)
           files: |
-            artifacts/FlCroc-android-arm64-v8a/app-release.apk
-            artifacts/FlCroc-windows-amd64/FlCroc-windows-amd64.zip
-            artifacts/FlCroc-linux-amd64-deb/*.deb
+            artifacts/FlCroc-*-android-arm64.apk
+            artifacts/FlCroc-*-windows-amd64.zip
+            artifacts/FlCroc-*-linux-amd64.deb
           draft: false
           generate_release_notes: true
+          make_latest: true

@@ -1,5 +1,5 @@
 import 'package:fl_croc/common/common.dart';
-import 'package:fl_croc/core/controller.dart';
+import 'package:fl_croc/core/lib.dart';
 import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/state.dart';
@@ -15,18 +15,7 @@ class SettingsView extends ConsumerStatefulWidget {
 }
 
 class _SettingsViewState extends ConsumerState<SettingsView> {
-  String _crocVersion = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadCrocVersion();
-  }
-
-  Future<void> _loadCrocVersion() async {
-    final v = await coreController.getVersion();
-    if (mounted) setState(() => _crocVersion = v);
-  }
+  String _crocVersion = CoreLib.builtinCrocVersion;
   @override
   Widget build(BuildContext context) {
     final appSettings = ref.watch(appSettingProvider);
@@ -141,9 +130,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ListItem(
                 leading: const Icon(Icons.link),
                 title: Text(l10n.crocVersion),
-                subtitle: Text(_crocVersion.isNotEmpty
-                    ? _crocVersion
-                    : l10n.loading),
+                subtitle: Text(_crocVersion),
               ),
               const Divider(height: 0, indent: 56),
               ListItem(

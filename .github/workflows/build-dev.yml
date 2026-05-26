@@ -1,0 +1,149 @@
+name: Build Windows (dev)
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: '1.25'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Run tests
+        run: flutter test
+
+  build-windows:
+    needs: test
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version
+        id: ver
+        run: echo "version=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)" >> $env:GITHUB_OUTPUT
+
+      - name: Get short SHA
+        id: sha
+        run: echo "sha=$(git rev-parse --short HEAD)" >> $env:GITHUB_OUTPUT
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Build Go bridge (.dll)
+        run: |
+          Push-Location go_bridge
+          go mod tidy
+          $env:CGO_ENABLED = "1"
+          $env:GOOS = "windows"
+          $env:GOARCH = "amd64"
+          $env:CC = "gcc"
+          go build -buildmode=c-shared -ldflags="-s -w" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
+          Pop-Location
+
+      - name: Verify .dll
+        run: |
+          if (Test-Path windows\runner\libcroc_bridge.dll) {
+            Get-Item windows\runner\libcroc_bridge.dll | Select-Object Length, FullName
+          } else {
+            Write-Error "libcroc_bridge.dll not found!"
+          }
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Windows
+        run: flutter build windows --release
+
+      - name: Bundle bridge .dll into build output
+        run: |
+          $outDir = "build\windows\x64\runner\Release"
+          Copy-Item "windows\runner\libcroc_bridge.dll" "$outDir\libcroc_bridge.dll" -Force
+
+      - name: Package zip
+        run: Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FlCroc-${{ steps.ver.outputs.version }}-${{ steps.sha.outputs.sha }}-windows-amd64
+          path: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip
+
+  nightly:
+    needs: build-windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get short SHA
+        id: sha
+        run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Get version
+        id: ver
+        run: echo "version=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)" >> $GITHUB_OUTPUT
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: find artifacts -type f -ls
+
+      - name: Delete existing nightly release
+        run: |
+          if gh release view "nightly" &>/dev/null; then
+            echo "Deleting existing nightly release"
+            gh release delete "nightly" --yes --cleanup-tag
+          else
+            echo "No existing nightly release"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: "Nightly ${{ steps.sha.outputs.sha }}"
+          body: |
+            ## 🌙 Nightly Build
+
+            **Commit**: `${{ steps.sha.outputs.sha }}`
+            **Version**: ${{ steps.ver.outputs.version }}
+
+            > ⚠️ This is an automated dev-branch build. May be unstable.
+
+            ### Download
+            | Platform | File |
+            |----------|------|
+            | 🪟 Windows | `FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip` |
+          files: |
+            artifacts/FlCroc-*-windows-amd64.zip
+          draft: false
+          prerelease: true
+          make_latest: false
