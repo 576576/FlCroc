@@ -63,6 +63,7 @@ _$ReceiveOptionsImpl _$$ReceiveOptionsImplFromJson(Map<String, dynamic> json) =>
       onlyLocal: json['onlyLocal'] as bool? ?? false,
       outputPath: json['outputPath'] as String? ?? '',
       relayAddress: json['relayAddress'] as String?,
+      relayAddress6: json['relayAddress6'] as String?,
       relayPassword: json['relayPassword'] as String?,
     );
 
@@ -74,6 +75,7 @@ Map<String, dynamic> _$$ReceiveOptionsImplToJson(
   'onlyLocal': instance.onlyLocal,
   'outputPath': instance.outputPath,
   'relayAddress': instance.relayAddress,
+  'relayAddress6': instance.relayAddress6,
   'relayPassword': instance.relayPassword,
 };
 

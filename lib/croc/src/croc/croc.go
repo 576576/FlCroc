@@ -749,7 +749,9 @@ On the other computer run:
 				log.Debugf("could not establish '%s'", address)
 			}
 			if conn == nil && err == nil {
-				err = fmt.Errorf("could not connect")
+				// No relay address was reachable (or none configured).
+				// Return silently — the local-relay path will handle it.
+				return
 			}
 			if err != nil {
 				err = fmt.Errorf("could not connect to %s: %w", c.Options.RelayAddress, err)

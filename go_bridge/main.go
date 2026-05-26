@@ -22,6 +22,7 @@ import (
 	"unsafe"
 
 	"github.com/schollz/croc/v10/src/croc"
+	"github.com/schollz/croc/v10/src/models"
 	"github.com/schollz/croc/v10/src/utils"
 )
 
@@ -179,24 +180,30 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 		return
 	}
 
-	// If no relay address is configured, force local-only to avoid croc's
-	// spurious "could not connect to:" error from the empty public-relay path.
-	onlyLocal := opts.OnlyLocal
-	if opts.RelayAddress == "" && opts.RelayAddress6 == "" {
-		onlyLocal = true
+	// Use croc public relay defaults when no explicit address is configured.
+	// The vendored croc has been patched so the public-relay goroutine
+	// returns silently (instead of sending a spurious error) when both
+	// addresses are empty — so local relay and public relay coexist properly.
+	relayAddr := opts.RelayAddress
+	if relayAddr == "" {
+		relayAddr = models.DEFAULT_RELAY
+	}
+	relayAddr6 := opts.RelayAddress6
+	if relayAddr6 == "" {
+		relayAddr6 = models.DEFAULT_RELAY6
 	}
 
 	crocOpts := croc.Options{
 		IsSender:      true,
 		SharedSecret:  code,
 		Debug:         false,
-		RelayAddress:  opts.RelayAddress,
-		RelayAddress6: opts.RelayAddress6,
+		RelayAddress:  relayAddr,
+		RelayAddress6: relayAddr6,
 		RelayPorts:    defaultRelayPorts(),
 		RelayPassword: opts.RelayPassword,
 		NoPrompt:      true,
 		DisableLocal:  opts.DisableLocal,
-		OnlyLocal:     onlyLocal,
+		OnlyLocal:     opts.OnlyLocal,
 		Curve:         opts.Curve,
 		HashAlgorithm: opts.HashAlgorithm,
 		NoCompress:    opts.NoCompress,
@@ -254,11 +261,17 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 }
 
 func doReceive(code string, opts receiveOptions, transferID string) {
+	relayAddr := opts.RelayAddress
+	if relayAddr == "" {
+		relayAddr = models.DEFAULT_RELAY
+	}
+
 	crocOpts := croc.Options{
 		IsSender:      false,
 		SharedSecret:  code,
 		Debug:         false,
-		RelayAddress:  opts.RelayAddress,
+		RelayAddress:  relayAddr,
+		RelayAddress6: models.DEFAULT_RELAY6,
 		RelayPorts:    defaultRelayPorts(),
 		RelayPassword: opts.RelayPassword,
 		NoPrompt:      true,
@@ -316,6 +329,7 @@ type receiveOptions struct {
 	OnlyLocal     bool   `json:"only_local"`
 	OutputPath    string `json:"output_path"`
 	RelayAddress  string `json:"relay_address"`
+	RelayAddress6 string `json:"relay_address6"`
 	RelayPassword string `json:"relay_password"`
 }
 

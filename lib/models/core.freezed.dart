@@ -594,6 +594,7 @@ mixin _$ReceiveOptions {
   bool get onlyLocal => throw _privateConstructorUsedError;
   String get outputPath => throw _privateConstructorUsedError;
   String? get relayAddress => throw _privateConstructorUsedError;
+  String? get relayAddress6 => throw _privateConstructorUsedError;
   String? get relayPassword => throw _privateConstructorUsedError;
 
   /// Serializes this ReceiveOptions to a JSON map.
@@ -619,6 +620,7 @@ abstract class $ReceiveOptionsCopyWith<$Res> {
     bool onlyLocal,
     String outputPath,
     String? relayAddress,
+    String? relayAddress6,
     String? relayPassword,
   });
 }
@@ -643,6 +645,7 @@ class _$ReceiveOptionsCopyWithImpl<$Res, $Val extends ReceiveOptions>
     Object? onlyLocal = null,
     Object? outputPath = null,
     Object? relayAddress = freezed,
+    Object? relayAddress6 = freezed,
     Object? relayPassword = freezed,
   }) {
     return _then(
@@ -666,6 +669,10 @@ class _$ReceiveOptionsCopyWithImpl<$Res, $Val extends ReceiveOptions>
             relayAddress: freezed == relayAddress
                 ? _value.relayAddress
                 : relayAddress // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            relayAddress6: freezed == relayAddress6
+                ? _value.relayAddress6
+                : relayAddress6 // ignore: cast_nullable_to_non_nullable
                       as String?,
             relayPassword: freezed == relayPassword
                 ? _value.relayPassword
@@ -692,6 +699,7 @@ abstract class _$$ReceiveOptionsImplCopyWith<$Res>
     bool onlyLocal,
     String outputPath,
     String? relayAddress,
+    String? relayAddress6,
     String? relayPassword,
   });
 }
@@ -715,6 +723,7 @@ class __$$ReceiveOptionsImplCopyWithImpl<$Res>
     Object? onlyLocal = null,
     Object? outputPath = null,
     Object? relayAddress = freezed,
+    Object? relayAddress6 = freezed,
     Object? relayPassword = freezed,
   }) {
     return _then(
@@ -739,6 +748,10 @@ class __$$ReceiveOptionsImplCopyWithImpl<$Res>
             ? _value.relayAddress
             : relayAddress // ignore: cast_nullable_to_non_nullable
                   as String?,
+        relayAddress6: freezed == relayAddress6
+            ? _value.relayAddress6
+            : relayAddress6 // ignore: cast_nullable_to_non_nullable
+                  as String?,
         relayPassword: freezed == relayPassword
             ? _value.relayPassword
             : relayPassword // ignore: cast_nullable_to_non_nullable
@@ -757,6 +770,7 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
     this.onlyLocal = false,
     this.outputPath = '',
     this.relayAddress,
+    this.relayAddress6,
     this.relayPassword,
   });
 
@@ -777,11 +791,13 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
   @override
   final String? relayAddress;
   @override
+  final String? relayAddress6;
+  @override
   final String? relayPassword;
 
   @override
   String toString() {
-    return 'ReceiveOptions(codePhrase: $codePhrase, overwrite: $overwrite, onlyLocal: $onlyLocal, outputPath: $outputPath, relayAddress: $relayAddress, relayPassword: $relayPassword)';
+    return 'ReceiveOptions(codePhrase: $codePhrase, overwrite: $overwrite, onlyLocal: $onlyLocal, outputPath: $outputPath, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword)';
   }
 
   @override
@@ -799,6 +815,8 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
                 other.outputPath == outputPath) &&
             (identical(other.relayAddress, relayAddress) ||
                 other.relayAddress == relayAddress) &&
+            (identical(other.relayAddress6, relayAddress6) ||
+                other.relayAddress6 == relayAddress6) &&
             (identical(other.relayPassword, relayPassword) ||
                 other.relayPassword == relayPassword));
   }
@@ -812,6 +830,7 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
     onlyLocal,
     outputPath,
     relayAddress,
+    relayAddress6,
     relayPassword,
   );
 
@@ -839,6 +858,7 @@ abstract class _ReceiveOptions implements ReceiveOptions {
     final bool onlyLocal,
     final String outputPath,
     final String? relayAddress,
+    final String? relayAddress6,
     final String? relayPassword,
   }) = _$ReceiveOptionsImpl;
 
@@ -855,6 +875,8 @@ abstract class _ReceiveOptions implements ReceiveOptions {
   String get outputPath;
   @override
   String? get relayAddress;
+  @override
+  String? get relayAddress6;
   @override
   String? get relayPassword;
 

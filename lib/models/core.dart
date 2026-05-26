@@ -38,6 +38,7 @@ abstract class ReceiveOptions with _$ReceiveOptions {
     @Default(false) bool onlyLocal,
     @Default('') String outputPath,
     String? relayAddress,
+    String? relayAddress6,
     String? relayPassword,
   }) = _ReceiveOptions;
 

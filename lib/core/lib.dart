@@ -256,6 +256,7 @@ class CoreLib extends CoreInterface {
         'only_local': options.onlyLocal,
         'output_path': options.outputPath,
         'relay_address': options.relayAddress ?? '',
+        'relay_address6': options.relayAddress6 ?? '',
         'relay_password': options.relayPassword ?? '',
       });
 

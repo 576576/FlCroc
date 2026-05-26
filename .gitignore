@@ -123,3 +123,5 @@ app.*.symbols
 .github/workflows/build-windows.yml
 lib/croc/.github
 /.idea
+/go_bridge/test_send
+flcroc-test-979183780.txt
