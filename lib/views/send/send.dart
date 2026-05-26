@@ -197,6 +197,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
         if (progress.codePhrase != null && progress.codePhrase!.isNotEmpty) {
           _codeController.text = progress.codePhrase!;
           appController.updateTransferRecord(record.copyWith(codePhrase: progress.codePhrase));
+          setState(() {}); // rebuild to show QR code
         }
         switch (progress.status) {
           case TransferProgressStatus.completed:
@@ -359,7 +360,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
               child: TextField(
                 controller: _codeController,
-                enabled: _phraseMode == PhraseMode.never,
+                readOnly: _phraseMode != PhraseMode.never,
                 style: context.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, letterSpacing: 1),
                 decoration: InputDecoration(
                   hintText: _phraseHint(l10n), border: const OutlineInputBorder(),

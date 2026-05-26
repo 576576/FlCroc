@@ -35,15 +35,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Get version
-        id: ver
-        run: |
-          $v = (Get-Content pubspec.yaml | Where-Object { $_ -match '^version:' } | Select-Object -First 1) -replace '^version:\s+(\S+).*', '$1'
-          echo "version=$v" >> $env:GITHUB_OUTPUT
-
       - name: Get short SHA
         id: sha
         run: echo "sha=$(git rev-parse --short HEAD)" >> $env:GITHUB_OUTPUT
+
+      - name: Get nightly version
+        id: ver
+        env:
+          SHA: ${{ steps.sha.outputs.sha }}
+        run: |
+          $date = Get-Date -Format "MMdd"
+          $nv = "nightly-$date-$env:SHA"
+          echo "version=$nv" >> $env:GITHUB_OUTPUT
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -90,7 +93,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FlCroc-${{ steps.ver.outputs.version }}-${{ steps.sha.outputs.sha }}-windows-amd64
+          name: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64
           path: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip
 
   nightly:
@@ -105,9 +108,11 @@ jobs:
         id: sha
         run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Get version
+      - name: Get nightly version
         id: ver
-        run: echo "version=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)" >> $GITHUB_OUTPUT
+        env:
+          SHA: ${{ steps.sha.outputs.sha }}
+        run: echo "version=nightly-$(date +%m%d)-$SHA" >> $GITHUB_OUTPUT
 
       - uses: actions/download-artifact@v4
         with:
@@ -131,12 +136,12 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: nightly
-          name: "Nightly ${{ steps.sha.outputs.sha }}"
+          name: "Nightly ${{ steps.ver.outputs.version }}"
           body: |
             ## 🌙 Nightly Build
 
             **Commit**: `${{ steps.sha.outputs.sha }}`
-            **Version**: ${{ steps.ver.outputs.version }}
+            **Version**: `${{ steps.ver.outputs.version }}`
 
             > ⚠️ This is an automated dev-branch build. May be unstable.
 
