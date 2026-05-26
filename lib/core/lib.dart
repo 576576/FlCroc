@@ -140,6 +140,8 @@ class CoreLib extends CoreInterface {
         'relay_address': options.relayAddress ?? '',
         'relay_password': options.relayPassword ?? '',
         'exclude': options.exclude,
+        'sending_text': options.sendingText,
+        'text_content': options.textContent,
       });
 
       final pathsPtr = pathsJson.toNativeUtf8();

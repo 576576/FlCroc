@@ -27,9 +27,9 @@ import (
 
 // ── Global state ────────────────────────────────────────────
 var (
-	mu            sync.Mutex
-	activeClient  *croc.Client
-	progressChan  chan progressEvent
+	mu           sync.Mutex
+	activeClient *croc.Client
+	progressChan chan progressEvent
 )
 
 type progressEvent struct {
@@ -157,6 +157,27 @@ func marshalEvent(ev *progressEvent) *C.char {
 }
 
 func doSend(paths []string, code string, opts sendOptions, transferID string) {
+	// Handle text mode: write text content to a temp file
+	if opts.SendingText && opts.TextContent != "" {
+		tmpFile, err := os.CreateTemp("", "flcroc-text-*.txt")
+		if err != nil {
+			progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: fmt.Sprintf("temp file: %s", err)}
+			return
+		}
+		defer os.Remove(tmpFile.Name())
+		if _, err := tmpFile.WriteString(opts.TextContent); err != nil {
+			progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: fmt.Sprintf("write text: %s", err)}
+			return
+		}
+		tmpFile.Close()
+		paths = []string{tmpFile.Name()}
+	}
+
+	// Ensure we have at least one path
+	if len(paths) == 0 {
+		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: "no files to send"}
+		return
+	}
 	crocOpts := croc.Options{
 		IsSender:      true,
 		SharedSecret:  code,
@@ -274,6 +295,8 @@ type sendOptions struct {
 	RelayAddress  string   `json:"relay_address"`
 	RelayPassword string   `json:"relay_password"`
 	Exclude       []string `json:"exclude"`
+	SendingText   bool     `json:"sending_text"`
+	TextContent   string   `json:"text_content"`
 }
 
 type receiveOptions struct {
@@ -285,4 +308,3 @@ type receiveOptions struct {
 }
 
 func main() {} // required for c-shared builds
-
