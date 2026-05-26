@@ -627,7 +627,7 @@ func (c *Client) broadcastOnLocalNetwork(useipv6 bool) {
 }
 
 func (c *Client) transferOverLocalRelay(errchan chan<- error) {
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	log.Debug("establishing connection")
 	var banner string
 	conn, banner, ipaddr, err := tcp.ConnectToTCPServer("127.0.0.1:"+c.Options.RelayPorts[0], c.Options.RelayPassword, c.Options.RoomName)

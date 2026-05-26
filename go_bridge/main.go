@@ -22,7 +22,6 @@ import (
 	"unsafe"
 
 	"github.com/schollz/croc/v10/src/croc"
-	"github.com/schollz/croc/v10/src/models"
 	"github.com/schollz/croc/v10/src/utils"
 )
 
@@ -180,26 +179,24 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 		return
 	}
 
-	relayAddr := opts.RelayAddress
-	if relayAddr == "" {
-		relayAddr = models.DEFAULT_RELAY
-	}
-	relayAddr6 := opts.RelayAddress6
-	if relayAddr6 == "" {
-		relayAddr6 = models.DEFAULT_RELAY6
+	// If no relay address is configured, force local-only to avoid croc's
+	// spurious "could not connect to:" error from the empty public-relay path.
+	onlyLocal := opts.OnlyLocal
+	if opts.RelayAddress == "" && opts.RelayAddress6 == "" {
+		onlyLocal = true
 	}
 
 	crocOpts := croc.Options{
 		IsSender:      true,
 		SharedSecret:  code,
 		Debug:         false,
-		RelayAddress:  relayAddr,
-		RelayAddress6: relayAddr6,
+		RelayAddress:  opts.RelayAddress,
+		RelayAddress6: opts.RelayAddress6,
 		RelayPorts:    defaultRelayPorts(),
 		RelayPassword: opts.RelayPassword,
 		NoPrompt:      true,
 		DisableLocal:  opts.DisableLocal,
-		OnlyLocal:     opts.OnlyLocal,
+		OnlyLocal:     onlyLocal,
 		Curve:         opts.Curve,
 		HashAlgorithm: opts.HashAlgorithm,
 		NoCompress:    opts.NoCompress,
@@ -257,17 +254,11 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 }
 
 func doReceive(code string, opts receiveOptions, transferID string) {
-	relayAddr := opts.RelayAddress
-	if relayAddr == "" {
-		relayAddr = models.DEFAULT_RELAY
-	}
-
 	crocOpts := croc.Options{
 		IsSender:      false,
 		SharedSecret:  code,
 		Debug:         false,
-		RelayAddress:  relayAddr,
-		RelayAddress6: models.DEFAULT_RELAY6,
+		RelayAddress:  opts.RelayAddress,
 		RelayPorts:    defaultRelayPorts(),
 		RelayPassword: opts.RelayPassword,
 		NoPrompt:      true,
