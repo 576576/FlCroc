@@ -67,7 +67,7 @@ flutter run
 
 ## 🔨 Build
 
-croc source is vendored at `lib/croc/` (v10.4.4). The Go bridge in `go_bridge/` references it via a `replace` directive.
+croc source is vendored at `lib/croc/` (v10.4.4). The Go bridge in `go_bridge/` references it via a `replace` directive and builds as a CGO shared library (`.so` / `.dll` / `.dylib`) that Flutter loads via `dart:ffi`.
 
 ### Android
 ```bash
@@ -76,15 +76,19 @@ flutter build apk --release
 
 ### Windows
 ```bash
-# Build croc.exe from vendored source first
-cd lib\croc && go build -ldflags="-s -w" -o ..\windows\runner\croc.exe . && cd ..\..
+# Build Go bridge as shared library
+cd go_bridge && go mod tidy && cd ..
+CGO_ENABLED=1 GOOS=windows GOARCH=amd64 \
+  go build -buildmode=c-shared -o windows/runner/libcroc_bridge.dll ./go_bridge
 flutter build windows --release
 ```
 
 ### Linux
 ```bash
-# Build croc from vendored source first
-cd lib/croc && go build -ldflags="-s -w" -o ../linux/flutter/ephemeral/croc . && cd ../..
+# Build Go bridge as shared library
+cd go_bridge && go mod tidy && cd ..
+CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
+  go build -buildmode=c-shared -o linux/flutter/ephemeral/libcroc_bridge.so ./go_bridge
 flutter build linux --release
 ```
 
@@ -93,7 +97,7 @@ flutter build linux --release
 flutter build macos --release
 ```
 
-> ℹ️ **croc is vendored** — built from source and bundled into every release artifact. Users don't need to install croc separately.
+> ℹ️ **croc is vendored** at `lib/croc/` and built as a Go shared library (`go_bridge/`). The FFI bridge calls croc's internal packages directly — no CLI subprocess needed. The shared library is bundled into every release artifact.
 
 ## 🏗️ Architecture
 
@@ -107,9 +111,9 @@ lib/
 ├── enum/                  # Enums (PageLabel, DashboardWidget, etc.)
 ├── models/                # Freezed data models
 ├── providers/             # Riverpod state providers
-├── core/                  # Croc backend (FFI bridge + process)
-├── go_bridge/             # Go CGO bridge module
-├── lib/croc/              # Vendored croc source (v10.4.4)
+├── core/                  # Croc backend (FFI bridge + process fallback)
+├── go_bridge/             # Go CGO bridge (shared library)
+├── lib/croc/              # Vendored croc source (v10.4.4, used as Go library)
 ├── manager/               # Theme manager
 ├── l10n/                  # Localization (en, zh)
 ├── pages/                 # HomePage (responsive sidebar/navbar)
@@ -128,7 +132,7 @@ lib/
 |-------|-----------|
 | UI Framework | Flutter 3.44 · Material 3 |
 | State | Riverpod · Freezed |
-| Backend | Go CGO FFI (`c-shared`) + process |
+| Backend | Go CGO FFI (`c-shared`) — calls croc as a library |
 | Storage | SharedPreferences |
 | Scanner | mobile_scanner |
 | QR | qr_flutter |

@@ -8,7 +8,7 @@
       <change beforePath="$PROJECT_DIR$/.github/workflows/build.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/build.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go_bridge/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go_bridge/go.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/core/lib.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/core/lib.dart" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

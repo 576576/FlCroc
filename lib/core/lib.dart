@@ -42,15 +42,29 @@ class CoreLib extends CoreInterface {
 
   DynamicLibrary? _loadLibrary() {
     try {
+      final libName = switch (Platform.operatingSystem) {
+        'linux' => 'libcroc_bridge.so',
+        'macos' => 'libcroc_bridge.dylib',
+        'windows' => 'libcroc_bridge.dll',
+        _ => 'libcroc_bridge.so',
+      };
+      // On Android, the .so is in jniLibs and loaded by name.
+      // On desktop, try the executable directory first, then system paths.
       if (Platform.isAndroid) {
-        return DynamicLibrary.open('libcroc_bridge.so');
-      } else if (Platform.isLinux) {
-        return DynamicLibrary.open('libcroc_bridge.so');
-      } else if (Platform.isMacOS) {
-        return DynamicLibrary.open('libcroc_bridge.dylib');
-      } else if (Platform.isWindows) {
-        return DynamicLibrary.open('libcroc_bridge.dll');
+        return DynamicLibrary.open(libName);
       }
+      // Desktop: look next to the executable
+      final exeDir = Directory(Platform.resolvedExecutable).parent.path;
+      final localPath = '$exeDir/$libName';
+      if (File(localPath).existsSync()) {
+        return DynamicLibrary.open(localPath);
+      }
+      // Fallback: look in lib/ subdirectory (Linux bundle convention)
+      final libPath = '$exeDir/lib/$libName';
+      if (File(libPath).existsSync()) {
+        return DynamicLibrary.open(libPath);
+      }
+      return null;
     } catch (e) {
       commonPrint('Failed to load library: $e');
     }

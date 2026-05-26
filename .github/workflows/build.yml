@@ -106,21 +106,23 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Build croc.exe from source
+      - name: Build Go bridge (.dll)
         run: |
-          Push-Location lib\croc
-          $env:CGO_ENABLED = "0"
+          Push-Location go_bridge
+          go mod tidy
+          $env:CGO_ENABLED = "1"
           $env:GOOS = "windows"
           $env:GOARCH = "amd64"
-          go build -ldflags="-s -w" -o "$env:GITHUB_WORKSPACE\windows\runner\croc.exe" .
+          $env:CC = "gcc"
+          go build -buildmode=c-shared -ldflags="-s -w" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
           Pop-Location
 
-      - name: Verify croc.exe
+      - name: Verify .dll
         run: |
-          if (Test-Path windows\runner\croc.exe) {
-            Get-Item windows\runner\croc.exe | Select-Object Length, FullName
+          if (Test-Path windows\runner\libcroc_bridge.dll) {
+            Get-Item windows\runner\libcroc_bridge.dll | Select-Object Length, FullName
           } else {
-            Write-Error "croc.exe not found!"
+            Write-Error "libcroc_bridge.dll not found!"
           }
 
       - uses: subosito/flutter-action@v2
@@ -134,11 +136,11 @@ jobs:
       - name: Build Windows
         run: flutter build windows --release
 
-      - name: Bundle croc.exe into build output
+      - name: Bundle bridge .dll into build output
         run: |
           $outDir = "build\windows\x64\runner\Release"
-          Copy-Item "windows\runner\croc.exe" "$outDir\croc.exe" -Force
-          Write-Host "Bundled croc.exe into $outDir"
+          Copy-Item "windows\runner\libcroc_bridge.dll" "$outDir\libcroc_bridge.dll" -Force
+          Write-Host "Bundled bridge .dll into $outDir"
 
       - name: Package zip
         run: |
@@ -162,19 +164,19 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Build croc from source
+      - name: Build Go bridge (.so)
         run: |
-          cd lib/croc
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-            go build -ldflags="-s -w" -o /tmp/croc .
+          cd go_bridge
+          go mod tidy
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
+            go build -buildmode=c-shared -ldflags="-s -w" -o /tmp/libcroc_bridge.so .
           mkdir -p "$GITHUB_WORKSPACE/linux/flutter/ephemeral"
-          cp /tmp/croc "$GITHUB_WORKSPACE/linux/flutter/ephemeral/croc"
-          chmod +x "$GITHUB_WORKSPACE/linux/flutter/ephemeral/croc"
+          cp /tmp/libcroc_bridge.so "$GITHUB_WORKSPACE/linux/flutter/ephemeral/libcroc_bridge.so"
 
-      - name: Verify croc
+      - name: Verify .so
         run: |
-          ls -lh linux/flutter/ephemeral/croc
-          file linux/flutter/ephemeral/croc
+          ls -lh linux/flutter/ephemeral/libcroc_bridge.so
+          file linux/flutter/ephemeral/libcroc_bridge.so
 
       - name: Install Linux build deps
         run: |
@@ -193,10 +195,10 @@ jobs:
       - name: Build Linux
         run: flutter build linux --release
 
-      - name: Bundle croc into build output
+      - name: Bundle bridge .so into build output
         run: |
-          cp linux/flutter/ephemeral/croc build/linux/x64/release/bundle/croc
-          chmod +x build/linux/x64/release/bundle/croc
+          mkdir -p build/linux/x64/release/bundle/lib
+          cp linux/flutter/ephemeral/libcroc_bridge.so build/linux/x64/release/bundle/lib/libcroc_bridge.so
           echo "Bundled croc into bundle"
 
       - name: Create .deb package
@@ -211,7 +213,6 @@ jobs:
 
           cp -r build/linux/x64/release/bundle/* "${PKG_DIR}/opt/${APPNAME}/"
           chmod +x "${PKG_DIR}/opt/${APPNAME}/fl_croc"
-          chmod +x "${PKG_DIR}/opt/${APPNAME}/croc" 2>/dev/null || true
 
           cat > "${PKG_DIR}/DEBIAN/control" << EOF
           Package: flcroc
