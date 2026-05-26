@@ -30,6 +30,7 @@ final commonDuration = const Duration(milliseconds: 200);
 
 const availableCurves = ['p256', 'p521', 'siec', 'ed25519'];
 const availableHashAlgos = ['xxhash', 'imohash', 'md5'];
+const defaultHashAlgo = defaultHashAlgorithm;
 
 const defaultPrimaryColor = 0xFF6750A4;
 

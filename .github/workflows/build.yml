@@ -142,7 +142,9 @@ jobs:
 
       - name: Get version
         id: ver
-        run: echo "version=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)" >> $env:GITHUB_OUTPUT
+        run: |
+          $v = (Get-Content pubspec.yaml | Where-Object { $_ -match '^version:' } | Select-Object -First 1) -replace '^version:\s+(\S+).*', '$1'
+          echo "version=$v" >> $env:GITHUB_OUTPUT
 
       - name: Build Windows
         run: flutter build windows --release

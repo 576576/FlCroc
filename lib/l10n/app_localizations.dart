@@ -77,7 +77,6 @@ class AppLocalizations {
   String get autoGeneratePhrase => _('autoGeneratePhrase');
   String get phraseMode => _('phraseMode');
   String get phraseModeDefault => _('phraseModeDefault');
-  String get phraseModeCroc => _('phraseModeCroc');
   String get phraseModeOn => _('phraseModeOn');
   String get phraseModeNever => _('phraseModeNever');
   String get sending => _('sending');

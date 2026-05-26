@@ -14,7 +14,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-enum PhraseMode { defaultMode, crocDecide, on, never }
+enum PhraseMode { defaultMode, on, never }
 
 class SendView extends ConsumerStatefulWidget {
   const SendView({super.key});
@@ -100,7 +100,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   }
 
   String get _currentPhrase => _codeController.text.trim();
-  bool get _allowEmptyPhrase => _phraseMode == PhraseMode.defaultMode || _phraseMode == PhraseMode.crocDecide;
+  bool get _allowEmptyPhrase => _phraseMode == PhraseMode.defaultMode;
 
   // ── Send ──
 
@@ -343,7 +343,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
               child: Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
                 Text(l10n.phraseMode, style: context.textTheme.bodySmall),
                 _phraseChip(l10n.phraseModeDefault, PhraseMode.defaultMode),
-                _phraseChip(l10n.phraseModeCroc, PhraseMode.crocDecide),
+
                 _phraseChip(l10n.phraseModeOn, PhraseMode.on),
                 _phraseChip(l10n.phraseModeNever, PhraseMode.never),
               ]),
@@ -391,7 +391,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   // ── Helper methods ──
 
   String _phraseHint(AppLocalizations l10n) => switch (_phraseMode) {
-    PhraseMode.defaultMode || PhraseMode.crocDecide => l10n.phraseHintCroc,
+    PhraseMode.defaultMode => l10n.phraseHintCroc,
     PhraseMode.on => l10n.phraseHintRandom,
     PhraseMode.never => l10n.enterCodePhrase,
   };
@@ -406,13 +406,20 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       padding: const EdgeInsets.only(top: 8),
       child: Wrap(
         spacing: 8,
-        children: availableCurves.map((c) {
-          return ChoiceChip(
-            label: Text(c),
-            selected: _sendConfig.curve == c,
-            onSelected: (v) { if (v) setState(() => _sendConfig = _sendConfig.copyWith(curve: c)); },
-          );
-        }).toList(),
+        children: [
+          ChoiceChip(
+            label: Text(l10n.phraseModeDefault),
+            selected: _sendConfig.curve == defaultCurve,
+            onSelected: (v) { if (v) setState(() => _sendConfig = _sendConfig.copyWith(curve: defaultCurve)); },
+          ),
+          ...availableCurves.where((c) => c != defaultCurve).map((c) {
+            return ChoiceChip(
+              label: Text(c),
+              selected: _sendConfig.curve == c,
+              onSelected: (v) { if (v) setState(() => _sendConfig = _sendConfig.copyWith(curve: c)); },
+            );
+          }),
+        ],
       ),
     );
   }
@@ -422,13 +429,20 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       padding: const EdgeInsets.only(top: 8),
       child: Wrap(
         spacing: 8,
-        children: availableHashAlgos.map((h) {
-          return ChoiceChip(
-            label: Text(h),
-            selected: _sendConfig.hashAlgorithm == h,
-            onSelected: (v) { if (v) setState(() => _sendConfig = _sendConfig.copyWith(hashAlgorithm: h)); },
-          );
-        }).toList(),
+        children: [
+          ChoiceChip(
+            label: Text(l10n.phraseModeDefault),
+            selected: _sendConfig.hashAlgorithm == defaultHashAlgo,
+            onSelected: (v) { if (v) setState(() => _sendConfig = _sendConfig.copyWith(hashAlgorithm: defaultHashAlgo)); },
+          ),
+          ...availableHashAlgos.where((h) => h != defaultHashAlgo).map((h) {
+            return ChoiceChip(
+              label: Text(h),
+              selected: _sendConfig.hashAlgorithm == h,
+              onSelected: (v) { if (v) setState(() => _sendConfig = _sendConfig.copyWith(hashAlgorithm: h)); },
+            );
+          }),
+        ],
       ),
     );
   }
