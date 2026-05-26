@@ -183,6 +183,7 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 		SharedSecret:  code,
 		Debug:         false,
 		RelayAddress:  opts.RelayAddress,
+		RelayPorts:    defaultRelayPorts(),
 		RelayPassword: opts.RelayPassword,
 		NoPrompt:      true,
 		DisableLocal:  opts.DisableLocal,
@@ -249,6 +250,7 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		SharedSecret:  code,
 		Debug:         false,
 		RelayAddress:  opts.RelayAddress,
+		RelayPorts:    defaultRelayPorts(),
 		RelayPassword: opts.RelayPassword,
 		NoPrompt:      true,
 		OnlyLocal:     opts.OnlyLocal,
@@ -305,6 +307,17 @@ type receiveOptions struct {
 	OutputPath    string `json:"output_path"`
 	RelayAddress  string `json:"relay_address"`
 	RelayPassword string `json:"relay_password"`
+}
+
+// defaultRelayPorts returns the default relay port range matching croc CLI defaults.
+func defaultRelayPorts() []string {
+	const startPort = 9009
+	const numPorts = 5 // transfers (4) + 1
+	ports := make([]string, numPorts)
+	for i := 0; i < numPorts; i++ {
+		ports[i] = fmt.Sprintf("%d", startPort+i)
+	}
+	return ports
 }
 
 func main() {} // required for c-shared builds
