@@ -86,19 +86,8 @@ class CoreService extends CoreInterface {
       }
     }
 
-    // 4) System PATH
-    try {
-      final which = Platform.isWindows ? 'where' : 'which';
-      final result = await Process.run(which, [binaryName]);
-      if (result.exitCode == 0) {
-        final found = result.stdout.toString().trim().split('\n').first;
-        if (found.isNotEmpty) {
-          commonPrint('CoreService: found croc in PATH: $found');
-          return found;
-        }
-      }
-    } catch (_) {}
-
+    // No system PATH search — only use bundled croc
+    commonPrint('CoreService: croc binary not found in bundle (not searching PATH)');
     return null;
   }
 

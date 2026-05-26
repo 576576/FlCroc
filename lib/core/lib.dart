@@ -73,9 +73,10 @@ class CoreLib extends CoreInterface {
 
   @override
   Future<String> getVersion() async {
-    if (!_isAvailable || _lib == null) return 'unknown';
+    final lib = _lib;
+    if (!_isAvailable || lib == null) return 'unknown';
     try {
-      final func = _lib!.lookupFunction<
+      final func = lib.lookupFunction<
           Pointer<Utf8> Function(),
           Pointer<Utf8> Function()>('CrocGetVersion');
       final ptr = func();
@@ -100,7 +101,8 @@ class CoreLib extends CoreInterface {
 
   @override
   Stream<TransferProgress> sendFiles(SendOptions options) async* {
-    if (!_isAvailable || _lib == null) {
+    final lib = _lib;
+    if (!_isAvailable || lib == null) {
       yield const TransferProgress(
         transferId: '',
         status: TransferProgressStatus.failed,
@@ -122,7 +124,7 @@ class CoreLib extends CoreInterface {
       );
 
       // Call CrocSendFiles
-      final sendFunc = _lib!.lookupFunction<
+      final sendFunc = lib.lookupFunction<
           Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>),
           Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>)>('CrocSendFiles');
 
@@ -169,7 +171,7 @@ class CoreLib extends CoreInterface {
       );
 
       // Poll progress until complete
-      final pollFunc = _lib!.lookupFunction<
+      final pollFunc = lib.lookupFunction<
           Pointer<Utf8> Function(),
           Pointer<Utf8> Function()>('CrocPollProgress');
 
@@ -220,7 +222,8 @@ class CoreLib extends CoreInterface {
 
   @override
   Stream<TransferProgress> receiveFiles(ReceiveOptions options) async* {
-    if (!_isAvailable || _lib == null) {
+    final lib = _lib;
+    if (!_isAvailable || lib == null) {
       yield const TransferProgress(
         transferId: '',
         status: TransferProgressStatus.failed,
@@ -241,7 +244,7 @@ class CoreLib extends CoreInterface {
         status: TransferProgressStatus.connecting,
       );
 
-      final recvFunc = _lib!.lookupFunction<
+      final recvFunc = lib.lookupFunction<
           Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>),
           Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>)>('CrocReceiveFiles');
 
@@ -278,7 +281,7 @@ class CoreLib extends CoreInterface {
       );
 
       // Poll progress
-      final pollFunc = _lib!.lookupFunction<
+      final pollFunc = lib.lookupFunction<
           Pointer<Utf8> Function(),
           Pointer<Utf8> Function()>('CrocPollProgress');
 
@@ -326,9 +329,10 @@ class CoreLib extends CoreInterface {
 
   @override
   Future<bool> cancelTransfer(String transferId) async {
-    if (!_isAvailable || _lib == null) return false;
+    final lib = _lib;
+    if (!_isAvailable || lib == null) return false;
     try {
-      final func = _lib!.lookupFunction<
+      final func = lib.lookupFunction<
           Int32 Function(Pointer<Utf8>),
           int Function(Pointer<Utf8>)>('CrocCancelTransfer');
       final ptr = transferId.toNativeUtf8();
