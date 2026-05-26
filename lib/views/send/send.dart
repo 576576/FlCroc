@@ -56,8 +56,12 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   }
 
   void _shake(int target) {
-    _shakeTarget = target;
-    _shakeCtrl.forward(from: 0).then((_) => _shakeTarget = -1);
+    try {
+      _shakeTarget = target;
+      _shakeCtrl.forward(from: 0).then((_) => _shakeTarget = -1);
+    } catch (_) {
+      _shakeTarget = -1;
+    }
   }
 
   // ── File management ──
@@ -101,6 +105,18 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   // ── Send ──
 
   Future<void> _startSend() async {
+    try {
+      await _doSend();
+    } catch (e, s) {
+      debugPrint('_startSend crashed: $e\n$s');
+      if (mounted) {
+        setState(() => _phase = SendPhase.fail);
+        _showWarning('Send error: $e');
+      }
+    }
+  }
+
+  Future<void> _doSend() async {
     final l10n = context.appLocalizations;
 
     if (!coreController.isAvailable) {
