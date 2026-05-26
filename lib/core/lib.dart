@@ -175,38 +175,41 @@ class CoreLib extends CoreInterface {
 
       while (true) {
         await Future.delayed(const Duration(milliseconds: 200));
-        final pollPtr = pollFunc();
-        final pollJson = pollPtr.toDartString();
-        _freeGoString?.call(pollPtr);  // Go-allocated
+        try {
+          final pollPtr = pollFunc();
+          final pollJson = pollPtr.toDartString();
+          _freeGoString?.call(pollPtr);
 
-        if (pollJson == 'null' || pollJson == '{}') continue;
+          if (pollJson == 'null' || pollJson == '{}') continue;
+          if (pollJson.length < 5) continue; // too short to be valid JSON
 
-        final event = jsonDecode(pollJson) as Map<String, dynamic>;
-        final type = event['type'] as int? ?? 0;
+          final event = jsonDecode(pollJson) as Map<String, dynamic>;
+          final type = event['type'] as int? ?? 0;
 
-        if (type == 2) {
-          // complete
-          yield TransferProgress(
-            transferId: transferId,
-            status: TransferProgressStatus.completed,
-          );
-          return;
-        } else if (type == 3) {
-          // error
-          yield TransferProgress(
-            transferId: transferId,
-            status: TransferProgressStatus.failed,
-            error: event['error'] as String?,
-          );
-          return;
-        } else if (type == 1) {
-          // progress
-          yield TransferProgress(
-            transferId: transferId,
-            status: TransferProgressStatus.transferring,
-            totalFiles: (event['total_files'] as int?) ?? 0,
-            totalSize: (event['total_size'] as int?) ?? 0,
-          );
+          if (type == 2) {
+            yield TransferProgress(
+              transferId: transferId,
+              status: TransferProgressStatus.completed,
+            );
+            return;
+          } else if (type == 3) {
+            yield TransferProgress(
+              transferId: transferId,
+              status: TransferProgressStatus.failed,
+              error: event['error'] as String?,
+            );
+            return;
+          } else if (type == 1 || type == 4) {
+            yield TransferProgress(
+              transferId: transferId,
+              status: TransferProgressStatus.transferring,
+              totalFiles: (event['total_files'] as int?) ?? 0,
+              totalSize: (event['total_size'] as int?) ?? 0,
+              codePhrase: event['code_phrase'] as String?,
+            );
+          }
+        } catch (_) {
+          // Ignore malformed poll events; keep polling
         }
       }
     } catch (e) {
@@ -285,35 +288,40 @@ class CoreLib extends CoreInterface {
 
       while (true) {
         await Future.delayed(const Duration(milliseconds: 200));
-        final pollPtr = pollFunc();
-        final pollJson = pollPtr.toDartString();
-        _freeGoString?.call(pollPtr);  // Go-allocated
+        try {
+          final pollPtr = pollFunc();
+          final pollJson = pollPtr.toDartString();
+          _freeGoString?.call(pollPtr);
 
-        if (pollJson == 'null' || pollJson == '{}') continue;
+          if (pollJson == 'null' || pollJson == '{}') continue;
+          if (pollJson.length < 5) continue;
 
-        final event = jsonDecode(pollJson) as Map<String, dynamic>;
-        final type = event['type'] as int? ?? 0;
+          final event = jsonDecode(pollJson) as Map<String, dynamic>;
+          final type = event['type'] as int? ?? 0;
 
-        if (type == 2) {
-          yield TransferProgress(
-            transferId: transferId,
-            status: TransferProgressStatus.completed,
-          );
-          return;
-        } else if (type == 3) {
-          yield TransferProgress(
-            transferId: transferId,
-            status: TransferProgressStatus.failed,
-            error: event['error'] as String?,
-          );
-          return;
-        } else if (type == 1) {
-          yield TransferProgress(
-            transferId: transferId,
-            status: TransferProgressStatus.transferring,
-            totalFiles: (event['total_files'] as int?) ?? 0,
-            totalSize: (event['total_size'] as int?) ?? 0,
-          );
+          if (type == 2) {
+            yield TransferProgress(
+              transferId: transferId,
+              status: TransferProgressStatus.completed,
+            );
+            return;
+          } else if (type == 3) {
+            yield TransferProgress(
+              transferId: transferId,
+              status: TransferProgressStatus.failed,
+              error: event['error'] as String?,
+            );
+            return;
+          } else if (type == 1 || type == 4) {
+            yield TransferProgress(
+              transferId: transferId,
+              status: TransferProgressStatus.transferring,
+              totalFiles: (event['total_files'] as int?) ?? 0,
+              totalSize: (event['total_size'] as int?) ?? 0,
+            );
+          }
+        } catch (_) {
+          // Ignore malformed poll events
         }
       }
     } catch (e) {

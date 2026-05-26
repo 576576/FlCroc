@@ -122,3 +122,4 @@ app.*.symbols
 .github/workflows/build-linux.yml
 .github/workflows/build-windows.yml
 lib/croc/.github
+/.idea
