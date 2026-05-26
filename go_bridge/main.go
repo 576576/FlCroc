@@ -22,6 +22,7 @@ import (
 	"unsafe"
 
 	"github.com/schollz/croc/v10/src/croc"
+	"github.com/schollz/croc/v10/src/models"
 	"github.com/schollz/croc/v10/src/utils"
 )
 
@@ -178,11 +179,22 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: "no files to send"}
 		return
 	}
+
+	relayAddr := opts.RelayAddress
+	if relayAddr == "" {
+		relayAddr = models.DEFAULT_RELAY
+	}
+	relayAddr6 := opts.RelayAddress6
+	if relayAddr6 == "" {
+		relayAddr6 = models.DEFAULT_RELAY6
+	}
+
 	crocOpts := croc.Options{
 		IsSender:      true,
 		SharedSecret:  code,
 		Debug:         false,
-		RelayAddress:  opts.RelayAddress,
+		RelayAddress:  relayAddr,
+		RelayAddress6: relayAddr6,
 		RelayPorts:    defaultRelayPorts(),
 		RelayPassword: opts.RelayPassword,
 		NoPrompt:      true,
@@ -245,11 +257,17 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 }
 
 func doReceive(code string, opts receiveOptions, transferID string) {
+	relayAddr := opts.RelayAddress
+	if relayAddr == "" {
+		relayAddr = models.DEFAULT_RELAY
+	}
+
 	crocOpts := croc.Options{
 		IsSender:      false,
 		SharedSecret:  code,
 		Debug:         false,
-		RelayAddress:  opts.RelayAddress,
+		RelayAddress:  relayAddr,
+		RelayAddress6: models.DEFAULT_RELAY6,
 		RelayPorts:    defaultRelayPorts(),
 		RelayPassword: opts.RelayPassword,
 		NoPrompt:      true,
@@ -295,6 +313,7 @@ type sendOptions struct {
 	OnlyLocal     bool     `json:"only_local"`
 	DisableLocal  bool     `json:"disable_local"`
 	RelayAddress  string   `json:"relay_address"`
+	RelayAddress6 string   `json:"relay_address6"`
 	RelayPassword string   `json:"relay_password"`
 	Exclude       []string `json:"exclude"`
 	SendingText   bool     `json:"sending_text"`
