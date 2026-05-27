@@ -23,6 +23,7 @@ abstract class SendOptions with _$SendOptions {
     @Default('') String throttleUpload,
     @Default(<String>[]) List<String> exclude,
     String? relayAddress,
+    String? relayAddress6,
     String? relayPassword,
   }) = _SendOptions;
 

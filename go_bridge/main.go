@@ -192,6 +192,18 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 	if relayAddr6 == "" {
 		relayAddr6 = models.DEFAULT_RELAY6
 	}
+	relayPass := opts.RelayPassword
+	if relayPass == "" {
+		relayPass = models.DEFAULT_PASSPHRASE
+	}
+	curve := opts.Curve
+	if curve == "" {
+		curve = defaultCurve
+	}
+	hashAlgo := opts.HashAlgorithm
+	if hashAlgo == "" {
+		hashAlgo = defaultHashAlgo
+	}
 
 	crocOpts := croc.Options{
 		IsSender:      true,
@@ -200,12 +212,12 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 		RelayAddress:  relayAddr,
 		RelayAddress6: relayAddr6,
 		RelayPorts:    defaultRelayPorts(),
-		RelayPassword: opts.RelayPassword,
+		RelayPassword: relayPass,
 		NoPrompt:      true,
 		DisableLocal:  opts.DisableLocal,
 		OnlyLocal:     opts.OnlyLocal,
-		Curve:         opts.Curve,
-		HashAlgorithm: opts.HashAlgorithm,
+		Curve:         curve,
+		HashAlgorithm: hashAlgo,
 		NoCompress:    opts.NoCompress,
 		Overwrite:     opts.Overwrite,
 		ZipFolder:     opts.ZipFolder,
@@ -265,6 +277,10 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 	if relayAddr == "" {
 		relayAddr = models.DEFAULT_RELAY
 	}
+	relayPass := opts.RelayPassword
+	if relayPass == "" {
+		relayPass = models.DEFAULT_PASSPHRASE
+	}
 
 	curve := opts.Curve
 	if curve == "" {
@@ -278,7 +294,7 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		RelayAddress:  relayAddr,
 		RelayAddress6: models.DEFAULT_RELAY6,
 		RelayPorts:    defaultRelayPorts(),
-		RelayPassword: opts.RelayPassword,
+		RelayPassword: relayPass,
 		NoPrompt:      true,
 		OnlyLocal:     opts.OnlyLocal,
 		Curve:         curve,
@@ -352,5 +368,6 @@ func defaultRelayPorts() []string {
 }
 
 const defaultCurve = "p256"
+const defaultHashAlgo = "xxhash"
 
 func main() {} // required for c-shared builds

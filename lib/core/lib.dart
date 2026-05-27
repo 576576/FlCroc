@@ -127,22 +127,33 @@ class CoreLib extends CoreInterface {
           Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>)>('CrocSendFiles');
 
       final pathsJson = jsonEncode(options.filePaths);
-      final optsJson = jsonEncode({
-        'code_phrase': options.codePhrase ?? '',
-        'curve': options.curve,
-        'hash_algorithm': options.hashAlgorithm,
-        'no_compress': options.noCompress,
-        'overwrite': options.overwrite,
-        'zip_folder': options.zipFolder,
-        'git_ignore': options.gitIgnore,
-        'only_local': options.onlyLocal,
-        'disable_local': options.disableLocal,
-        'relay_address': options.relayAddress ?? '',
-        'relay_password': options.relayPassword ?? '',
-        'exclude': options.exclude,
-        'sending_text': options.sendingText,
-        'text_content': options.textContent,
-      });
+      final opts = <String, dynamic>{};
+      if (options.codePhrase != null && options.codePhrase!.isNotEmpty) {
+        opts['code_phrase'] = options.codePhrase;
+      }
+      if (options.sendingText) {
+        opts['sending_text'] = true;
+        opts['text_content'] = options.textContent;
+      }
+      if (options.curve != 'p256') opts['curve'] = options.curve;
+      if (options.hashAlgorithm != 'xxhash') opts['hash_algorithm'] = options.hashAlgorithm;
+      if (options.noCompress) opts['no_compress'] = true;
+      if (options.overwrite) opts['overwrite'] = true;
+      if (options.zipFolder) opts['zip_folder'] = true;
+      if (options.gitIgnore) opts['git_ignore'] = true;
+      if (options.onlyLocal) opts['only_local'] = true;
+      if (options.disableLocal) opts['disable_local'] = true;
+      if (options.relayAddress != null && options.relayAddress!.isNotEmpty) {
+        opts['relay_address'] = options.relayAddress;
+      }
+      if (options.relayAddress6 != null && options.relayAddress6!.isNotEmpty) {
+        opts['relay_address6'] = options.relayAddress6;
+      }
+      if (options.relayPassword != null && options.relayPassword!.isNotEmpty) {
+        opts['relay_password'] = options.relayPassword;
+      }
+      if (options.exclude.isNotEmpty) opts['exclude'] = options.exclude;
+      final optsJson = jsonEncode(opts);
 
       final pathsPtr = pathsJson.toNativeUtf8();
       final optsPtr = optsJson.toNativeUtf8();
@@ -251,15 +262,21 @@ class CoreLib extends CoreInterface {
           Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>),
           Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>)>('CrocReceiveFiles');
 
-      final optsJson = jsonEncode({
-        'curve': options.curve,
-        'overwrite': options.overwrite,
-        'only_local': options.onlyLocal,
-        'output_path': options.outputPath,
-        'relay_address': options.relayAddress ?? '',
-        'relay_address6': options.relayAddress6 ?? '',
-        'relay_password': options.relayPassword ?? '',
-      });
+      final opts = <String, dynamic>{};
+      if (options.curve != 'p256') opts['curve'] = options.curve;
+      if (options.overwrite) opts['overwrite'] = true;
+      if (options.onlyLocal) opts['only_local'] = true;
+      if (options.outputPath.isNotEmpty) opts['output_path'] = options.outputPath;
+      if (options.relayAddress != null && options.relayAddress!.isNotEmpty) {
+        opts['relay_address'] = options.relayAddress;
+      }
+      if (options.relayAddress6 != null && options.relayAddress6!.isNotEmpty) {
+        opts['relay_address6'] = options.relayAddress6;
+      }
+      if (options.relayPassword != null && options.relayPassword!.isNotEmpty) {
+        opts['relay_password'] = options.relayPassword;
+      }
+      final optsJson = jsonEncode(opts);
 
       final codePtr = options.codePhrase.toNativeUtf8();
       final optsPtr = optsJson.toNativeUtf8();

@@ -38,6 +38,7 @@ mixin _$SendOptions {
   String get throttleUpload => throw _privateConstructorUsedError;
   List<String> get exclude => throw _privateConstructorUsedError;
   String? get relayAddress => throw _privateConstructorUsedError;
+  String? get relayAddress6 => throw _privateConstructorUsedError;
   String? get relayPassword => throw _privateConstructorUsedError;
 
   /// Serializes this SendOptions to a JSON map.
@@ -75,6 +76,7 @@ abstract class $SendOptionsCopyWith<$Res> {
     String throttleUpload,
     List<String> exclude,
     String? relayAddress,
+    String? relayAddress6,
     String? relayPassword,
   });
 }
@@ -111,6 +113,7 @@ class _$SendOptionsCopyWithImpl<$Res, $Val extends SendOptions>
     Object? throttleUpload = null,
     Object? exclude = null,
     Object? relayAddress = freezed,
+    Object? relayAddress6 = freezed,
     Object? relayPassword = freezed,
   }) {
     return _then(
@@ -183,6 +186,10 @@ class _$SendOptionsCopyWithImpl<$Res, $Val extends SendOptions>
                 ? _value.relayAddress
                 : relayAddress // ignore: cast_nullable_to_non_nullable
                       as String?,
+            relayAddress6: freezed == relayAddress6
+                ? _value.relayAddress6
+                : relayAddress6 // ignore: cast_nullable_to_non_nullable
+                      as String?,
             relayPassword: freezed == relayPassword
                 ? _value.relayPassword
                 : relayPassword // ignore: cast_nullable_to_non_nullable
@@ -220,6 +227,7 @@ abstract class _$$SendOptionsImplCopyWith<$Res>
     String throttleUpload,
     List<String> exclude,
     String? relayAddress,
+    String? relayAddress6,
     String? relayPassword,
   });
 }
@@ -255,6 +263,7 @@ class __$$SendOptionsImplCopyWithImpl<$Res>
     Object? throttleUpload = null,
     Object? exclude = null,
     Object? relayAddress = freezed,
+    Object? relayAddress6 = freezed,
     Object? relayPassword = freezed,
   }) {
     return _then(
@@ -327,6 +336,10 @@ class __$$SendOptionsImplCopyWithImpl<$Res>
             ? _value.relayAddress
             : relayAddress // ignore: cast_nullable_to_non_nullable
                   as String?,
+        relayAddress6: freezed == relayAddress6
+            ? _value.relayAddress6
+            : relayAddress6 // ignore: cast_nullable_to_non_nullable
+                  as String?,
         relayPassword: freezed == relayPassword
             ? _value.relayPassword
             : relayPassword // ignore: cast_nullable_to_non_nullable
@@ -357,6 +370,7 @@ class _$SendOptionsImpl implements _SendOptions {
     this.throttleUpload = '',
     final List<String> exclude = const <String>[],
     this.relayAddress,
+    this.relayAddress6,
     this.relayPassword,
   }) : _filePaths = filePaths,
        _exclude = exclude;
@@ -425,11 +439,13 @@ class _$SendOptionsImpl implements _SendOptions {
   @override
   final String? relayAddress;
   @override
+  final String? relayAddress6;
+  @override
   final String? relayPassword;
 
   @override
   String toString() {
-    return 'SendOptions(filePaths: $filePaths, codePhrase: $codePhrase, curve: $curve, hashAlgorithm: $hashAlgorithm, noCompress: $noCompress, overwrite: $overwrite, zipFolder: $zipFolder, gitIgnore: $gitIgnore, onlyLocal: $onlyLocal, disableLocal: $disableLocal, sendingText: $sendingText, textContent: $textContent, socks5Proxy: $socks5Proxy, httpProxy: $httpProxy, throttleUpload: $throttleUpload, exclude: $exclude, relayAddress: $relayAddress, relayPassword: $relayPassword)';
+    return 'SendOptions(filePaths: $filePaths, codePhrase: $codePhrase, curve: $curve, hashAlgorithm: $hashAlgorithm, noCompress: $noCompress, overwrite: $overwrite, zipFolder: $zipFolder, gitIgnore: $gitIgnore, onlyLocal: $onlyLocal, disableLocal: $disableLocal, sendingText: $sendingText, textContent: $textContent, socks5Proxy: $socks5Proxy, httpProxy: $httpProxy, throttleUpload: $throttleUpload, exclude: $exclude, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword)';
   }
 
   @override
@@ -471,13 +487,15 @@ class _$SendOptionsImpl implements _SendOptions {
             const DeepCollectionEquality().equals(other._exclude, _exclude) &&
             (identical(other.relayAddress, relayAddress) ||
                 other.relayAddress == relayAddress) &&
+            (identical(other.relayAddress6, relayAddress6) ||
+                other.relayAddress6 == relayAddress6) &&
             (identical(other.relayPassword, relayPassword) ||
                 other.relayPassword == relayPassword));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     runtimeType,
     const DeepCollectionEquality().hash(_filePaths),
     codePhrase,
@@ -496,8 +514,9 @@ class _$SendOptionsImpl implements _SendOptions {
     throttleUpload,
     const DeepCollectionEquality().hash(_exclude),
     relayAddress,
+    relayAddress6,
     relayPassword,
-  );
+  ]);
 
   /// Create a copy of SendOptions
   /// with the given fields replaced by the non-null parameter values.
@@ -532,6 +551,7 @@ abstract class _SendOptions implements SendOptions {
     final String throttleUpload,
     final List<String> exclude,
     final String? relayAddress,
+    final String? relayAddress6,
     final String? relayPassword,
   }) = _$SendOptionsImpl;
 
@@ -572,6 +592,8 @@ abstract class _SendOptions implements SendOptions {
   List<String> get exclude;
   @override
   String? get relayAddress;
+  @override
+  String? get relayAddress6;
   @override
   String? get relayPassword;
 
