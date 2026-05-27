@@ -34,8 +34,10 @@ jobs:
 
       - name: Check for skip-build flag
         id: check_skip
+        env:
+          MSG: ${{ github.event.head_commit.message }}
         run: |
-          if echo "${{ github.event.head_commit.message }}" | grep -qi 'skip-build'; then
+          if echo "$MSG" | grep -qi 'skip-build'; then
             echo "skip_build=true" >> $GITHUB_OUTPUT
             echo "⚠️  skip-build detected — test & build will be skipped"
           else
@@ -86,7 +88,9 @@ jobs:
 
       - name: Update version.properties croc entry
         if: steps.croc_tag.outputs.skip != 'true'
-        run: sed -i "s/^croc=.*/croc=${{ steps.croc_tag.outputs.tag }}/" version.properties
+        run: |
+          TAG="${{ steps.croc_tag.outputs.tag }}"
+          sed -i "s/^croc=.*/croc=$TAG/" version.properties
 
       - name: Commit and push
         run: |

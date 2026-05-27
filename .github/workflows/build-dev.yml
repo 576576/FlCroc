@@ -28,8 +28,10 @@ jobs:
           fetch-depth: 0
       - name: Check for skip-build flag
         id: check_skip
+        env:
+          MSG: ${{ github.event.head_commit.message }}
         run: |
-          if echo "${{ github.event.head_commit.message }}" | grep -qi 'skip-build'; then
+          if echo "$MSG" | grep -qi 'skip-build'; then
             echo "skip_build=true" >> $GITHUB_OUTPUT
           else
             echo "skip_build=false" >> $GITHUB_OUTPUT
@@ -42,7 +44,9 @@ jobs:
           echo "flcroc=$FLCROC" >> $GITHUB_OUTPUT
           echo "croc=$CROC" >> $GITHUB_OUTPUT
       - name: Update pubspec.yaml version
-        run: sed -i "s/^version: .*/version: ${{ steps.props.outputs.flcroc }}/" pubspec.yaml
+        run: |
+          VER="${{ steps.props.outputs.flcroc }}"
+          sed -i "s/^version: .*/version: $VER/" pubspec.yaml
       - name: Determine croc tag
         id: croc_tag
         run: |
@@ -68,7 +72,9 @@ jobs:
           cd go_bridge && go mod tidy && cd ..
       - name: Update version.properties croc entry
         if: steps.croc_tag.outputs.skip != 'true'
-        run: sed -i "s/^croc=.*/croc=${{ steps.croc_tag.outputs.tag }}/" version.properties
+        run: |
+          TAG="${{ steps.croc_tag.outputs.tag }}"
+          sed -i "s/^croc=.*/croc=$TAG/" version.properties
       - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
