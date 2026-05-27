@@ -25,8 +25,8 @@ const Map<String, String> enMessages = {
   'startSend': 'Start Send',
   'codePhrase': 'Code Phrase',
   'enterCodePhrase': 'Enter Code Phrase',
-  'phraseHintCroc': 'croc',
-  'phraseHintRandom': 'abcd-abcd-1145',
+  'phraseHintCroc': 'Managed by Croc',
+  'phraseHintRandom': 'Managed by FlCroc',
   'textHint': 'The quick brown fox jumps over the lazy dog.',
   'customCodeHint': 'Custom code (optional)',
   'generate': 'Generate',
@@ -36,6 +36,7 @@ const Map<String, String> enMessages = {
   'clearFiles': 'Clear All',
   'clearText': 'Clear',
   'uploadTextFile': 'Select Text File',
+  'sentText': 'Sent Text',
   'autoGeneratePhrase': 'Auto-generate phrase on start',
   'phraseMode': 'Phrase Mode',
   'phraseModeDefault': 'Default',
@@ -75,6 +76,7 @@ const Map<String, String> enMessages = {
   'dark': 'Dark',
   'system': 'System',
   'language': 'Language',
+  'autoLanguage': 'Auto',
   'pureBlackMode': 'Pure Black Mode',
 
   // About / Settings sections

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/models/models.dart';
@@ -7,6 +8,7 @@ import 'package:fl_croc/providers/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -25,25 +27,51 @@ class GlobalState {
 
     final container = ProviderContainer();
 
-    final prefs = await SharedPreferences.getInstance();
-    final configJson = prefs.getString('app_settings');
-    AppSettingProps config;
+    // SharedPreferences may be corrupted from IDE crash — delete bad file & retry.
+    SharedPreferences? prefs;
     try {
-      if (configJson != null) {
-        config = AppSettingProps.fromJson(
-          Map<String, Object?>.from(
-            const JsonDecoder().convert(configJson) as Map,
-          ),
-        );
-      } else {
+      prefs = await SharedPreferences.getInstance();
+    } catch (_) {
+      try {
+        final supportDir = await getApplicationSupportDirectory();
+        final prefsFile = File('${supportDir.path}${Platform.pathSeparator}shared_preferences.json');
+        if (await prefsFile.exists()) {
+          await prefsFile.delete();
+        }
+        prefs = await SharedPreferences.getInstance();
+      } catch (_) {
+        prefs = null;
+      }
+    }
+
+    AppSettingProps config;
+    if (prefs != null) {
+      final configJson = prefs.getString('app_settings');
+      try {
+        if (configJson != null && configJson.isNotEmpty) {
+          config = AppSettingProps.fromJson(
+            Map<String, Object?>.from(
+              const JsonDecoder().convert(configJson) as Map,
+            ),
+          );
+        } else {
+          config = const AppSettingProps();
+        }
+      } catch (_) {
         config = const AppSettingProps();
       }
-    } catch (_) {
+    } else {
       config = const AppSettingProps();
     }
 
     container.read(appSettingProvider.notifier).update((_) => config);
-    container.read(themeSettingProvider.notifier).load();
+
+    try {
+      await container.read(themeSettingProvider.notifier).load();
+    } catch (_) {
+      // Theme settings corrupted — use defaults.
+    }
+
     container.read(appStateProvider.notifier).setInit(true);
 
     isInit = true;

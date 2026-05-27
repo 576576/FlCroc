@@ -1,3 +1,4 @@
+export 'color.dart';
 export 'constant.dart';
 export 'context.dart';
 export 'function.dart';

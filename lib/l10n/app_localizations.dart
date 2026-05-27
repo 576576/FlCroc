@@ -75,6 +75,7 @@ class AppLocalizations {
   String get clearFiles => _('clearFiles');
   String get clearText => _('clearText');
   String get uploadTextFile => _('uploadTextFile');
+  String get sentText => _('sentText');
   String get autoGeneratePhrase => _('autoGeneratePhrase');
   String get phraseMode => _('phraseMode');
   String get phraseModeDefault => _('phraseModeDefault');
@@ -111,6 +112,7 @@ class AppLocalizations {
   String get dark => _('dark');
   String get system => _('system');
   String get language => _('language');
+  String get autoLanguage => _('autoLanguage');
   String get pureBlackMode => _('pureBlackMode');
 
   String get about => _('about');

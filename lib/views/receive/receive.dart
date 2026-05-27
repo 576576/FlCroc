@@ -160,77 +160,63 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   Widget build(BuildContext context) {
     final l10n = context.appLocalizations;
     return CommonScaffold(
-      title: l10n.receiveFiles,
-      actions: [
-        if (_isReceiving) _buildStatusChip(l10n),
-        const SizedBox(width: 8),
-        FilledButtonWidget(
-          onPressed: _isReceiving ? null : _startReceive,
-          text: l10n.startReceive,
-          icon: Icons.download,
+      appBar: AppBar(
+        titleSpacing: 12,
+        title: SizedBox(
+          height: 36,
+          child: TextField(
+            controller: _codeController,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 14, letterSpacing: 1),
+            decoration: InputDecoration(
+              hintText: l10n.enterCodePhrase,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+              isDense: true,
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 28, height: 28,
+                    child: IconButton(
+                      icon: const Icon(Icons.qr_code_scanner, size: 16),
+                      onPressed: _openScanner,
+                      padding: EdgeInsets.zero,
+                    ),
+                  ),
+                  SizedBox(
+                    width: 28, height: 28,
+                    child: IconButton(
+                      icon: const Icon(Icons.paste, size: 16),
+                      onPressed: _pastePhrase,
+                      padding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-        const SizedBox(width: 8),
-      ],
+        actions: [
+          if (_isReceiving) _buildStatusChip(l10n),
+          const SizedBox(width: 8),
+          FilledButtonWidget(
+            onPressed: _isReceiving ? null : _startReceive,
+            text: l10n.receive,
+            icon: Icons.download,
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: ScrollConfiguration(
         behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
         child: ListView(
           controller: _scrollCtrl,
-        children: [
-          const SizedBox(height: 32),
+          children: [
+            const SizedBox(height: 24),
 
-          // Code Phrase Input
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.download,
-                      size: 48,
-                      color: context.colorScheme.primary,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      l10n.enterCodePhrase,
-                      style: context.textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _codeController,
-                      decoration: InputDecoration(
-                        hintText: l10n.enterCodePhrase,
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.vpn_key),
-                        suffixIcon: Row(mainAxisSize: MainAxisSize.min, children: [
-                          IconButton(
-                            icon: const Icon(Icons.qr_code_scanner),
-                            onPressed: _openScanner,
-                            tooltip: l10n.scanQRCode,
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.paste),
-                            onPressed: _pastePhrase,
-                            tooltip: l10n.paste,
-                          ),
-                        ]),
-                      ),
-                      textAlign: TextAlign.center,
-                      style: context.textTheme.headlineSmall?.copyWith(
-                        letterSpacing: 2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 32),
-
-          // Options
-          _buildSection(
+            // Options
+            _buildSection(
             l10n.options,
             Icons.tune,
             [

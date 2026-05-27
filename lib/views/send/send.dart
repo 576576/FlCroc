@@ -226,7 +226,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     setState(() => _phase = SendPhase.pending);
 
     final files = isText
-        ? [FileItem(name: 'text.txt', path: '', size: textContent.length)]
+        ? [FileItem(name: l10n.sentText, path: '', size: textContent.length)]
         : _selectedFiles.map((f) => FileItem(name: f.name, path: f.path ?? '', size: f.size)).toList();
     final totalSize = isText ? textContent.length : files.fold<int>(0, (a, f) => a + f.size);
 
@@ -330,23 +330,48 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     final l10n = context.appLocalizations;
 
     return CommonScaffold(
-      title: l10n.send,
-      actions: [
-        if (_phase != SendPhase.idle) _buildStatusChip(l10n),
-        const SizedBox(width: 8),
-        FilledButtonWidget(
-          onPressed: _phase == SendPhase.sending || _phase == SendPhase.pending
-              ? _cancelSend
-              : _startSend,
-          text: _phase == SendPhase.sending || _phase == SendPhase.pending
-              ? l10n.cancel
-              : l10n.startSend,
-          icon: _phase == SendPhase.sending || _phase == SendPhase.pending
-              ? Icons.close
-              : Icons.send,
+      appBar: AppBar(
+        titleSpacing: 12,
+        title: SizedBox(
+          height: 36,
+          child: TextField(
+            controller: _codeController,
+            readOnly: _phraseMode != PhraseMode.never,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 1),
+            decoration: InputDecoration(
+              hintText: _phraseHint(l10n),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+              isDense: true,
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.refresh, size: 16), onPressed: _generateCode, padding: EdgeInsets.zero)),
+                  SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.paste, size: 16), onPressed: _pastePhrase, padding: EdgeInsets.zero)),
+                  SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.copy, size: 16), onPressed: _copyPhrase, padding: EdgeInsets.zero)),
+                ],
+              ),
+            ),
+          ),
         ),
-        const SizedBox(width: 8),
-      ],
+        actions: [
+          if (_phase != SendPhase.idle) _buildStatusChip(l10n),
+          const SizedBox(width: 8),
+          FilledButtonWidget(
+            onPressed: _phase == SendPhase.sending || _phase == SendPhase.pending
+                ? _cancelSend
+                : _startSend,
+            text: _phase == SendPhase.sending || _phase == SendPhase.pending
+                ? l10n.cancel
+                : l10n.send,
+            icon: _phase == SendPhase.sending || _phase == SendPhase.pending
+                ? Icons.close
+                : Icons.send,
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: DropTarget(
         onDragDone: (details) async {
           if (!_isTextMode) {
@@ -437,30 +462,6 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
             ])),
           ],
 
-          const Divider(),
-
-          // Code phrase (input only; phrase-mode chips moved to Transfer Options)
-          _buildSection(l10n.codePhrase, Icons.vpn_key, [
-            _shakeWrap(2, Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: TextField(
-                controller: _codeController,
-                readOnly: _phraseMode != PhraseMode.never,
-                style: context.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, letterSpacing: 1),
-                decoration: InputDecoration(
-                  hintText: _phraseHint(l10n), border: const OutlineInputBorder(),
-                  suffixIcon: Row(mainAxisSize: MainAxisSize.min, children: [
-                    IconButton(icon: const Icon(Icons.refresh, size: 22), onPressed: _generateCode, tooltip: l10n.generate),
-                    IconButton(icon: const Icon(Icons.paste, size: 20), onPressed: _pastePhrase, tooltip: l10n.paste),
-                    IconButton(icon: const Icon(Icons.copy, size: 20), onPressed: _copyPhrase, tooltip: l10n.copyCode),
-                  ]),
-                ),
-              ),
-            )),
-          ]),
-
-          const Divider(),
-
           // Transfer options — collapsible (collapsed while sending)
           ExpansionTile(
             shape: const Border(),
@@ -534,7 +535,13 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
   Widget _phraseChip(String label, PhraseMode mode) => ChoiceChip(
     label: Text(label), selected: _phraseMode == mode,
-    onSelected: (v) { if (v) setState(() { _phraseMode = mode; _saveSendPrefs(); }); },
+    onSelected: (v) {
+      if (v) setState(() {
+        _phraseMode = mode;
+        if (mode != PhraseMode.defaultMode) _codeController.clear();
+        _saveSendPrefs();
+      });
+    },
   );
 
   Widget _buildCurveChips(AppLocalizations l10n) {

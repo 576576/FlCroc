@@ -2,6 +2,7 @@
 
 #include <dwmapi.h>
 #include <flutter_windows.h>
+#include <windowsx.h>
 
 #include "resource.h"
 
@@ -14,6 +15,14 @@ namespace {
 /// See: https://docs.microsoft.com/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
+
+#ifndef DWMWA_WINDOW_CORNER_PREFERENCE
+#define DWMWA_WINDOW_CORNER_PREFERENCE 33
+#endif
+
+#ifndef DWMWCP_ROUND
+#define DWMWCP_ROUND 2
 #endif
 
 constexpr const wchar_t kWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
@@ -216,6 +225,17 @@ Win32Window::MessageHandler(HWND hwnd,
     case WM_DWMCOLORIZATIONCOLORCHANGED:
       UpdateTheme(hwnd);
       return 0;
+
+    // Let window_manager handle title bar removal.
+    // We just ensure DWM renders the frame (shadows, rounded corners on Win11).
+    case WM_NCCALCSIZE: {
+      if (wparam == TRUE) {
+        // Let DefWindowProc handle the standard non-client area calculation.
+        // window_manager's TitleBarStyle.hidden will zero out the title bar portion.
+        return DefWindowProc(hwnd, message, wparam, lparam);
+      }
+      break;
+    }
   }
 
   return DefWindowProc(window_handle_, message, wparam, lparam);
@@ -285,4 +305,9 @@ void Win32Window::UpdateTheme(HWND const window) {
     DwmSetWindowAttribute(window, DWMWA_USE_IMMERSIVE_DARK_MODE,
                           &enable_dark_mode, sizeof(enable_dark_mode));
   }
+
+  // Windows 11 rounded corners
+  int corner_pref = DWMWCP_ROUND;
+  DwmSetWindowAttribute(window, DWMWA_WINDOW_CORNER_PREFERENCE,
+                        &corner_pref, sizeof(corner_pref));
 }

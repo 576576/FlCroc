@@ -7,6 +7,8 @@ import 'package:fl_croc/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'theme_page.dart';
+
 class SettingsView extends ConsumerStatefulWidget {
   const SettingsView({super.key});
 
@@ -104,6 +106,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 leading: const Icon(Icons.brightness_6),
                 title: Text(l10n.themeMode),
                 subtitle: _buildThemeModeChips(appSettings.themeMode, ref),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ThemePage())),
               ),
               const Divider(height: 0, indent: 56),
               ListItem.switchItem(
@@ -192,16 +195,17 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
   Widget _buildLanguageChips(
       BuildContext context, String? currentLocale, WidgetRef ref) {
-    // locale=null → default (zh), locale='en' → English, locale='zh' → 中文
-    final selectedKey = currentLocale ?? 'default';
+    final l10n = context.appLocalizations;
+    // locale=null → auto (system), locale='en' → English, locale='zh' → 中文
+    final selectedKey = currentLocale ?? 'auto';
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Wrap(
         spacing: 8,
         children: [
           ChoiceChip(
-            label: const Text('默认'),
-            selected: selectedKey == 'default',
+            label: Text(l10n.autoLanguage),
+            selected: selectedKey == 'auto',
             onSelected: (v) {
               if (v) {
                 ref.read(appSettingProvider.notifier).update(

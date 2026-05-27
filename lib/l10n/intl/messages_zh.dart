@@ -25,8 +25,8 @@ const Map<String, String> zhMessages = {
   'startSend': '开始发送',
   'codePhrase': '代码短语',
   'enterCodePhrase': '输入代码短语',
-  'phraseHintCroc': 'croc',
-  'phraseHintRandom': 'abcd-abcd-1145',
+  'phraseHintCroc': '由Croc管理',
+  'phraseHintRandom': '由FlCroc管理',
   'textHint': '我能吞下玻璃而不伤身体。',
   'customCodeHint': '自定义代码（可选）',
   'generate': '生成',
@@ -36,6 +36,7 @@ const Map<String, String> zhMessages = {
   'clearFiles': '清空',
   'clearText': '清空',
   'uploadTextFile': '选择文本文件',
+  'sentText': '已发送的文本',
   'autoGeneratePhrase': '启动时随机生成短语',
   'phraseMode': '短语模式',
   'phraseModeDefault': '默认',
@@ -75,6 +76,7 @@ const Map<String, String> zhMessages = {
   'dark': '深色',
   'system': '系统',
   'language': '语言',
+  'autoLanguage': '自动',
   'pureBlackMode': '纯黑模式',
 
   // About / Settings sections

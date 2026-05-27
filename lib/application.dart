@@ -51,7 +51,7 @@ class _ApplicationState extends ConsumerState<Application> {
             return ThemeManager(child: child!);
           },
           title: appName,
-          locale: locale != null ? Locale(locale) : const Locale('zh', 'CN'),
+          locale: locale != null ? Locale(locale) : _resolveSystemLocale(),
           supportedLocales: AppLocalizations.supportedLocales,
           themeMode: _getThemeMode(appSettings.themeMode),
           theme: _buildLightTheme(themeProps),
@@ -71,6 +71,27 @@ class _ApplicationState extends ConsumerState<Application> {
       case ThemeModeOption.system:
         return ThemeMode.system;
     }
+  }
+
+  /// Resolve the system locale against supported locales. Defaults to English.
+  Locale _resolveSystemLocale() {
+    final system = WidgetsBinding.instance.platformDispatcher.locale;
+    final supported = AppLocalizations.supportedLocales;
+
+    // Exact match (language + country)
+    for (final loc in supported) {
+      if (loc.languageCode == system.languageCode &&
+          (loc.countryCode == null || loc.countryCode == system.countryCode)) {
+        return loc;
+      }
+    }
+    // Language-only match
+    for (final loc in supported) {
+      if (loc.languageCode == system.languageCode && loc.countryCode == null) {
+        return loc;
+      }
+    }
+    return const Locale('en');
   }
 
   ThemeData _buildLightTheme(ThemeProps props) {
