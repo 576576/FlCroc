@@ -158,9 +158,11 @@ func marshalEvent(ev *progressEvent) *C.char {
 }
 
 func doSend(paths []string, code string, opts sendOptions, transferID string) {
-	// Handle text mode: write text content to a temp file
-	if opts.SendingText && opts.TextContent != "" {
-		tmpFile, err := os.CreateTemp("", "flcroc-text-*.txt")
+	// Handle text mode: write text content to a temp file.
+	// croc recognises the "croc-stdin-" prefix as stdin/text content.
+	sendingText := opts.SendingText && opts.TextContent != ""
+	if sendingText {
+		tmpFile, err := os.CreateTemp("", "croc-stdin-*.txt")
 		if err != nil {
 			progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: fmt.Sprintf("temp file: %s", err)}
 			return
@@ -222,6 +224,7 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 		Overwrite:     opts.Overwrite,
 		ZipFolder:     opts.ZipFolder,
 		GitIgnore:     opts.GitIgnore,
+		SendingText:   sendingText,
 		Quiet:         true,
 	}
 
