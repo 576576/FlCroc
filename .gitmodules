@@ -1,0 +1,3 @@
+[submodule "lib/croc"]
+	path = lib/croc
+	url = https://github.com/schollz/croc.git

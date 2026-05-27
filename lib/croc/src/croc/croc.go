@@ -627,7 +627,7 @@ func (c *Client) broadcastOnLocalNetwork(useipv6 bool) {
 }
 
 func (c *Client) transferOverLocalRelay(errchan chan<- error) {
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	log.Debug("establishing connection")
 	var banner string
 	conn, banner, ipaddr, err := tcp.ConnectToTCPServer("127.0.0.1:"+c.Options.RelayPorts[0], c.Options.RelayPassword, c.Options.RoomName)
@@ -749,9 +749,7 @@ On the other computer run:
 				log.Debugf("could not establish '%s'", address)
 			}
 			if conn == nil && err == nil {
-				// No relay address was reachable (or none configured).
-				// Return silently — the local-relay path will handle it.
-				return
+				err = fmt.Errorf("could not connect")
 			}
 			if err != nil {
 				err = fmt.Errorf("could not connect to %s: %w", c.Options.RelayAddress, err)

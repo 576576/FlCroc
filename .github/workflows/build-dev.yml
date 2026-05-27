@@ -24,6 +24,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          submodules: 'recursive'
+        with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
       - name: Check for skip-build flag
@@ -59,17 +61,14 @@ jobs:
             [ -z "$TAG" ] || [ "$TAG" = "null" ] && exit 1
           else TAG="$CROC"; fi
           echo "skip=false" >> $GITHUB_OUTPUT; echo "tag=$TAG" >> $GITHUB_OUTPUT
-      - name: Sync vendored croc source
+      - name: Update croc submodule
         if: steps.croc_tag.outputs.skip != 'true'
         run: |
-          TMPDIR=$(mktemp -d)
-          git clone --depth 1 --branch "${{ steps.croc_tag.outputs.tag }}" --filter=blob:none https://github.com/schollz/croc.git "$TMPDIR"
-          rm -rf "$TMPDIR/.github" lib/croc/*
-          cp -r "$TMPDIR"/* lib/croc/
-          cp "$TMPDIR"/.gitignore lib/croc/ 2>/dev/null || true
-          rm -rf "$TMPDIR"
+          cd lib/croc
+          git fetch --tags
+          git checkout "${{ steps.croc_tag.outputs.tag }}"
+          cd ../..
           find lib/croc -name '*_test.go' -delete
-          cd go_bridge && go mod tidy && cd ..
       - name: Update version.properties croc entry
         if: steps.croc_tag.outputs.skip != 'true'
         run: |
@@ -79,7 +78,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pubspec.yaml version.properties lib/croc/ go_bridge/go.mod go_bridge/go.sum
+          git add pubspec.yaml version.properties lib/croc
           git diff --cached --quiet && exit 0
           git commit -m "update-ver: FlCroc ${{ steps.props.outputs.flcroc }}, croc ${{ steps.croc_tag.outputs.tag }} [skip ci]"
           git push
@@ -92,6 +91,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -138,6 +139,8 @@ jobs:
         shell: pwsh
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
 
       - name: Get short SHA
         id: sha
@@ -207,6 +210,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
 
       - name: Get short SHA
         id: sha
@@ -267,6 +272,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
 
       - name: Get short SHA
         id: sha
@@ -322,6 +329,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
 
       - name: Get short SHA
         id: sha
