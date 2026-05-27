@@ -6,77 +6,57 @@
 
 <p align="center">
   <a href="../README.md">📖 English Docs</a> &nbsp;|&nbsp;
-  界面设计灵感来自 <a href="https://github.com/chen08209/FlClash">FlClash</a> 的 Material 3 设计。
+  UI 设计灵感来自 <a href="https://github.com/chen08209/FlClash">FlClash</a> 的 Material 3 设计。
 </p>
 
 ## 特性
 
-- **仪表盘** — 传输速度监控、总量统计、快捷操作
-- **发送文件** — 多文件选择、自动/自定义代码短语、二维码展示、文本发送
-- **接收文件** — 输入代码短语或扫描二维码接收
-- **历史记录** — 追踪所有发送和接收的传输记录
-- **设置** — 中继服务器配置、主题定制、语言切换
+- **仪表盘** — 传输速度监控、总量统计、拖拽排序组件网格
+- **发送** — 文件/文本发送，3 种短语模式（默认 / FlCroc 管理 / 自定义），二维码展示，拖拽添加文件，自动复制短语
+- **接收** — 代码短语输入（含粘贴 + 扫码按钮），一键接收
+- **历史记录** — 追踪所有传输记录，状态标签和统计
+- **设置** — 3 种中继类型（默认 / 自定义 / 不使用），自定义中继支持地址/端口/密码（密码可显隐），主题切换（浅色/深色/纯黑），语言切换
+- **安全** — 基于 croc PAKE 协议端到端加密（曲线: p256, 哈希: xxhash）
+- **持久化** — 所有设置通过 SharedPreferences 自动保存
 - **全平台** — Android、Windows、macOS、Linux
-- **端到端加密** — 基于 croc 的 PAKE 协议
 
 ## 架构
-
-FlCroc 沿用了 FlClash 成熟的架构模式：
 
 ```
 lib/
 ├── main.dart              # 入口 (Riverpod ProviderScope)
-├── application.dart       # MaterialApp + ThemeManager
+├── application.dart       # MaterialApp + ThemeManager + i18n
 ├── controller.dart        # AppController 单例
-├── state.dart             # GlobalState 单例
-├── common/                # 工具类、常量、扩展
-├── enum/                  # 枚举定义
+├── common/                # 工具类、常量、AppPrefs
+├── enum/                  # 枚举 (RelayType 等)
 ├── models/                # Freezed 数据模型
 ├── providers/             # Riverpod 状态管理
-├── core/                  # 后端 (FFI + 进程)
-├── manager/               # 状态管理器 (主题)
-├── l10n/                  # 多语言 (en, zh_CN)
+├── core/                  # 后端 (Go FFI 桥接)
+├── go_bridge/             # Go CGO 共享库
+├── lib/croc/              # Vendored croc 源码 (v10.4.4)
+├── l10n/                  # 多语言 (en, zh)
 ├── pages/                 # HomePage (响应式导航)
 ├── views/                 # 功能视图
-│   ├── dashboard/         # 仪表盘 (SuperGrid 组件)
-│   ├── send/              # 发送界面
-│   ├── receive/           # 接收界面
+│   ├── dashboard/         # 仪表盘
+│   ├── send/              # 发送页
+│   ├── receive/           # 接收页
 │   ├── history/           # 历史记录
-│   └── settings/          # 设置
-├── widgets/               # 可复用组件
-└── go_bridge/             # Go FFI 桥接
+│   └── settings/          # 设置页
+└── widgets/               # 可复用 Material 3 组件
 ```
 
 ## 快速开始
 
 ### 环境要求
-- Flutter SDK ^3.12.0
-- Go 1.25+（必需 — croc 从源码编译）
+- Flutter SDK ≥ 3.12
+- Go ≥ 1.23
 
-### 安装依赖
+### 安装
 ```bash
+git clone https://github.com/576576/FlCroc.git
+cd FlCroc
 flutter pub get
-dart run build_runner build
-```
-
-### 从源码构建 croc（全平台）
-```bash
-# 克隆 croc 仓库
-git clone --depth 1 --branch v10.4.4 https://github.com/schollz/croc.git /tmp/croc_src
-
-# 桌面端：构建独立二进制
-cd /tmp/croc_src
-CGO_ENABLED=0 go build -ldflags="-s -w" -o croc .
-cp croc linux/flutter/ephemeral/croc        # Linux
-cp croc.exe windows/runner/croc.exe         # Windows (交叉编译 GOOS=windows)
-
-# Android：构建 Go CGO 共享库（需要 Android NDK）
-cd go_bridge
-go mod edit -replace github.com/schollz/croc/v10=/tmp/croc_src
-go mod tidy
-CGO_ENABLED=1 GOOS=android GOARCH=arm64 \
-  CC=$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang \
-  go build -buildmode=c-shared -o ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so .
+dart run build_runner build --delete-conflicting-outputs
 ```
 
 ### 运行
@@ -85,17 +65,20 @@ flutter run
 ```
 
 ### 构建
+
+croc 源码已 vendored 在 `lib/croc/`（v10.4.4）。Go bridge 在 `go_bridge/` 编译为 CGO 共享库，通过 `dart:ffi` 加载。
+
 ```bash
+# Windows
+cd go_bridge
+$env:CGO_ENABLED="1"; $env:GOOS="windows"; go build -buildmode=c-shared -ldflags="-s -w" -o ../windows/runner/libcroc_bridge.dll .
+cd ..; flutter build windows
+
 # Android
 flutter build apk
 
-# Windows
-flutter build windows
-
-# Linux
+# Linux / macOS
 flutter build linux
-
-# macOS
 flutter build macos
 ```
 
@@ -103,52 +86,31 @@ flutter build macos
 
 | 组件 | 技术 |
 |------|------|
-| 框架 | Flutter (Dart) |
+| 框架 | Flutter 3.44 · Dart |
 | 状态管理 | Riverpod + Freezed |
 | UI | Material 3 |
-| 后端 | Go FFI (c-shared) + 进程通信 |
-| 存储 | SharedPreferences |
+| 后端 | Go CGO FFI（c-shared）— 以库形式调用 croc |
+| 存储 | SharedPreferences (AppPrefs) |
 | 扫码 | mobile_scanner |
 | 二维码 | qr_flutter |
+| 文件选择 | file_picker |
+| 拖拽 | desktop_drop |
+| CI/CD | GitHub Actions (build + nightly) |
 
-## CI/CD
+## 中继设置
 
-推送代码到 GitHub 后，Actions 自动构建全平台：
-
-- **Android ARM64** — Go 交叉编译 → APK
-- **Windows AMD64** — 内嵌 croc.exe → zip
-- **Linux AMD64** — 内嵌 croc → .deb
-
-详见 `.github/workflows/build.yml`。
-
-## 后端架构
-
-FlCroc 采用双轨后端架构，确保在所有平台上都能运行：
-
-```
-CoreController.init()
-  ├─ 优先: CoreLib (Go FFI 共享库)
-  │    └─ go_bridge/main.go → CGO → libcroc_bridge.so/.dll/.dylib
-  │    └─ 用于 Android（必须）+ 桌面（可选优化）
-  │
-  └─ 回退: CoreService (内嵌二进制)
-       └─ 自动搜索: app 目录 → lib/ → data/ → PATH
-       └─ 用于桌面开发 + 生产
-```
-
-- **Android**: croc 通过 Go CGO 交叉编译为 `libcroc_bridge.so`，放在 `jniLibs/arm64-v8a/`，运行时通过 `dart:ffi` 调用
-- **桌面端**: 通过 `setup_croc.ps1` / `setup_croc.sh` 下载官方 croc 二进制到 app 目录，CoreService 自动发现并调用
+| 类型 | 说明 |
+|------|------|
+| 默认中继 | 使用 croc 公共中继 `croc.schollz.com:9009` |
+| 自定义中继 | 自填地址、端口、密码 |
+| 不使用 | 仅本地网络（等同于 `croc --local`） |
 
 ## 多语言
 
-支持以下语言，欢迎贡献更多翻译：
-
 | 语言 | 文件 | 状态 |
 |------|------|------|
-| English | `lib/l10n/intl/messages_en.dart` | ✅ 完整 |
-| 简体中文 | `lib/l10n/intl/messages_zh.dart` | ✅ 完整 |
-
-添加新语言只需：复制 `messages_en.dart` → 翻译 → 在 `app_localizations.dart` 的 `_lookupMap` 中注册。
+| English | `lib/l10n/intl/messages_en.dart` | ✅ |
+| 简体中文 | `lib/l10n/intl/messages_zh.dart` | ✅ |
 
 ## 许可证
 
@@ -158,3 +120,4 @@ CoreController.init()
 
 - [FlClash](https://github.com/chen08209/FlClash) — UI 架构灵感来源
 - [croc](https://github.com/schollz/croc) — 核心文件传输引擎
+

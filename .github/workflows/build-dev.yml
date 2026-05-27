@@ -1,4 +1,4 @@
-name: Build Windows (dev)
+name: Build (dev)
 
 on:
   push:
@@ -26,8 +26,35 @@ jobs:
       - name: Run tests
         run: flutter test
 
+  # ── Determine which platforms to build from commit message ──
+  determine:
+    runs-on: ubuntu-latest
+    outputs:
+      windows: ${{ steps.check.outputs.windows }}
+      linux: ${{ steps.check.outputs.linux }}
+      android: ${{ steps.check.outputs.android }}
+    steps:
+      - name: Check commit message
+        id: check
+        env:
+          MSG: ${{ github.event.head_commit.message || '' }}
+        run: |
+          W='false'; L='false'; A='false'
+          case "$MSG" in
+            *linux*)  L='true' ;;
+            *mobile*) A='true' ;;
+            *all*)    W='true'; L='true'; A='true' ;;
+            *)        W='true' ;;  # default / manual dispatch → Windows only
+          esac
+          echo "windows=$W" >> $GITHUB_OUTPUT
+          echo "linux=$L" >> $GITHUB_OUTPUT
+          echo "android=$A" >> $GITHUB_OUTPUT
+          echo "Platforms → windows:$W linux:$L android:$A"
+
+  # ── Windows ──
   build-windows:
-    needs: test
+    needs: [test, determine]
+    if: needs.determine.outputs.windows == 'true'
     runs-on: windows-latest
     defaults:
       run:
@@ -96,8 +123,118 @@ jobs:
           name: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64
           path: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip
 
+  # ── Linux ──
+  build-linux:
+    needs: [test, determine]
+    if: needs.determine.outputs.linux == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get short SHA
+        id: sha
+        run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Get nightly version
+        id: ver
+        env:
+          SHA: ${{ steps.sha.outputs.sha }}
+        run: echo "version=nightly-$(date +%m%d)-$SHA" >> $GITHUB_OUTPUT
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Install Linux deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - name: Build Go bridge (.so)
+        run: |
+          cd go_bridge
+          go mod tidy
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
+            go build -buildmode=c-shared -ldflags="-s -w" -o ../linux/flutter/ephemeral/libcroc_bridge.so .
+          cd ..
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Linux
+        run: flutter build linux --release
+
+      - name: Bundle bridge .so into build output
+        run: |
+          mkdir -p build/linux/x64/release/bundle/lib
+          cp linux/flutter/ephemeral/libcroc_bridge.so build/linux/x64/release/bundle/lib/
+
+      - name: Package tar
+        run: tar -czf FlCroc-${{ steps.ver.outputs.version }}-linux-amd64.tar.gz -C build/linux/x64/release/bundle .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FlCroc-${{ steps.ver.outputs.version }}-linux-amd64
+          path: FlCroc-${{ steps.ver.outputs.version }}-linux-amd64.tar.gz
+
+  # ── Android ──
+  build-android:
+    needs: [test, determine]
+    if: needs.determine.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get short SHA
+        id: sha
+        run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Get nightly version
+        id: ver
+        env:
+          SHA: ${{ steps.sha.outputs.sha }}
+        run: echo "version=nightly-$(date +%m%d)-$SHA" >> $GITHUB_OUTPUT
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Android
+        run: flutter build apk --release --target-platform android-arm64
+
+      - name: Rename artifact
+        run: mv build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.version }}-android-arm64.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FlCroc-${{ steps.ver.outputs.version }}-android-arm64
+          path: FlCroc-${{ steps.ver.outputs.version }}-android-arm64.apk
+
+  # ── Nightly release ──
   nightly:
-    needs: build-windows
+    needs: [build-windows, build-linux, build-android]
+    if: always() && !failure() && !cancelled()
     runs-on: ubuntu-latest
     permissions:
       contents: write
