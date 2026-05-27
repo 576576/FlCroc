@@ -120,7 +120,7 @@ jobs:
           case "$MSG" in
             *linux*)  L='true' ;;
             *mobile*) A='true' ;;
-            *all*)    W='true'; L='true'; A='true' ;;
+            *build-all*)    W='true'; L='true'; A='true' ;;
             *)        W='true' ;;  # default / manual dispatch → Windows only
           esac
           echo "windows=$W" >> $GITHUB_OUTPUT
@@ -313,7 +313,10 @@ jobs:
     needs: [sync-ver, build-windows, build-linux, build-android]
     if: |
       always() && !failure() && !cancelled() &&
-      needs.sync-ver.outputs.skip_build != 'true'
+      needs.sync-ver.outputs.skip_build != 'true' &&
+      (needs.build-windows.result != 'skipped' ||
+       needs.build-linux.result != 'skipped' ||
+       needs.build-android.result != 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: write

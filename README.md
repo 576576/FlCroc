@@ -1,7 +1,7 @@
 # 🐊 FlCroc
 
 <p align="center">
-  <strong>A Flutter GUI for <a href="https://github.com/schollz/croc">croc</a></strong>
+  <strong>A modern Flutter GUI for <a href="https://github.com/schollz/croc">croc</a></strong>
   <br>
   <em>Easily and securely transfer files between any two computers</em>
 </p>
@@ -25,15 +25,12 @@
 
 ## ✨ Features
 
-- **📊 Dashboard** — Transfer speed monitoring, total statistics, drag-to-reorder widget grid
-- **📤 Send** — File & text sending, 3 phrase modes (Default / FlCroc / Custom), QR code, drag-and-drop, auto-copy
-- **📥 Receive** — Code phrase input with paste & QR scanner, one-tap receive
-- **📜 History** — Track all transfers with status chips and statistics
-- **⚙️ Settings** — 3 relay types (Default / Custom / None), custom relay address/port/password with visibility toggle, theme (Light / Dark / Pure Black), language
-- **🌍 i18n** — English & 中文
-- **🔒 Secure** — End-to-end encryption via croc's PAKE protocol (curve: p256, hash: xxhash)
-- **💾 Persistent** — All settings auto-saved via SharedPreferences
-- **🖥️ Cross-platform** — Android, Windows, Linux, macOS
+| | |
+|---|---|
+| 🐊 **Built-in croc** | All capabilities of [croc](https://github.com/schollz/croc) — encrypted transfer, PAKE, relay, text & file, code phrases. See [croc README](lib/croc/README.md). |
+| 🎨 **Modern UI** | Material 3 design with light/dark/pure-black themes, responsive layout, drag-and-drop, collapsible settings. |
+| 🖥️ **Cross-platform** | Android · Windows · Linux · macOS — single codebase, native performance. |
+| 🌍 **Multi-language** | Supports most alphabet & non-Alphabet languages, extensible via `lib/l10n/`. Contribute to your language support through pull-request! |
 
 ## 🚀 Getting Started
 
@@ -59,20 +56,14 @@ flutter run
 
 ## 🔨 Build
 
-croc source is vendored at `lib/croc/` (v10.4.4). The Go bridge in `go_bridge/` builds as a CGO shared library (`.so` / `.dll` / `.dylib`) loaded via `dart:ffi`.
-
-### Android
-```bash
-flutter build apk --release
-```
+croc source is linked AS-IS at `lib/croc/`. The Go bridge in `go_bridge/` builds as a CGO shared library (`.so` / `.dll` / `.dylib`) loaded via `dart:ffi`.
 
 ### Windows
 ```bash
 cd go_bridge
 $env:CGO_ENABLED="1"; $env:GOOS="windows"; $env:GOARCH="amd64"
 go build -buildmode=c-shared -ldflags="-s -w" -o ../windows/runner/libcroc_bridge.dll .
-cd ..
-flutter build windows --release
+cd .. && flutter build windows --release
 ```
 
 ### Linux
@@ -80,39 +71,33 @@ flutter build windows --release
 cd go_bridge
 CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
   go build -buildmode=c-shared -ldflags="-s -w" -o ../linux/flutter/ephemeral/libcroc_bridge.so .
-cd ..
-flutter build linux --release
+cd .. && flutter build linux --release
 ```
 
-### macOS
+### Android / macOS
 ```bash
+flutter build apk --release
 flutter build macos --release
 ```
 
-> ℹ️ **croc is fully vendored** at `lib/croc/`. The Go FFI bridge calls croc's internal packages directly — no CLI subprocess. The shared library is bundled into every release artifact.
+> ℹ️ **croc is fully vendored**. The Go FFI bridge calls croc's internal packages directly — no CLI subprocess. The shared library is bundled into every release artifact.
 
 ## 🏗️ Architecture
 
 ```
 lib/
-├── main.dart              # Entry point (Riverpod ProviderScope)
-├── application.dart       # MaterialApp with ThemeManager & i18n
-├── controller.dart        # AppController singleton
+├── main.dart              # Entry point (Riverpod)
+├── application.dart       # MaterialApp + Theme + i18n
 ├── common/                # Utilities, constants, AppPrefs
-├── enum/                  # Enums (RelayType, etc.)
+├── enum/                  # Enums
 ├── models/                # Freezed data models
 ├── providers/             # Riverpod state providers
-├── core/                  # Croc backend (FFI bridge)
-├── go_bridge/             # Go CGO bridge (shared library)
-├── lib/croc/              # Vendored croc source (v10.4.4)
+├── core/                  # Croc backend (Go FFI bridge)
+├── go_bridge/             # Go CGO shared library
+├── lib/croc/              # Vendored croc source
 ├── l10n/                  # Localization (en, zh)
-├── pages/                 # HomePage (responsive sidebar/navbar)
-├── views/                 # Feature views
-│   ├── dashboard/         # Dashboard + drag-reorder grid
-│   ├── send/              # Send files & text
-│   ├── receive/           # Receive with QR scanner & paste
-│   ├── history/           # Transfer history
-│   └── settings/          # App & relay config
+├── pages/                 # HomePage
+├── views/                 # Feature views (send, receive, history, settings)
 └── widgets/               # Reusable Material 3 widgets
 ```
 
@@ -120,17 +105,15 @@ lib/
 
 | Layer | Technology |
 |-------|-----------|
-| UI Framework | Flutter 3.44 · Material 3 |
+| UI | Flutter 3.44 · Material 3 |
 | State | Riverpod · Freezed |
-| Backend | Go CGO FFI — calls croc as a library |
-| Storage | SharedPreferences (AppPrefs) |
-| Scanner | mobile_scanner |
-| QR | qr_flutter |
-| CI/CD | GitHub Actions (build + nightly) |
+| Backend | Go CGO FFI (`c-shared`) |
+| Storage | SharedPreferences |
+| CI/CD | GitHub Actions |
 
 ## 🤝 Acknowledgments
 
-FlCroc's UI architecture is heavily inspired by **[FlClash](https://github.com/chen08209/FlClash)**. The core file transfer engine is powered by **[croc](https://github.com/schollz/croc)**.
+FlCroc's UI is inspired by **[FlClash](https://github.com/chen08209/FlClash)**. Powered by **[croc](https://github.com/schollz/croc)**.
 
 ## 📄 License
 
