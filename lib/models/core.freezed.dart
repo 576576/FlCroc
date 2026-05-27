@@ -593,6 +593,7 @@ mixin _$ReceiveOptions {
   bool get overwrite => throw _privateConstructorUsedError;
   bool get onlyLocal => throw _privateConstructorUsedError;
   String get outputPath => throw _privateConstructorUsedError;
+  String get curve => throw _privateConstructorUsedError;
   String? get relayAddress => throw _privateConstructorUsedError;
   String? get relayAddress6 => throw _privateConstructorUsedError;
   String? get relayPassword => throw _privateConstructorUsedError;
@@ -619,6 +620,7 @@ abstract class $ReceiveOptionsCopyWith<$Res> {
     bool overwrite,
     bool onlyLocal,
     String outputPath,
+    String curve,
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,
@@ -644,6 +646,7 @@ class _$ReceiveOptionsCopyWithImpl<$Res, $Val extends ReceiveOptions>
     Object? overwrite = null,
     Object? onlyLocal = null,
     Object? outputPath = null,
+    Object? curve = null,
     Object? relayAddress = freezed,
     Object? relayAddress6 = freezed,
     Object? relayPassword = freezed,
@@ -665,6 +668,10 @@ class _$ReceiveOptionsCopyWithImpl<$Res, $Val extends ReceiveOptions>
             outputPath: null == outputPath
                 ? _value.outputPath
                 : outputPath // ignore: cast_nullable_to_non_nullable
+                      as String,
+            curve: null == curve
+                ? _value.curve
+                : curve // ignore: cast_nullable_to_non_nullable
                       as String,
             relayAddress: freezed == relayAddress
                 ? _value.relayAddress
@@ -698,6 +705,7 @@ abstract class _$$ReceiveOptionsImplCopyWith<$Res>
     bool overwrite,
     bool onlyLocal,
     String outputPath,
+    String curve,
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,
@@ -722,6 +730,7 @@ class __$$ReceiveOptionsImplCopyWithImpl<$Res>
     Object? overwrite = null,
     Object? onlyLocal = null,
     Object? outputPath = null,
+    Object? curve = null,
     Object? relayAddress = freezed,
     Object? relayAddress6 = freezed,
     Object? relayPassword = freezed,
@@ -743,6 +752,10 @@ class __$$ReceiveOptionsImplCopyWithImpl<$Res>
         outputPath: null == outputPath
             ? _value.outputPath
             : outputPath // ignore: cast_nullable_to_non_nullable
+                  as String,
+        curve: null == curve
+            ? _value.curve
+            : curve // ignore: cast_nullable_to_non_nullable
                   as String,
         relayAddress: freezed == relayAddress
             ? _value.relayAddress
@@ -769,6 +782,7 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
     this.overwrite = false,
     this.onlyLocal = false,
     this.outputPath = '',
+    this.curve = 'p256',
     this.relayAddress,
     this.relayAddress6,
     this.relayPassword,
@@ -789,6 +803,9 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
   @JsonKey()
   final String outputPath;
   @override
+  @JsonKey()
+  final String curve;
+  @override
   final String? relayAddress;
   @override
   final String? relayAddress6;
@@ -797,7 +814,7 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
 
   @override
   String toString() {
-    return 'ReceiveOptions(codePhrase: $codePhrase, overwrite: $overwrite, onlyLocal: $onlyLocal, outputPath: $outputPath, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword)';
+    return 'ReceiveOptions(codePhrase: $codePhrase, overwrite: $overwrite, onlyLocal: $onlyLocal, outputPath: $outputPath, curve: $curve, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword)';
   }
 
   @override
@@ -813,6 +830,7 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
                 other.onlyLocal == onlyLocal) &&
             (identical(other.outputPath, outputPath) ||
                 other.outputPath == outputPath) &&
+            (identical(other.curve, curve) || other.curve == curve) &&
             (identical(other.relayAddress, relayAddress) ||
                 other.relayAddress == relayAddress) &&
             (identical(other.relayAddress6, relayAddress6) ||
@@ -829,6 +847,7 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
     overwrite,
     onlyLocal,
     outputPath,
+    curve,
     relayAddress,
     relayAddress6,
     relayPassword,
@@ -857,6 +876,7 @@ abstract class _ReceiveOptions implements ReceiveOptions {
     final bool overwrite,
     final bool onlyLocal,
     final String outputPath,
+    final String curve,
     final String? relayAddress,
     final String? relayAddress6,
     final String? relayPassword,
@@ -873,6 +893,8 @@ abstract class _ReceiveOptions implements ReceiveOptions {
   bool get onlyLocal;
   @override
   String get outputPath;
+  @override
+  String get curve;
   @override
   String? get relayAddress;
   @override

@@ -37,6 +37,7 @@ abstract class ReceiveOptions with _$ReceiveOptions {
     @Default(false) bool overwrite,
     @Default(false) bool onlyLocal,
     @Default('') String outputPath,
+    @Default('p256') String curve,
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,

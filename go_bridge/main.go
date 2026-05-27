@@ -266,6 +266,11 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		relayAddr = models.DEFAULT_RELAY
 	}
 
+	curve := opts.Curve
+	if curve == "" {
+		curve = defaultCurve
+	}
+
 	crocOpts := croc.Options{
 		IsSender:      false,
 		SharedSecret:  code,
@@ -276,6 +281,7 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		RelayPassword: opts.RelayPassword,
 		NoPrompt:      true,
 		OnlyLocal:     opts.OnlyLocal,
+		Curve:         curve,
 		Overwrite:     opts.Overwrite,
 		Quiet:         true,
 	}
@@ -325,6 +331,7 @@ type sendOptions struct {
 }
 
 type receiveOptions struct {
+	Curve         string `json:"curve"`
 	Overwrite     bool   `json:"overwrite"`
 	OnlyLocal     bool   `json:"only_local"`
 	OutputPath    string `json:"output_path"`
@@ -343,5 +350,7 @@ func defaultRelayPorts() []string {
 	}
 	return ports
 }
+
+const defaultCurve = "p256"
 
 func main() {} // required for c-shared builds

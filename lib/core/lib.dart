@@ -252,6 +252,7 @@ class CoreLib extends CoreInterface {
           Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>)>('CrocReceiveFiles');
 
       final optsJson = jsonEncode({
+        'curve': options.curve,
         'overwrite': options.overwrite,
         'only_local': options.onlyLocal,
         'output_path': options.outputPath,
