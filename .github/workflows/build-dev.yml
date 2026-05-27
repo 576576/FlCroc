@@ -323,6 +323,32 @@ jobs:
       - name: List artifacts
         run: find artifacts -type f -ls
 
+      - name: Build release body
+        id: body
+        run: |
+          BODY="## 🌙 Nightly Build
+
+          **Commit**: \`${{ steps.sha.outputs.sha }}\`
+          **Version**: \`${{ steps.ver.outputs.version }}\`
+
+          > ⚠️ This is an automated dev-branch build. May be unstable.
+
+          ### Downloads"
+          for f in artifacts/FlCroc-*; do
+            fname=$(basename "$f")
+            case "$fname" in
+              *windows*) icon="🪟 Windows" ;;
+              *linux*)   icon="🐧 Linux" ;;
+              *android*) icon="🤖 Android" ;;
+              *)         icon="📦" ;;
+            esac
+            BODY="$BODY"$'\n'"- $icon | \`$fname\`"
+          done
+          # Multi-line output
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Delete existing nightly release
         run: |
           if gh release view "nightly" &>/dev/null; then
@@ -338,20 +364,9 @@ jobs:
         with:
           tag_name: nightly
           name: "Nightly ${{ steps.ver.outputs.version }}"
-          body: |
-            ## 🌙 Nightly Build
-
-            **Commit**: `${{ steps.sha.outputs.sha }}`
-            **Version**: `${{ steps.ver.outputs.version }}`
-
-            > ⚠️ This is an automated dev-branch build. May be unstable.
-
-            ### Download
-            | Platform | File |
-            |----------|------|
-            | 🪟 Windows | `FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip` |
+          body: ${{ steps.body.outputs.body }}
           files: |
-            artifacts/FlCroc-*-windows-amd64.zip
+            artifacts/FlCroc-*
           draft: false
           prerelease: true
           make_latest: false
