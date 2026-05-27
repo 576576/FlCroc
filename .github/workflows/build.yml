@@ -156,6 +156,8 @@ jobs:
         run: |
           FILE=android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
           sed -i 's/catch (Exception e)/catch (Throwable e)/g' "$FILE"
+          # Remove old package path leftover from rename
+          rm -rf android/app/src/main/kotlin/com
 
       - name: Get version
         id: ver
