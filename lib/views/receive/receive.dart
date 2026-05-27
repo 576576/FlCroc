@@ -2,9 +2,12 @@ import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/core/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
+import 'package:fl_croc/l10n/l10n.dart';
 import 'package:fl_croc/models/models.dart';
+import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/widgets/widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
@@ -17,8 +20,30 @@ class ReceiveView extends ConsumerStatefulWidget {
 
 class _ReceiveViewState extends ConsumerState<ReceiveView> {
   final _codeController = TextEditingController();
+  final _scrollCtrl = ScrollController();
   bool _isReceiving = false;
   ReceiveConfig _receiveConfig = const ReceiveConfig();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReceivePrefs();
+  }
+
+  // ── Persistence ──
+
+  static const _prefReceiveConfig = 'receive_config';
+
+  void _loadReceivePrefs() {
+    final json = AppPrefs.getJson(_prefReceiveConfig);
+    if (json.isNotEmpty) {
+      _receiveConfig = ReceiveConfig.fromJson(json);
+    }
+  }
+
+  void _saveReceivePrefs() {
+    AppPrefs.setJson(_prefReceiveConfig, _receiveConfig.toJson());
+  }
 
   void _openScanner() async {
     final result = await Navigator.of(context).push<String>(
@@ -28,6 +53,13 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
     );
     if (result != null && mounted) {
       _codeController.text = result;
+    }
+  }
+
+  void _pastePhrase() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (data?.text != null && data!.text!.isNotEmpty) {
+      _codeController.text = data.text!;
     }
   }
   void _startReceive() {
@@ -48,11 +80,17 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
 
     appController.addTransferRecord(record);
 
+    final relayConfig = ref.read(appSettingProvider).relayConfig;
+    final useNoRelay = relayConfig.type == RelayType.noRelay;
+    final useCustom = relayConfig.type == RelayType.customRelay;
+
     final options = ReceiveOptions(
       codePhrase: code,
       overwrite: _receiveConfig.overwrite,
-      onlyLocal: _receiveConfig.onlyLocal,
+      onlyLocal: useNoRelay,
       outputPath: _receiveConfig.outputPath,
+      relayAddress: useCustom ? relayConfig.address : null,
+      relayPassword: useCustom ? relayConfig.password : null,
     );
 
     coreController.receiveFiles(options).listen(
@@ -112,7 +150,9 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
 
   @override
   void dispose() {
+    _saveReceivePrefs();
     _codeController.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
   }
 
@@ -121,7 +161,20 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
     final l10n = context.appLocalizations;
     return CommonScaffold(
       title: l10n.receiveFiles,
-      body: ListView(
+      actions: [
+        if (_isReceiving) _buildStatusChip(l10n),
+        const SizedBox(width: 8),
+        FilledButtonWidget(
+          onPressed: _isReceiving ? null : _startReceive,
+          text: l10n.startReceive,
+          icon: Icons.download,
+        ),
+        const SizedBox(width: 8),
+      ],
+      body: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        child: ListView(
+          controller: _scrollCtrl,
         children: [
           const SizedBox(height: 32),
 
@@ -146,23 +199,26 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                     const SizedBox(height: 16),
                     TextField(
                       controller: _codeController,
-                      decoration: const InputDecoration(
-                        hintText: 'e.g., happy-tiger-run',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.vpn_key),
+                      decoration: InputDecoration(
+                        hintText: l10n.enterCodePhrase,
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.vpn_key),
+                        suffixIcon: Row(mainAxisSize: MainAxisSize.min, children: [
+                          IconButton(
+                            icon: const Icon(Icons.qr_code_scanner),
+                            onPressed: _openScanner,
+                            tooltip: l10n.scanQRCode,
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.paste),
+                            onPressed: _pastePhrase,
+                            tooltip: l10n.paste,
+                          ),
+                        ]),
                       ),
                       textAlign: TextAlign.center,
                       style: context.textTheme.headlineSmall?.copyWith(
                         letterSpacing: 2,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _isReceiving ? null : _startReceive,
-                        icon: const Icon(Icons.download),
-                        label: Text(l10n.startReceive),
                       ),
                     ),
                   ],
@@ -186,19 +242,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                   onChanged: (v) {
                     setState(() {
                       _receiveConfig = _receiveConfig.copyWith(overwrite: v);
-                    });
-                  },
-                ),
-              ),
-              const Divider(height: 0, indent: 56),
-              ListItem.switchItem(
-                leading: const Icon(Icons.wifi_off),
-                title: Text(l10n.localOnly),
-                delegate: SwitchDelegate(
-                  value: _receiveConfig.onlyLocal,
-                  onChanged: (v) {
-                    setState(() {
-                      _receiveConfig = _receiveConfig.copyWith(onlyLocal: v);
+                      _saveReceivePrefs();
                     });
                   },
                 ),
@@ -206,21 +250,21 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
             ],
           ),
 
-          const SizedBox(height: 16),
-
-          // Scan QR Code
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: OutlinedButton.icon(
-              onPressed: () {
-                _openScanner();
-              },
-              icon: const Icon(Icons.qr_code_scanner),
-              label: Text(l10n.scanQRCode),
-            ),
-          ),
+          const SizedBox(height: 32),
         ],
       ),
+      ),  // ScrollConfiguration
+    );    // CommonScaffold
+  }
+
+  Widget _buildStatusChip(AppLocalizations l10n) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: context.colorScheme.primary.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(l10n.receiveFiles, style: TextStyle(fontSize: 12, color: context.colorScheme.primary, fontWeight: FontWeight.w600)),
     );
   }
 

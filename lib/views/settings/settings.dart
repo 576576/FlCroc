@@ -36,26 +36,59 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ),
               if (appSettings.relayConfig.type == RelayType.customRelay) ...[
                 const Divider(height: 0, indent: 56),
-                ListItem(
-                  leading: const Icon(Icons.link),
-                  title: TextField(
-                    decoration: InputDecoration(
-                      hintText: l10n.relayAddress,
-                      border: InputBorder.none,
-                      isDense: true,
-                    ),
-                    style: context.textTheme.bodyLarge,
-                    controller: TextEditingController(
-                      text: appSettings.relayConfig.address,
-                    ),
-                    onChanged: (v) {
+                _buildRelayField(
+                  icon: Icons.link,
+                  hint: l10n.relayAddress,
+                  value: appSettings.relayConfig.address,
+                  suffix: IconButton(
+                    icon: const Icon(Icons.restart_alt, size: 20),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    tooltip: l10n.resetRelay,
+                    onPressed: () {
                       ref.read(appSettingProvider.notifier).update(
                             (s) => s.copyWith(
-                              relayConfig: s.relayConfig.copyWith(address: v),
+                              relayConfig: s.relayConfig.copyWith(
+                                address: defaultRelay,
+                                port: defaultPort,
+                                password: defaultPassphrase,
+                              ),
                             ),
                           );
                     },
                   ),
+                  onChanged: (v) {
+                    ref.read(appSettingProvider.notifier).update(
+                          (s) => s.copyWith(
+                            relayConfig: s.relayConfig.copyWith(address: v),
+                          ),
+                        );
+                  },
+                ),
+                const Divider(height: 0, indent: 56),
+                _buildRelayField(
+                  icon: Icons.numbers,
+                  hint: l10n.port,
+                  value: appSettings.relayConfig.port,
+                  onChanged: (v) {
+                    ref.read(appSettingProvider.notifier).update(
+                          (s) => s.copyWith(
+                            relayConfig: s.relayConfig.copyWith(port: v),
+                          ),
+                        );
+                  },
+                ),
+                const Divider(height: 0, indent: 56),
+                _buildPasswordField(
+                  hint: l10n.relayPassword,
+                  value: appSettings.relayConfig.password,
+                  onChanged: (v) {
+                    ref.read(appSettingProvider.notifier).update(
+                          (s) => s.copyWith(
+                            relayConfig: s.relayConfig.copyWith(password: v),
+                          ),
+                        );
+                  },
                 ),
               ],
             ],
@@ -212,10 +245,13 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         spacing: 8,
         children: RelayType.values.map((type) {
           final selected = type == current;
+          final label = switch (type) {
+            RelayType.defaultRelay => l10n.defaultRelay,
+            RelayType.customRelay => l10n.customRelay,
+            RelayType.noRelay => l10n.noRelay,
+          };
           return ChoiceChip(
-            label: Text(
-              type == RelayType.defaultRelay ? l10n.defaultRelay : l10n.customRelay,
-            ),
+            label: Text(label),
             selected: selected,
             onSelected: (v) {
               if (v) {
@@ -229,6 +265,55 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           );
         }).toList(),
       ),
+    );
+  }
+
+  Widget _buildRelayField({required IconData icon, required String hint, required String value, Widget? suffix, required ValueChanged<String> onChanged}) {
+    return ListItem(
+      minVerticalPadding: 4,
+      leading: Icon(icon),
+      title: TextField(
+        decoration: InputDecoration(
+          hintText: hint,
+          border: InputBorder.none,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+          suffixIcon: suffix ?? const SizedBox(width: 0, height: 0),
+        ),
+        style: context.textTheme.bodyLarge,
+        controller: TextEditingController(text: value),
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget _buildPasswordField({required String hint, required String value, required ValueChanged<String> onChanged}) {
+    var obscured = true;
+    return StatefulBuilder(
+      builder: (_, setLocal) {
+        return ListItem(
+          minVerticalPadding: 4,
+          leading: const Icon(Icons.lock),
+          title: TextField(
+            obscureText: obscured,
+            decoration: InputDecoration(
+              hintText: hint,
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              suffixIcon: IconButton(
+                icon: Icon(obscured ? Icons.visibility : Icons.visibility_off, size: 20),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                onPressed: () => setLocal(() => obscured = !obscured),
+              ),
+            ),
+            style: context.textTheme.bodyLarge,
+            controller: TextEditingController(text: value),
+            onChanged: onChanged,
+          ),
+        );
+      },
     );
   }
 

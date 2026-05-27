@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +9,7 @@ import 'application.dart';
 Future<void> main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
+    await AppPrefs.init();
     final version = 1;
     final container = await globalState.init(version);
     runApp(

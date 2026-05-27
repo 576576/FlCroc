@@ -79,10 +79,16 @@ class AppLocalizations {
   String get phraseModeDefault => _('phraseModeDefault');
   String get phraseModeOn => _('phraseModeOn');
   String get phraseModeNever => _('phraseModeNever');
+  String get phraseSettings => _('phraseSettings');
+  String get autoCopyPhrase => _('autoCopyPhrase');
+  String get rememberConfig => _('rememberConfig');
+  String get paste => _('paste');
   String get sending => _('sending');
   String get pending => _('pending');
   String get enterPhraseWarning => _('enterPhraseWarning');
   String get noCrocBackend => _('noCrocBackend');
+  String get enterTextWarning => _('enterTextWarning');
+  String get resetRelay => _('resetRelay');
 
   String get receiveFiles => _('receiveFiles');
   String get startReceive => _('startReceive');
@@ -95,6 +101,8 @@ class AppLocalizations {
   String get relayPassword => _('relayPassword');
   String get defaultRelay => _('defaultRelay');
   String get customRelay => _('customRelay');
+  String get noRelay => _('noRelay');
+  String get port => _('port');
 
   String get theme => _('theme');
   String get themeMode => _('themeMode');

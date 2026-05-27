@@ -40,4 +40,4 @@ enum DashboardWidget {
   recentTransfers,
 }
 
-enum RelayType { defaultRelay, customRelay }
+enum RelayType { defaultRelay, customRelay, noRelay }

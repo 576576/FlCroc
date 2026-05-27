@@ -40,10 +40,16 @@ const Map<String, String> enMessages = {
   'phraseModeDefault': 'Default',
   'phraseModeOn': 'By FlCroc',
   'phraseModeNever': 'Custom',
+  'phraseSettings': 'Phrase Settings',
+  'autoCopyPhrase': 'Auto-copy phrase',
+  'rememberConfig': 'Remember settings',
+  'paste': 'Paste',
   'sending': 'Sending...',
   'pending': 'Pending',
   'enterPhraseWarning': 'Please enter a code phrase or select "Let croc decide"',
   'noCrocBackend': 'No croc backend available',
+  'enterTextWarning': 'Please enter text to send.',
+  'resetRelay': 'Reset relay',
 
   // Receive
   'receiveFiles': 'Receive Files',
@@ -58,6 +64,8 @@ const Map<String, String> enMessages = {
   'relayPassword': 'Relay Password',
   'defaultRelay': 'Default Relay',
   'customRelay': 'Custom Relay',
+  'noRelay': 'None (Local)',
+  'port': 'Port',
 
   // Theme
   'theme': 'Theme',

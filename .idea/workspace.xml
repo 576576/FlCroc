@@ -5,14 +5,17 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="87ef0a2c-22ed-453e-b80b-d6a7dfee16ed" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.github/workflows/build-dev.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/build-dev.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.github/workflows/build.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/build.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/common/constant.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/common/constant.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/common/common.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/common/common.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/enum/enum.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/enum/enum.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/l10n/app_localizations.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/l10n/app_localizations.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/l10n/intl/messages_en.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/l10n/intl/messages_en.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/l10n/intl/messages_zh.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/l10n/intl/messages_zh.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/main.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/main.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/models/common.g.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/models/common.g.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/views/receive/receive.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/receive/receive.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/views/send/send.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/send/send.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/views/settings/settings.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/settings/settings.dart" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -55,30 +58,30 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Flutter.main.dart.executor": "Run",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.cidr.known.project.marker": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.readMode.enableVisualFormatting": "true",
-    "cf.first.check.clang-format": "false",
-    "cidr.known.project.marker": "true",
-    "dart.analysis.tool.window.visible": "false",
-    "git-widget-placeholder": "dev",
-    "io.flutter.project.isFirstOpen": "true",
-    "io.flutter.reload.alreadyRun": "true",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/Users/16695/Documents/Github/FlCroc/fl_croc",
-    "project.structure.last.edited": "SDKs",
-    "project.structure.proportion": "0.0",
-    "project.structure.side.proportion": "0.0",
-    "settings.editor.selected.configurable": "settings.sync",
-    "show.migrate.to.gradle.popup": "false"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Flutter.main.dart.executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;dev&quot;,
+    &quot;io.flutter.project.isFirstOpen&quot;: &quot;true&quot;,
+    &quot;io.flutter.reload.alreadyRun&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/16695/Documents/Github/FlCroc/fl_croc&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;SDKs&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.0&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.0&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;settings.sync&quot;,
+    &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;
   }
-}]]></component>
+}</component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
       <changelist id="87ef0a2c-22ed-453e-b80b-d6a7dfee16ed" name="Changes" comment="" />

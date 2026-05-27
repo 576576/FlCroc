@@ -6,6 +6,7 @@ export 'iterable.dart';
 export 'navigation.dart';
 export 'navigator.dart';
 export 'num.dart';
+export 'prefs.dart';
 export 'print.dart';
 export 'string.dart';
 export 'system.dart';

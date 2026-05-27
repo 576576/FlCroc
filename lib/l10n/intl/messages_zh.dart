@@ -40,10 +40,16 @@ const Map<String, String> zhMessages = {
   'phraseModeDefault': '默认',
   'phraseModeOn': '由 FlCroc 管理',
   'phraseModeNever': '自定义',
+  'phraseSettings': '短语设置',
+  'autoCopyPhrase': '自动复制短语',
+  'rememberConfig': '记住设置',
+  'paste': '粘贴',
   'sending': '发送中...',
   'pending': '等待中',
   'enterPhraseWarning': '请输入代码短语或选择"由 croc 决定"',
   'noCrocBackend': '无可用 croc 后端',
+  'enterTextWarning': '请输入文本。',
+  'resetRelay': '重置中继',
 
   // Receive
   'receiveFiles': '接收文件',
@@ -58,6 +64,8 @@ const Map<String, String> zhMessages = {
   'relayPassword': '中继密码',
   'defaultRelay': '默认中继',
   'customRelay': '自定义中继',
+  'noRelay': '不使用',
+  'port': '端口',
 
   // Theme
   'theme': '主题',

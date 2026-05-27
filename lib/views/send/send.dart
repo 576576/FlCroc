@@ -8,6 +8,7 @@ import 'package:fl_croc/core/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/l10n/l10n.dart';
 import 'package:fl_croc/models/models.dart';
+import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/widgets/widgets.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -33,6 +34,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   final _textController = TextEditingController();
   final _codeController = TextEditingController();
   SendConfig _sendConfig = const SendConfig();
+  bool _autoCopyPhrase = false;
 
   // Send lifecycle
   StreamSubscription<TransferProgress>? _sendSubscription;
@@ -50,10 +52,12 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     _shakeAnim = Tween<double>(begin: 0, end: 2 * pi * 3).animate(
       CurvedAnimation(parent: _shakeCtrl, curve: Curves.elasticIn),
     );
+    _loadSendPrefs();
   }
 
   @override
   void dispose() {
+    _saveSendPrefs();
     _sendSubscription?.cancel();
     _textController.dispose();
     _codeController.dispose();
@@ -96,6 +100,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     final max = pow(10, dc).toInt() - 1;
     final d = min + rng.nextInt(max - min + 1);
     _codeController.text = '$a-$n-$d';
+    if (_autoCopyPhrase) _copyPhrase();
   }
 
   void _copyPhrase() {
@@ -105,8 +110,42 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     if (mounted) context.showSnackBar(context.appLocalizations.codeCopied);
   }
 
+  void _pastePhrase() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (data?.text != null && data!.text!.isNotEmpty) {
+      _codeController.text = data.text!;
+    }
+  }
+
   String get _currentPhrase => _codeController.text.trim();
   bool get _allowEmptyPhrase => _phraseMode == PhraseMode.defaultMode;
+
+  // ── Persistence ──
+
+  static const _prefSendConfig = 'send_config';
+  static const _prefAutoCopy = 'send_autoCopy';
+  static const _prefPhraseMode = 'send_phraseMode';
+  static const _prefIsTextMode = 'send_isTextMode';
+
+  void _loadSendPrefs() {
+    final json = AppPrefs.getJson(_prefSendConfig);
+    if (json.isNotEmpty) {
+      _sendConfig = SendConfig.fromJson(json);
+    }
+    _autoCopyPhrase = AppPrefs.getBool(_prefAutoCopy);
+    final pmIdx = AppPrefs.getString(_prefPhraseMode);
+    if (pmIdx.isNotEmpty) {
+      _phraseMode = PhraseMode.values[int.tryParse(pmIdx) ?? 0];
+    }
+    _isTextMode = AppPrefs.getBool(_prefIsTextMode);
+  }
+
+  void _saveSendPrefs() {
+    AppPrefs.setJson(_prefSendConfig, _sendConfig.toJson());
+    AppPrefs.setBool(_prefAutoCopy, _autoCopyPhrase);
+    AppPrefs.setString(_prefPhraseMode, _phraseMode.index.toString());
+    AppPrefs.setBool(_prefIsTextMode, _isTextMode);
+  }
 
   // ── Send ──
 
@@ -141,7 +180,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       return;
     }
     if (isText && textContent.isEmpty) {
-      _showWarning(l10n.textHint);
+      _showWarning(l10n.enterTextWarning);
       _shake(1); // shake text area
       return;
     }
@@ -179,12 +218,19 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     );
     appController.addTransferRecord(record);
 
+    final relayConfig = ref.read(appSettingProvider).relayConfig;
+    final useNoRelay = relayConfig.type == RelayType.noRelay;
+    final useCustom = relayConfig.type == RelayType.customRelay;
+
     final options = SendOptions(
       filePaths: isText ? [] : _selectedFiles.map((f) => f.path ?? '').where((p) => p.isNotEmpty).toList(),
       codePhrase: code.isEmpty ? null : code, sendingText: isText, textContent: isText ? textContent : '',
       curve: _sendConfig.curve, hashAlgorithm: _sendConfig.hashAlgorithm,
       noCompress: _sendConfig.noCompress, overwrite: _sendConfig.overwrite,
-      zipFolder: _sendConfig.zipFolder, onlyLocal: _sendConfig.onlyLocal, disableLocal: _sendConfig.disableLocal,
+      zipFolder: _sendConfig.zipFolder,
+      onlyLocal: useNoRelay,
+      relayAddress: useCustom ? relayConfig.address : null,
+      relayPassword: useCustom ? relayConfig.password : null,
     );
 
     setState(() => _phase = SendPhase.sending);
@@ -197,6 +243,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
         if (progress.codePhrase != null && progress.codePhrase!.isNotEmpty) {
           _codeController.text = progress.codePhrase!;
           appController.updateTransferRecord(record.copyWith(codePhrase: progress.codePhrase));
+          if (_autoCopyPhrase) _copyPhrase();
           setState(() {}); // rebuild to show QR code
         }
         switch (progress.status) {
@@ -306,7 +353,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                 ButtonSegment(value: true, label: Text(l10n.textMode), icon: const Icon(Icons.text_snippet)),
               ],
               selected: {_isTextMode},
-              onSelectionChanged: (v) => setState(() => _isTextMode = v.first),
+              onSelectionChanged: (v) => setState(() { _isTextMode = v.first; _saveSendPrefs(); }),
             ),
           ),
 
@@ -354,7 +401,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
           const Divider(),
 
-          // Code phrase
+          // Code phrase (input only; phrase-mode chips moved to Transfer Options)
           _buildSection(l10n.codePhrase, Icons.vpn_key, [
             _shakeWrap(2, Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -366,40 +413,58 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                   hintText: _phraseHint(l10n), border: const OutlineInputBorder(),
                   suffixIcon: Row(mainAxisSize: MainAxisSize.min, children: [
                     IconButton(icon: const Icon(Icons.refresh, size: 22), onPressed: _generateCode, tooltip: l10n.generate),
+                    IconButton(icon: const Icon(Icons.paste, size: 20), onPressed: _pastePhrase, tooltip: l10n.paste),
                     IconButton(icon: const Icon(Icons.copy, size: 20), onPressed: _copyPhrase, tooltip: l10n.copyCode),
                   ]),
                 ),
               ),
             )),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                Text(l10n.phraseMode, style: context.textTheme.bodySmall),
-                _phraseChip(l10n.phraseModeDefault, PhraseMode.defaultMode),
-
-                _phraseChip(l10n.phraseModeOn, PhraseMode.on),
-                _phraseChip(l10n.phraseModeNever, PhraseMode.never),
-              ]),
-            ),
           ]),
-
-          if (_currentPhrase.isNotEmpty)
-            Padding(padding: const EdgeInsets.all(16), child: Center(child: QrImageView(data: _currentPhrase, version: QrVersions.auto, size: 160))),
 
           const Divider(),
 
-          // Transfer options
-          _buildSection(l10n.transferOptions, Icons.tune, [
-            ListItem(leading: const Icon(Icons.show_chart), title: Text(l10n.encryptionCurve), subtitle: _buildCurveChips(l10n)),
-            const Divider(height: 0, indent: 56),
-            ListItem(leading: const Icon(Icons.tag), title: Text(l10n.hashAlgorithm), subtitle: _buildHashChips(l10n)),
-            const Divider(height: 0, indent: 56),
-            ListItem.switchItem(leading: const Icon(Icons.compress), title: Text(l10n.compression), delegate: SwitchDelegate(value: !_sendConfig.noCompress, onChanged: (v) => setState(() => _sendConfig = _sendConfig.copyWith(noCompress: !v)))),
-            const Divider(height: 0, indent: 56),
-            ListItem.switchItem(leading: const Icon(Icons.folder_zip), title: Text(l10n.zipFolder), delegate: SwitchDelegate(value: _sendConfig.zipFolder, onChanged: (v) => setState(() => _sendConfig = _sendConfig.copyWith(zipFolder: v)))),
-            const Divider(height: 0, indent: 56),
-            ListItem.switchItem(leading: const Icon(Icons.wifi_off), title: Text(l10n.localOnly), delegate: SwitchDelegate(value: _sendConfig.onlyLocal, onChanged: (v) => setState(() => _sendConfig = _sendConfig.copyWith(onlyLocal: v)))),
-          ]),
+          // Transfer options — collapsible (collapsed while sending)
+          ExpansionTile(
+            shape: const Border(),
+            title: Text(l10n.transferOptions),
+            leading: const Icon(Icons.tune),
+            initiallyExpanded: _phase == SendPhase.idle,
+            onExpansionChanged: (_) => setState(() {}),
+            children: [
+              // Phrase mode chips — inline with other settings
+              ListItem(
+                leading: const Icon(Icons.vpn_key),
+                title: Text(l10n.phraseMode),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Wrap(spacing: 8, runSpacing: 4, children: [
+                    _phraseChip(l10n.phraseModeDefault, PhraseMode.defaultMode),
+                    _phraseChip(l10n.phraseModeOn, PhraseMode.on),
+                    _phraseChip(l10n.phraseModeNever, PhraseMode.never),
+                  ]),
+                ),
+              ),
+              const Divider(height: 0, indent: 56),
+              ListItem.switchItem(
+                leading: const Icon(Icons.copy, size: 20),
+                title: Text(l10n.autoCopyPhrase),
+                delegate: SwitchDelegate(value: _autoCopyPhrase, onChanged: (v) => setState(() { _autoCopyPhrase = v; _saveSendPrefs(); })),
+              ),
+              const Divider(height: 0, indent: 16),
+              ListItem(leading: const Icon(Icons.show_chart), title: Text(l10n.encryptionCurve), subtitle: _buildCurveChips(l10n)),
+              const Divider(height: 0, indent: 56),
+              ListItem(leading: const Icon(Icons.tag), title: Text(l10n.hashAlgorithm), subtitle: _buildHashChips(l10n)),
+              const Divider(height: 0, indent: 56),
+              ListItem.switchItem(leading: const Icon(Icons.compress), title: Text(l10n.compression), delegate: SwitchDelegate(value: !_sendConfig.noCompress, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(noCompress: !v); _saveSendPrefs(); }))),
+              const Divider(height: 0, indent: 56),
+              ListItem.switchItem(leading: const Icon(Icons.folder_zip), title: Text(l10n.zipFolder), delegate: SwitchDelegate(value: _sendConfig.zipFolder, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(zipFolder: v); _saveSendPrefs(); }))),
+              const SizedBox(height: 12),
+            ],
+          ),
+
+          // QR code — below transfer options
+          if (_currentPhrase.isNotEmpty)
+            Padding(padding: const EdgeInsets.all(16), child: Center(child: QrImageView(data: _currentPhrase, version: QrVersions.auto, size: 160))),
 
           const SizedBox(height: 32),
         ],
@@ -431,7 +496,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
   Widget _phraseChip(String label, PhraseMode mode) => ChoiceChip(
     label: Text(label), selected: _phraseMode == mode,
-    onSelected: (v) { if (v) setState(() => _phraseMode = mode); },
+    onSelected: (v) { if (v) setState(() { _phraseMode = mode; _saveSendPrefs(); }); },
   );
 
   Widget _buildCurveChips(AppLocalizations l10n) {
@@ -443,13 +508,13 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
           ChoiceChip(
             label: Text(l10n.phraseModeDefault),
             selected: _sendConfig.curve == defaultCurve,
-            onSelected: (v) { if (v) setState(() => _sendConfig = _sendConfig.copyWith(curve: defaultCurve)); },
+            onSelected: (v) { if (v) setState(() { _sendConfig = _sendConfig.copyWith(curve: defaultCurve); _saveSendPrefs(); }); },
           ),
           ...availableCurves.where((c) => c != defaultCurve).map((c) {
             return ChoiceChip(
               label: Text(c),
               selected: _sendConfig.curve == c,
-              onSelected: (v) { if (v) setState(() => _sendConfig = _sendConfig.copyWith(curve: c)); },
+              onSelected: (v) { if (v) setState(() { _sendConfig = _sendConfig.copyWith(curve: c); _saveSendPrefs(); }); },
             );
           }),
         ],
@@ -466,13 +531,13 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
           ChoiceChip(
             label: Text(l10n.phraseModeDefault),
             selected: _sendConfig.hashAlgorithm == defaultHashAlgo,
-            onSelected: (v) { if (v) setState(() => _sendConfig = _sendConfig.copyWith(hashAlgorithm: defaultHashAlgo)); },
+            onSelected: (v) { if (v) setState(() { _sendConfig = _sendConfig.copyWith(hashAlgorithm: defaultHashAlgo); _saveSendPrefs(); }); },
           ),
           ...availableHashAlgos.where((h) => h != defaultHashAlgo).map((h) {
             return ChoiceChip(
               label: Text(h),
               selected: _sendConfig.hashAlgorithm == h,
-              onSelected: (v) { if (v) setState(() => _sendConfig = _sendConfig.copyWith(hashAlgorithm: h)); },
+              onSelected: (v) { if (v) setState(() { _sendConfig = _sendConfig.copyWith(hashAlgorithm: h); _saveSendPrefs(); }); },
             );
           }),
         ],

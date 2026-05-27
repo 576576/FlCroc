@@ -91,6 +91,7 @@ Map<String, dynamic> _$$RelayConfigImplToJson(_$RelayConfigImpl instance) =>
 const _$RelayTypeEnumMap = {
   RelayType.defaultRelay: 'defaultRelay',
   RelayType.customRelay: 'customRelay',
+  RelayType.noRelay: 'noRelay',
 };
 
 _$SendConfigImpl _$$SendConfigImplFromJson(Map<String, dynamic> json) =>
