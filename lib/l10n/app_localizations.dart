@@ -74,6 +74,7 @@ class AppLocalizations {
   String get textMode => _('textMode');
   String get clearFiles => _('clearFiles');
   String get clearText => _('clearText');
+  String get uploadTextFile => _('uploadTextFile');
   String get autoGeneratePhrase => _('autoGeneratePhrase');
   String get phraseMode => _('phraseMode');
   String get phraseModeDefault => _('phraseModeDefault');

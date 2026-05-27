@@ -35,6 +35,7 @@ const Map<String, String> enMessages = {
   'textMode': 'Text',
   'clearFiles': 'Clear All',
   'clearText': 'Clear',
+  'uploadTextFile': 'Select Text File',
   'autoGeneratePhrase': 'Auto-generate phrase on start',
   'phraseMode': 'Phrase Mode',
   'phraseModeDefault': 'Default',

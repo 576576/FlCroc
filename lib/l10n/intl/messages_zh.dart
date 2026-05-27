@@ -35,6 +35,7 @@ const Map<String, String> zhMessages = {
   'textMode': '文本',
   'clearFiles': '清空',
   'clearText': '清空',
+  'uploadTextFile': '选择文本文件',
   'autoGeneratePhrase': '启动时随机生成短语',
   'phraseMode': '短语模式',
   'phraseModeDefault': '默认',

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:desktop_drop/desktop_drop.dart';
@@ -86,6 +87,27 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   void _removeFile(int index) => setState(() => _selectedFiles.removeAt(index));
   void _clearFiles() => setState(() => _selectedFiles.clear());
   void _clearText() => _textController.clear();
+
+  void _pasteText() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (data?.text != null && data!.text!.isNotEmpty) {
+      _textController.text = data.text!;
+    }
+  }
+
+  Future<void> _pickTextFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['txt', 'md', 'json', 'xml', 'csv', 'log', 'yaml', 'yml'],
+    );
+    if (result != null && result.files.isNotEmpty) {
+      final file = result.files.first;
+      if (file.path != null) {
+        final content = await File(file.path!).readAsString();
+        _textController.text = content;
+      }
+    }
+  }
 
   // ── Code phrase ──
 
@@ -358,22 +380,38 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
           ),
 
           if (_isTextMode) ...[
-            _shakeWrap(1, Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  TextField(
-                    controller: _textController, maxLines: 5,
-                    decoration: InputDecoration(hintText: l10n.textHint, border: const OutlineInputBorder(), prefixIcon: const Icon(Icons.text_fields)),
+            _shakeWrap(1, _buildSection(l10n.textMode, Icons.text_snippet, [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: TextField(
+                  controller: _textController, maxLines: 5,
+                  decoration: InputDecoration(
+                    hintText: l10n.textHint,
+                    border: InputBorder.none,
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.paste, size: 20),
+                      onPressed: _pasteText,
+                      tooltip: l10n.paste,
+                    ),
                   ),
-                  if (_textController.text.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    TextButton.icon(onPressed: _clearText, icon: const Icon(Icons.clear_all, size: 16), label: Text(l10n.clearText)),
-                  ],
-                ],
+                ),
               ),
-            )),
+              Padding(
+                padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
+                child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  TextButton.icon(
+                    onPressed: _pickTextFile,
+                    icon: const Icon(Icons.add, size: 16),
+                    label: Text(l10n.uploadTextFile),
+                  ),
+                  TextButton.icon(
+                    onPressed: _clearText,
+                    icon: const Icon(Icons.clear_all, size: 16),
+                    label: Text(l10n.clearText),
+                  ),
+                ]),
+              ),
+            ])),
           ] else ...[
             _shakeWrap(0, _buildSection(l10n.files, Icons.insert_drive_file, [
               if (_selectedFiles.isEmpty)
