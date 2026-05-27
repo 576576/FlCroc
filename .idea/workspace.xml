@@ -5,6 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="87ef0a2c-22ed-453e-b80b-d6a7dfee16ed" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.github/workflows/build-dev.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/build-dev.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.github/workflows/build.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/build.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/croc/src/cli/cli_test.go" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/croc/src/comm/comm_test.go" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/croc/src/compress/compress_test.go" beforeDir="false" />

@@ -28,19 +28,22 @@ class GlobalState {
     final container = ProviderContainer();
 
     // SharedPreferences may be corrupted from IDE crash — delete bad file & retry.
+    // (Desktop only: on Android/iOS SharedPreferences uses platform-native storage.)
     SharedPreferences? prefs;
     try {
       prefs = await SharedPreferences.getInstance();
     } catch (_) {
-      try {
-        final supportDir = await getApplicationSupportDirectory();
-        final prefsFile = File('${supportDir.path}${Platform.pathSeparator}shared_preferences.json');
-        if (await prefsFile.exists()) {
-          await prefsFile.delete();
+      if (isDesktop) {
+        try {
+          final supportDir = await getApplicationSupportDirectory();
+          final prefsFile = File('${supportDir.path}${Platform.pathSeparator}shared_preferences.json');
+          if (await prefsFile.exists()) {
+            await prefsFile.delete();
+          }
+          prefs = await SharedPreferences.getInstance();
+        } catch (_) {
+          prefs = null;
         }
-        prefs = await SharedPreferences.getInstance();
-      } catch (_) {
-        prefs = null;
       }
     }
 

@@ -45,8 +45,17 @@ jobs:
       - name: Update submodule to latest croc
         run: |
           cd lib/croc
-          git fetch --tags --depth 1
-          git checkout $(git tag -l 'v*' --sort=-v:refname | head -1)
+          # Retry fetch up to 3 times (GitHub transient 502 errors)
+          for i in 1 2 3; do
+            echo "Attempt $i..."
+            git fetch --tags --depth 1 && break
+            sleep $((i * 5))
+          done || echo "⚠️ Fetch failed — using existing submodule ref"
+          # Try checkout; fall back to current HEAD on failure
+          latest=$(git tag -l 'v*' --sort=-v:refname | head -1)
+          if [ -n "$latest" ]; then
+            git checkout "$latest" 2>/dev/null || echo "⚠️ Checkout failed — using existing ref"
+          fi
           cd ../..
           find lib/croc -name '*_test.go' -delete
 
@@ -142,6 +151,11 @@ jobs:
 
       - name: Install Flutter dependencies
         run: flutter pub get
+
+      - name: Patch Android plugin registrant (catch Error too)
+        run: |
+          FILE=android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+          sed -i 's/catch (Exception e)/catch (Throwable e)/g' "$FILE"
 
       - name: Get version
         id: ver
