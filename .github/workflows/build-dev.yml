@@ -13,80 +13,82 @@ env:
   GO_VERSION: '1.25'
 
 jobs:
-  # ── Version sync (only on "update-ver" commit) ──
-  sync-ver:
-    if: contains(github.event.head_commit.message, 'update-ver')
+  # ── Prebuild: version sync + submodule update + platform detection ──
+  prebuild:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     outputs:
-      skip_build: ${{ steps.check_skip.outputs.skip_build }}
+      windows: ${{ steps.platform.outputs.windows }}
+      linux: ${{ steps.platform.outputs.linux }}
+      android: ${{ steps.platform.outputs.android }}
+      skip_build: ${{ steps.flags.outputs.skip_build }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-      - name: Check for skip-build flag
-        id: check_skip
+
+      - name: Check flags
+        id: flags
         env:
-          MSG: ${{ github.event.head_commit.message }}
+          MSG: ${{ github.event.head_commit.message || '' }}
         run: |
-          if echo "$MSG" | grep -qi 'skip-build'; then
-            echo "skip_build=true" >> $GITHUB_OUTPUT
-          else
-            echo "skip_build=false" >> $GITHUB_OUTPUT
-          fi
-      - name: Read version.properties
-        id: props
-        run: |
-          FLCROC=$(grep '^flcroc=' version.properties | cut -d= -f2)
-          CROC=$(grep '^croc=' version.properties | cut -d= -f2)
-          echo "flcroc=$FLCROC" >> $GITHUB_OUTPUT
-          echo "croc=$CROC" >> $GITHUB_OUTPUT
-      - name: Update pubspec.yaml version
-        run: |
-          VER="${{ steps.props.outputs.flcroc }}"
-          sed -i "s/^version: .*/version: $VER/" pubspec.yaml
-      - name: Determine croc tag
-        id: croc_tag
-        run: |
-          CROC="${{ steps.props.outputs.croc }}"
-          if [ "$CROC" = "keep" ] || [ "$CROC" = "0" ]; then
-            echo "skip=true" >> $GITHUB_OUTPUT; exit 0
-          fi
-          if [ "$CROC" = "latest" ]; then
-            TAG=$(curl -s https://api.github.com/repos/schollz/croc/releases/latest | jq -r .tag_name)
-            [ -z "$TAG" ] || [ "$TAG" = "null" ] && exit 1
-          else TAG="$CROC"; fi
-          echo "skip=false" >> $GITHUB_OUTPUT; echo "tag=$TAG" >> $GITHUB_OUTPUT
-      - name: Update croc submodule
-        if: steps.croc_tag.outputs.skip != 'true'
+          IS_UPDATE=false; SKIP_BUILD=false
+          echo "$MSG" | grep -qi 'update-ver' && IS_UPDATE=true
+          echo "$MSG" | grep -qi 'skip-build' && SKIP_BUILD=true
+          echo "is_update=$IS_UPDATE" >> $GITHUB_OUTPUT
+          echo "skip_build=$SKIP_BUILD" >> $GITHUB_OUTPUT
+
+      - name: Update submodule to latest croc
         run: |
           cd lib/croc
-          git fetch --tags
-          git checkout "${{ steps.croc_tag.outputs.tag }}"
+          git fetch --tags --depth 1
+          git checkout $(git tag -l 'v*' --sort=-v:refname | head -1)
           cd ../..
           find lib/croc -name '*_test.go' -delete
-      - name: Update version.properties croc entry
-        if: steps.croc_tag.outputs.skip != 'true'
+
+      - name: Version bump (update-ver only)
+        if: steps.flags.outputs.is_update == 'true'
         run: |
-          TAG="${{ steps.croc_tag.outputs.tag }}"
-          sed -i "s/^croc=.*/croc=$TAG/" version.properties
-      - name: Commit and push
+          FLCROC=$(grep '^flcroc=' version.properties | cut -d= -f2)
+          sed -i "s/^version: .*/version: $FLCROC/" pubspec.yaml
+
+      - name: Commit and push (update-ver only)
+        if: steps.flags.outputs.is_update == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pubspec.yaml version.properties lib/croc
+          FLCROC=$(grep '^flcroc=' version.properties | cut -d= -f2)
+          CROC_VER=$(cd lib/croc && git describe --tags)
+          git add pubspec.yaml lib/croc
           git diff --cached --quiet && exit 0
-          git commit -m "update-ver: FlCroc ${{ steps.props.outputs.flcroc }}, croc ${{ steps.croc_tag.outputs.tag }} [skip ci]"
+          git commit -m "update-ver: FlCroc $FLCROC, croc $CROC_VER [skip ci]"
           git push
 
+      - name: Determine platforms
+        id: platform
+        env:
+          MSG: ${{ github.event.head_commit.message || '' }}
+        run: |
+          W='false'; L='false'; A='false'
+          case "$MSG" in
+            *linux*)  L='true' ;;
+            *mobile*) A='true' ;;
+            *build-all*) W='true'; L='true'; A='true' ;;
+            *)        W='true' ;;
+          esac
+          echo "windows=$W" >> $GITHUB_OUTPUT
+          echo "linux=$L" >> $GITHUB_OUTPUT
+          echo "android=$A" >> $GITHUB_OUTPUT
+          echo "Platforms → windows:$W linux:$L android:$A"
+
   test:
-    needs: sync-ver
+    needs: prebuild
     if: |
       always() && !failure() && !cancelled() &&
-      needs.sync-ver.outputs.skip_build != 'true'
+      needs.prebuild.outputs.skip_build != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -101,37 +103,9 @@ jobs:
       - name: Run tests
         run: flutter test
 
-  # ── Determine which platforms to build from commit message ──
-  determine:
-    needs: test
-    if: always() && !failure() && !cancelled()
-    runs-on: ubuntu-latest
-    outputs:
-      windows: ${{ steps.check.outputs.windows }}
-      linux: ${{ steps.check.outputs.linux }}
-      android: ${{ steps.check.outputs.android }}
-    steps:
-      - name: Check commit message
-        id: check
-        env:
-          MSG: ${{ github.event.head_commit.message || '' }}
-        run: |
-          W='false'; L='false'; A='false'
-          case "$MSG" in
-            *linux*)  L='true' ;;
-            *mobile*) A='true' ;;
-            *build-all*)    W='true'; L='true'; A='true' ;;
-            *)        W='true' ;;  # default / manual dispatch → Windows only
-          esac
-          echo "windows=$W" >> $GITHUB_OUTPUT
-          echo "linux=$L" >> $GITHUB_OUTPUT
-          echo "android=$A" >> $GITHUB_OUTPUT
-          echo "Platforms → windows:$W linux:$L android:$A"
-
-  # ── Windows ──
   build-windows:
-    needs: [test, determine]
-    if: needs.determine.outputs.windows == 'true'
+    needs: [test, prebuild]
+    if: needs.prebuild.outputs.windows == 'true'
     runs-on: windows-latest
     defaults:
       run:
@@ -204,8 +178,8 @@ jobs:
 
   # ── Linux ──
   build-linux:
-    needs: [test, determine]
-    if: needs.determine.outputs.linux == 'true'
+    needs: [test, prebuild]
+    if: needs.prebuild.outputs.linux == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -266,8 +240,8 @@ jobs:
 
   # ── Android ──
   build-android:
-    needs: [test, determine]
-    if: needs.determine.outputs.android == 'true'
+    needs: [test, prebuild]
+    if: needs.prebuild.outputs.android == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -316,10 +290,10 @@ jobs:
 
   # ── Nightly release ──
   nightly:
-    needs: [sync-ver, build-windows, build-linux, build-android]
+    needs: [prebuild, build-windows, build-linux, build-android]
     if: |
       always() && !failure() && !cancelled() &&
-      needs.sync-ver.outputs.skip_build != 'true' &&
+      needs.prebuild.outputs.skip_build != 'true' &&
       (needs.build-windows.result != 'skipped' ||
        needs.build-linux.result != 'skipped' ||
        needs.build-android.result != 'skipped')
