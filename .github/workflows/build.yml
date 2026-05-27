@@ -16,8 +16,93 @@ env:
   GO_VERSION: '1.25'
 
 jobs:
+  # ── Version sync (only on "update-ver" commit or manual dispatch) ──
+  sync-ver:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, 'update-ver'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      skip_build: ${{ steps.check_skip.outputs.skip_build }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Check for skip-build flag
+        id: check_skip
+        run: |
+          if echo "${{ github.event.head_commit.message }}" | grep -qi 'skip-build'; then
+            echo "skip_build=true" >> $GITHUB_OUTPUT
+            echo "⚠️  skip-build detected — test & build will be skipped"
+          else
+            echo "skip_build=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Read version.properties
+        id: props
+        run: |
+          FLCROC=$(grep '^flcroc=' version.properties | cut -d= -f2)
+          CROC=$(grep '^croc=' version.properties | cut -d= -f2)
+          echo "flcroc=$FLCROC" >> $GITHUB_OUTPUT
+          echo "croc=$CROC" >> $GITHUB_OUTPUT
+
+      - name: Update pubspec.yaml version
+        run: |
+          VER="${{ steps.props.outputs.flcroc }}"
+          sed -i "s/^version: .*/version: $VER/" pubspec.yaml
+
+      - name: Determine croc tag
+        id: croc_tag
+        run: |
+          CROC="${{ steps.props.outputs.croc }}"
+          if [ "$CROC" = "keep" ] || [ "$CROC" = "0" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT; echo "tag=$CROC" >> $GITHUB_OUTPUT; exit 0
+          fi
+          if [ "$CROC" = "latest" ]; then
+            TAG=$(curl -s https://api.github.com/repos/schollz/croc/releases/latest | jq -r .tag_name)
+            [ -z "$TAG" ] || [ "$TAG" = "null" ] && echo "Failed to fetch croc tag" && exit 1
+          else
+            TAG="$CROC"
+          fi
+          echo "skip=false" >> $GITHUB_OUTPUT; echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Sync vendored croc source
+        if: steps.croc_tag.outputs.skip != 'true'
+        run: |
+          TAG="${{ steps.croc_tag.outputs.tag }}"
+          TMPDIR=$(mktemp -d)
+          git clone --depth 1 --branch "$TAG" --filter=blob:none https://github.com/schollz/croc.git "$TMPDIR"
+          rm -rf "$TMPDIR/.github"
+          rm -rf lib/croc/*
+          cp -r "$TMPDIR"/* lib/croc/
+          cp "$TMPDIR"/.gitignore lib/croc/ 2>/dev/null || true
+          rm -rf "$TMPDIR"
+          find lib/croc -name '*_test.go' -delete
+          cd go_bridge && go mod tidy && cd ..
+
+      - name: Update version.properties croc entry
+        if: steps.croc_tag.outputs.skip != 'true'
+        run: sed -i "s/^croc=.*/croc=${{ steps.croc_tag.outputs.tag }}/" version.properties
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pubspec.yaml version.properties lib/croc/ go_bridge/go.mod go_bridge/go.sum
+          git diff --cached --quiet && exit 0
+          git commit -m "update-ver: FlCroc ${{ steps.props.outputs.flcroc }}, croc ${{ steps.croc_tag.outputs.tag }} [skip ci]"
+          git push
+
   # ---- Test ----
   test:
+    needs: sync-ver
+    if: |
+      always() && !failure() && !cancelled() &&
+      needs.sync-ver.outputs.skip_build != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
