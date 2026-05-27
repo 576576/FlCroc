@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 const appName = 'FlCroc';
 const coreName = 'croc';
-const packageName = 'com.flcroc.app';
+const packageName = 'cn.sumitm.flcroc';
 const repository = 'your-org/FlCroc';
 
 const defaultRelay = 'croc.schollz.com';

@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "fl_croc" "\0"
+            VALUE "CompanyName", "cn.sumitm" "\0"
+            VALUE "FileDescription", "FlCroc" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "fl_croc" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "fl_croc.exe" "\0"
-            VALUE "ProductName", "fl_croc" "\0"
+            VALUE "InternalName", "FlCroc" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 cn.sumitm. All rights reserved." "\0"
+            VALUE "OriginalFilename", "FlCroc.exe" "\0"
+            VALUE "ProductName", "FlCroc" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.flcroc.app"
+    namespace = "cn.sumitm.flcroc"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -15,7 +15,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.flcroc.app"
+        applicationId = "cn.sumitm.flcroc"
         minSdk = flutter.minSdkVersion
         targetSdk = 36
         versionCode = flutter.versionCode

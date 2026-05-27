@@ -104,7 +104,7 @@ class CoreService extends CoreInterface {
   Future<String?> _getAppSupportDir() async {
     try {
       if (Platform.isAndroid) {
-        return '/data/data/com.flcroc.app/files';
+        return '/data/data/cn.sumitm.flcroc/files';
       }
       if (Platform.isIOS) {
         final home = Platform.environment['HOME'] ?? '';

@@ -372,24 +372,9 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
           const SizedBox(width: 8),
         ],
       ),
-      body: DropTarget(
-        onDragDone: (details) async {
-          if (!_isTextMode) {
-            final newFiles = <PlatformFile>[];
-            for (final f in details.files) {
-              if (!_selectedFiles.any((s) => s.path == f.path)) {
-                final size = await f.length();
-                newFiles.add(PlatformFile(name: f.name, path: f.path, size: size));
-              }
-            }
-            if (newFiles.isNotEmpty) {
-              setState(() => _selectedFiles.addAll(newFiles));
-            }
-          }
-        },
-        onDragEntered: (_) => setState(() {}),
-        onDragExited: (_) => setState(() {}),
-        child: ListView(
+      body: Builder(
+        builder: (context) {
+          final listView = ListView(
         children: [
           // Mode toggle
           Padding(
@@ -507,9 +492,33 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
           const SizedBox(height: 32),
         ],
+          );
+
+          if (isDesktop) {
+            return DropTarget(
+              onDragDone: (details) async {
+                if (!_isTextMode) {
+                  final newFiles = <PlatformFile>[];
+                  for (final f in details.files) {
+                    if (!_selectedFiles.any((s) => s.path == f.path)) {
+                      final size = await f.length();
+                      newFiles.add(PlatformFile(name: f.name, path: f.path, size: size));
+                    }
+                  }
+                  if (newFiles.isNotEmpty) {
+                    setState(() => _selectedFiles.addAll(newFiles));
+                  }
+                }
+              },
+              onDragEntered: (_) => setState(() {}),
+              onDragExited: (_) => setState(() {}),
+              child: listView,
+            );
+          }
+          return listView;
+        },
       ),
-    ),
-  );
+    );
 }
 
   // ── Shake wrapper ──
