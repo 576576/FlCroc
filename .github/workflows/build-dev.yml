@@ -310,8 +310,10 @@ jobs:
 
   # ── Nightly release ──
   nightly:
-    needs: [build-windows, build-linux, build-android]
-    if: always() && !failure() && !cancelled()
+    needs: [sync-ver, build-windows, build-linux, build-android]
+    if: |
+      always() && !failure() && !cancelled() &&
+      needs.sync-ver.outputs.skip_build != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
