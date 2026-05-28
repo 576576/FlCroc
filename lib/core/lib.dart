@@ -219,6 +219,9 @@ class CoreLib extends CoreInterface {
             yield TransferProgress(
               transferId: transferId,
               status: TransferProgressStatus.completed,
+              totalFiles: (event['total_files'] as int?) ?? 0,
+              totalSize: (event['total_size'] as int?) ?? 0,
+              currentFile: event['current_file'] as String? ?? '',
             );
             return;
           } else if (type == 3) {
@@ -343,6 +346,9 @@ class CoreLib extends CoreInterface {
               yield TransferProgress(
                 transferId: transferId,
                 status: TransferProgressStatus.completed,
+                totalFiles: (event['total_files'] as int?) ?? 0,
+                totalSize: (event['total_size'] as int?) ?? 0,
+                currentFile: event['current_file'] as String? ?? '',
               );
             }
             return;
