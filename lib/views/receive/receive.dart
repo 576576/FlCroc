@@ -24,6 +24,12 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   bool _isReceiving = false;
   ReceiveConfig _receiveConfig = const ReceiveConfig();
 
+  // Received content tracking
+  final List<String> _receivedFiles = [];
+  String _receivedText = '';
+  int _selectedTab = 0; // 0=files, 1=text
+  bool _hasReceived = false;
+
   @override
   void initState() {
     super.initState();
@@ -98,12 +104,21 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
         if (!mounted) return;
         switch (progress.status) {
           case TransferProgressStatus.transferring:
+            // Track incoming files
+            if (progress.currentFile.isNotEmpty &&
+                !_receivedFiles.contains(progress.currentFile)) {
+              _receivedFiles.add(progress.currentFile);
+              _hasReceived = true;
+              _selectedTab = 0; // auto-switch to files tab
+            }
             appController.updateTransferRecord(
               record.copyWith(
                 status: TransferStatus.transferring,
                 transferredSize: progress.transferredSize,
+                files: _receivedFiles.map((f) => FileItem(name: f, path: '', size: 0)).toList(),
               ),
             );
+            if (mounted) setState(() {});
           case TransferProgressStatus.completed:
             setState(() => _isReceiving = false);
             appController.updateTransferRecord(
@@ -213,9 +228,29 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
         child: ListView(
           controller: _scrollCtrl,
           children: [
-            const SizedBox(height: 24),
+            // ── File / Text toggle (always visible, matches send page) ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: SegmentedButton<int>(
+                segments: [
+                  ButtonSegment(value: 0, label: Text(l10n.files), icon: const Icon(Icons.insert_drive_file, size: 18)),
+                  ButtonSegment(value: 1, label: Text(l10n.textMode), icon: const Icon(Icons.text_snippet, size: 18)),
+                ],
+                selected: {_selectedTab},
+                onSelectionChanged: (v) => setState(() => _selectedTab = v.first),
+              ),
+            ),
 
-            // Options
+            // ── Received content (auto-populated) ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: _selectedTab == 0 ? _buildReceivedFiles() : _buildReceivedText(),
+            ),
+
+            const SizedBox(height: 16),
+            const Divider(),
+
+            // ── Options ──
             _buildSection(
             l10n.options,
             Icons.tune,
@@ -241,6 +276,44 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
       ),
       ),  // ScrollConfiguration
     );    // CommonScaffold
+  }
+
+  Widget _buildReceivedFiles() {
+    if (_receivedFiles.isEmpty) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Center(child: Icon(Icons.inbox, size: 32, color: context.colorScheme.onSurfaceVariant.withAlpha(80))),
+        ),
+      );
+    }
+    return Card(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: _receivedFiles.map((f) => ListTile(
+          leading: const Icon(Icons.insert_drive_file),
+          title: Text(f, maxLines: 1, overflow: TextOverflow.ellipsis),
+          dense: true,
+        )).toList(),
+      ),
+    );
+  }
+
+  Widget _buildReceivedText() {
+    if (_receivedText.isEmpty) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Center(child: Icon(Icons.text_fields, size: 32, color: context.colorScheme.onSurfaceVariant.withAlpha(80))),
+        ),
+      );
+    }
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: SelectableText(_receivedText, style: context.textTheme.bodyMedium),
+      ),
+    );
   }
 
   Widget _buildStatusChip(AppLocalizations l10n) {

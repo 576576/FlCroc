@@ -78,6 +78,14 @@ const Map<String, String> enMessages = {
   'language': 'Language',
   'autoLanguage': 'Auto',
   'pureBlackMode': 'Pure Black Mode',
+  'colorPalette': 'Color Palette',
+  'defaultLabel': 'Default',
+  'customLabel': 'Custom',
+  'colorBlue': 'Blue',
+  'colorTeal': 'Teal',
+  'colorPink': 'Pink',
+  'colorOrange': 'Orange',
+  'colorGreen': 'Green',
 
   // About / Settings sections
   'about': 'About',

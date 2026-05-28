@@ -40,3 +40,25 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+// Auto-patch plugin registrant after flutter pub get regenerates it.
+// Desktop-only plugins (desktop_drop, jni, etc.) register on Android
+// and throw NoClassDefFoundError which is NOT caught by catch(Exception).
+tasks.register("patchPluginRegistrant") {
+    doLast {
+        val file = file("src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java")
+        if (file.exists()) {
+            val old = "catch (Exception e)"
+            val rep = "catch (Throwable e)"
+            var content = file.readText()
+            if (content.contains(old)) {
+                content = content.replace(old, rep)
+                file.writeText(content)
+                println("✓ Patched GeneratedPluginRegistrant.java: Exception → Throwable")
+            }
+        }
+    }
+}
+tasks.matching { it.name.startsWith("compile") }.configureEach {
+    dependsOn("patchPluginRegistrant")
+}

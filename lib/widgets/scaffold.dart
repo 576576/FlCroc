@@ -1,5 +1,4 @@
 import 'package:fl_croc/common/common.dart';
-import 'package:fl_croc/widgets/window_title_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
@@ -36,49 +35,30 @@ class CommonScaffoldState extends State<CommonScaffold> {
     return AppBar(
       title: widget.title != null ? Text(widget.title!) : null,
       actions: widget.actions,
-      scrolledUnderElevation: 1,
+      backgroundColor: context.colorScheme.surface,
       surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final hasCustomTitleBar = isWindows || isLinux;
     final appBar = widget.appBar ?? _buildDefaultAppBar();
 
     return Scaffold(
-      appBar: hasCustomTitleBar ? null : appBar,
-      body: hasCustomTitleBar
-          ? Column(
-              children: [
-                const WindowTitleBar(),
-                appBar,
-                Expanded(
-                  child: NotificationListener<UserScrollNotification>(
-                    child: widget.body,
-                    onNotification: (notification) {
-                      if (notification.direction == ScrollDirection.reverse) {
-                        _isFabExtendedNotifier.value = false;
-                      } else if (notification.direction == ScrollDirection.forward) {
-                        _isFabExtendedNotifier.value = true;
-                      }
-                      return false;
-                    },
-                  ),
-                ),
-              ],
-            )
-          : NotificationListener<UserScrollNotification>(
-              child: widget.body,
-              onNotification: (notification) {
-                if (notification.direction == ScrollDirection.reverse) {
-                  _isFabExtendedNotifier.value = false;
-                } else if (notification.direction == ScrollDirection.forward) {
-                  _isFabExtendedNotifier.value = true;
-                }
-                return false;
-              },
-            ),
+      appBar: appBar,
+      body: NotificationListener<UserScrollNotification>(
+        child: widget.body,
+        onNotification: (notification) {
+          if (notification.direction == ScrollDirection.reverse) {
+            _isFabExtendedNotifier.value = false;
+          } else if (notification.direction == ScrollDirection.forward) {
+            _isFabExtendedNotifier.value = true;
+          }
+          return false;
+        },
+      ),
       resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
       backgroundColor: widget.backgroundColor,
       floatingActionButton: widget.floatingActionButton != null

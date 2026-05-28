@@ -1,13 +1,12 @@
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/core/lib.dart';
 import 'package:fl_croc/enum/enum.dart';
+import 'package:fl_croc/l10n/l10n.dart';
 import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/state.dart';
 import 'package:fl_croc/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'theme_page.dart';
 
 class SettingsView extends ConsumerStatefulWidget {
   const SettingsView({super.key});
@@ -21,6 +20,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   @override
   Widget build(BuildContext context) {
     final appSettings = ref.watch(appSettingProvider);
+    final themeProps = ref.watch(themeSettingProvider);
 
     final l10n = context.appLocalizations;
     return BaseScaffold(
@@ -30,6 +30,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           // Relay Settings
           ...generateSection(
             title: l10n.relaySettings,
+            separated: false,
             items: [
               ListItem(
                 leading: const Icon(Icons.dns),
@@ -37,7 +38,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 subtitle: _buildRelayChips(appSettings.relayConfig.type, ref),
               ),
               if (appSettings.relayConfig.type == RelayType.customRelay) ...[
-                const Divider(height: 0, indent: 56),
                 _buildRelayField(
                   icon: Icons.link,
                   hint: l10n.relayAddress,
@@ -67,7 +67,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                         );
                   },
                 ),
-                const Divider(height: 0, indent: 56),
                 _buildRelayField(
                   icon: Icons.numbers,
                   hint: l10n.port,
@@ -80,7 +79,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                         );
                   },
                 ),
-                const Divider(height: 0, indent: 56),
                 _buildPasswordField(
                   hint: l10n.relayPassword,
                   value: appSettings.relayConfig.password,
@@ -96,46 +94,54 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             ],
           ),
 
-          const Divider(),
-
           // Theme Settings
           ...generateSection(
             title: l10n.theme,
+            separated: false,
             items: [
               ListItem(
                 leading: const Icon(Icons.brightness_6),
                 title: Text(l10n.themeMode),
                 subtitle: _buildThemeModeChips(appSettings.themeMode, ref),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ThemePage())),
               ),
-              const Divider(height: 0, indent: 56),
-              ListItem.switchItem(
-                leading: const Icon(Icons.dark_mode),
-                title: Text(l10n.pureBlackMode),
-                delegate: SwitchDelegate(
-                  value: appSettings.pureBlackMode,
-                  onChanged: (v) {
-                    ref.read(appSettingProvider.notifier).update(
-                          (s) => s.copyWith(pureBlackMode: v),
-                        );
-                  },
+              // Pure black — only relevant when dark
+              if (appSettings.themeMode == ThemeModeOption.dark ||
+                  (appSettings.themeMode == ThemeModeOption.system &&
+                      MediaQuery.of(context).platformBrightness == Brightness.dark)) ...[
+                ListItem.switchItem(
+                  leading: const Icon(Icons.dark_mode),
+                  title: Text(l10n.pureBlackMode),
+                  delegate: SwitchDelegate(
+                    value: appSettings.pureBlackMode,
+                    onChanged: (v) {
+                      ref.read(appSettingProvider.notifier).update(
+                            (s) => s.copyWith(pureBlackMode: v),
+                          );
+                    },
+                  ),
+                ),
+              ],
+              ListItem(
+                leading: const Icon(Icons.palette),
+                title: Text(l10n.colorPalette),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: _buildPaletteRow(ref, themeProps.primaryColor, l10n),
                 ),
               ),
             ],
           ),
 
-          const Divider(),
-
           // App Settings
           ...generateSection(
             title: l10n.application,
+            separated: false,
             items: [
               ListItem(
                 leading: const Icon(Icons.language),
                 title: Text(l10n.language),
                 subtitle: _buildLanguageChips(context, appSettings.locale, ref),
               ),
-              const Divider(height: 0, indent: 56),
               ListItem.switchItem(
                 leading: const Icon(Icons.update),
                 title: Text(l10n.checkUpdate),
@@ -151,30 +157,26 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             ],
           ),
 
-          const Divider(),
-
           // About
           ...generateSection(
             title: l10n.about,
+            separated: false,
             items: [
               ListItem(
                 leading: const Icon(Icons.info),
                 title: Text(l10n.appName),
                 subtitle: Text('v${globalState.packageInfo.version}'),
               ),
-              const Divider(height: 0, indent: 56),
               ListItem(
                 leading: const Icon(Icons.link),
                 title: Text(l10n.crocVersion),
                 subtitle: Text(_crocVersion),
               ),
-              const Divider(height: 0, indent: 56),
               ListItem(
                 leading: const Icon(Icons.description),
                 title: Text(l10n.description),
                 subtitle: Text(l10n.desc),
               ),
-              const Divider(height: 0, indent: 56),
               ListItem(
                 leading: const Icon(Icons.code),
                 title: Text(l10n.checkUpdate),
@@ -346,6 +348,226 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           );
         }).toList(),
       ),
+    );
+  }
+
+  static const _kPresetColors = <int>[
+    0xFF6750A4, // M3 default
+    0xFF1B6EF3, // Blue
+    0xFF00BFA5, // Teal
+    0xFFE91E63, // Pink
+    0xFFFF6F00, // Orange
+    0xFF4CAF50, // Green
+  ];
+
+  Widget _buildPaletteRow(WidgetRef ref, int current, AppLocalizations l10n) {
+    final presetColors = _kPresetColors.map((c) => Color(c)).toList();
+    final isCustom = !_kPresetColors.contains(current) && current != defaultPrimaryColor;
+    final labels = [l10n.defaultLabel, l10n.colorBlue, l10n.colorTeal, l10n.colorPink, l10n.colorOrange, l10n.colorGreen];
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (int i = 0; i < presetColors.length; i++)
+          _ColorChip(
+            color: presetColors[i],
+            label: labels[i],
+            isSelected: current == _kPresetColors[i],
+            onTap: () => ref.read(themeSettingProvider.notifier).update((s) => s.copyWith(primaryColor: _kPresetColors[i])),
+          ),
+        _ColorChip(
+          color: isCustom ? Color(current) : Colors.grey.shade300,
+          label: l10n.customLabel,
+          isSelected: isCustom,
+          onTap: () => _showColorPalette(ref, current),
+        ),
+      ],
+    );
+  }
+
+  void _showColorPalette(WidgetRef ref, int currentColor) {
+    final hsv = HSVColor.fromColor(Color(currentColor));
+    showDialog(
+      context: context,
+      builder: (ctx) => _ColorPaletteDialog(ref: ref, initialColor: hsv),
+    ).then((result) {
+      if (result != null && result is Color) {
+        ref.read(themeSettingProvider.notifier).update((s) => s.copyWith(primaryColor: result.value));
+      }
+    });
+  }
+}
+
+/// Simple HSL color palette dialog (FlClash-inspired).
+class _ColorPaletteDialog extends StatefulWidget {
+  final WidgetRef ref;
+  final HSVColor initialColor;
+  const _ColorPaletteDialog({required this.ref, required this.initialColor});
+
+  @override
+  State<_ColorPaletteDialog> createState() => _ColorPaletteDialogState();
+}
+
+class _ColorPaletteDialogState extends State<_ColorPaletteDialog> {
+  late double _hue;
+  late double _saturation;
+  late double _value;
+
+  @override
+  void initState() {
+    super.initState();
+    _hue = widget.initialColor.hue;
+    _saturation = widget.initialColor.saturation;
+    _value = widget.initialColor.value;
+  }
+
+  Color get _currentColor => HSVColor.fromAHSV(1, _hue, _saturation, _value).toColor();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.appLocalizations;
+    return AlertDialog(
+      title: Text(l10n.colorPalette),
+      content: SizedBox(
+        width: 260,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Preview
+            Container(
+              width: 56, height: 56,
+              decoration: BoxDecoration(
+                color: _currentColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: context.colorScheme.outline),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Saturation / Value square
+            GestureDetector(
+              onPanDown: (d) => _updateSV(d.localPosition),
+              onPanUpdate: (d) => _updateSV(d.localPosition),
+              child: Container(
+                width: 240, height: 160,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  gradient: LinearGradient(
+                    colors: [Colors.white, HSVColor.fromAHSV(1, _hue, 1, 1).toColor()],
+                  ),
+                ),
+                foregroundDecoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0x00000000), Colors.black],
+                  ),
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      left: _saturation * 240 - 8,
+                      top: (1 - _value) * 160 - 8,
+                      child: Container(
+                        width: 16, height: 16,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 2)],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Hue slider
+            Row(
+              children: [
+                const Icon(Icons.palette, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: GestureDetector(
+                    onPanDown: (d) => _updateHue(d.localPosition.dx, 224),
+                    onPanUpdate: (d) => _updateHue(d.localPosition.dx, 224),
+                    child: Container(
+                      height: 20,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFFFF0000), Color(0xFFFFFF00), Color(0xFF00FF00),
+                            Color(0xFF00FFFF), Color(0xFF0000FF), Color(0xFFFF00FF), Color(0xFFFF0000),
+                          ],
+                        ),
+                      ),
+                      child: Align(
+                        alignment: Alignment(-1 + _hue / 180, 0),
+                        child: Container(
+                          width: 16, height: 16,
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: _currentColor, border: Border.all(color: Colors.white, width: 2)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // HEX display
+            Text(
+              '#${_currentColor.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}',
+              style: context.textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
+        FilledButton(onPressed: () => Navigator.pop(context, _currentColor), child: Text(l10n.confirm)),
+      ],
+    );
+  }
+
+  void _updateSV(Offset local) {
+    setState(() {
+      _saturation = (local.dx / 240).clamp(0.0, 1.0);
+      _value = (1 - local.dy / 160).clamp(0.0, 1.0);
+    });
+  }
+
+  void _updateHue(double dx, double width) {
+    setState(() {
+      _hue = ((dx / width).clamp(0.0, 1.0) * 360) % 360;
+    });
+  }
+}
+
+class _ColorChip extends StatelessWidget {
+  final Color color;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _ColorChip({
+    required this.color,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor = ThemeData.estimateBrightnessForColor(color) == Brightness.dark ? Colors.white : Colors.black87;
+    return ChoiceChip(
+      label: Text(label, style: TextStyle(fontSize: 12, color: textColor, fontWeight: FontWeight.w600)),
+      selected: isSelected,
+      onSelected: (_) => onTap(),
+      backgroundColor: color,
+      selectedColor: color,
+      side: isSelected ? BorderSide(color: context.colorScheme.primary, width: 2) : BorderSide(color: Colors.transparent),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     );
   }
 }

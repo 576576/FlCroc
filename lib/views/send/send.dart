@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:desktop_drop/desktop_drop.dart';
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/core/controller.dart';
@@ -372,9 +371,18 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
           const SizedBox(width: 8),
         ],
       ),
-      body: Builder(
-        builder: (context) {
-          final listView = ListView(
+      body: FileDropTarget(
+        enabled: !_isTextMode && isDesktop,
+        onFilesDropped: (files) {
+          final newFiles = <PlatformFile>[];
+          for (final f in files) {
+            if (!_selectedFiles.any((s) => s.path == f.path)) {
+              newFiles.add(PlatformFile(name: f.path.split(Platform.pathSeparator).last, path: f.path, size: f.lengthSync()));
+            }
+          }
+          if (newFiles.isNotEmpty) setState(() => _selectedFiles.addAll(newFiles));
+        },
+        child: ListView(
         children: [
           // Mode toggle
           Padding(
@@ -492,32 +500,8 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
           const SizedBox(height: 32),
         ],
-          );
-
-          if (isDesktop) {
-            return DropTarget(
-              onDragDone: (details) async {
-                if (!_isTextMode) {
-                  final newFiles = <PlatformFile>[];
-                  for (final f in details.files) {
-                    if (!_selectedFiles.any((s) => s.path == f.path)) {
-                      final size = await f.length();
-                      newFiles.add(PlatformFile(name: f.name, path: f.path, size: size));
-                    }
-                  }
-                  if (newFiles.isNotEmpty) {
-                    setState(() => _selectedFiles.addAll(newFiles));
-                  }
-                }
-              },
-              onDragEntered: (_) => setState(() {}),
-              onDragExited: (_) => setState(() {}),
-              child: listView,
-            );
-          }
-          return listView;
-        },
-      ),
+        ),  // ListView
+      ),    // FileDropTarget
     );
 }
 

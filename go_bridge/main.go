@@ -290,6 +290,11 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		curve = defaultCurve
 	}
 
+	hashAlgo := opts.HashAlgorithm
+	if hashAlgo == "" {
+		hashAlgo = defaultHashAlgo
+	}
+
 	crocOpts := croc.Options{
 		IsSender:      false,
 		SharedSecret:  code,
@@ -301,6 +306,7 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		NoPrompt:      true,
 		OnlyLocal:     opts.OnlyLocal,
 		Curve:         curve,
+		HashAlgorithm: hashAlgo,
 		Overwrite:     opts.Overwrite,
 		Quiet:         true,
 	}
@@ -351,6 +357,7 @@ type sendOptions struct {
 
 type receiveOptions struct {
 	Curve         string `json:"curve"`
+	HashAlgorithm string `json:"hash_algorithm"`
 	Overwrite     bool   `json:"overwrite"`
 	OnlyLocal     bool   `json:"only_local"`
 	OutputPath    string `json:"output_path"`

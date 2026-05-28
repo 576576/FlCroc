@@ -276,6 +276,8 @@ class CoreLib extends CoreInterface {
       if (options.relayPassword != null && options.relayPassword!.isNotEmpty) {
         opts['relay_password'] = options.relayPassword;
       }
+      // Always include hash_algorithm so receiver matches sender's hash
+      opts['hash_algorithm'] = 'xxhash';
       final optsJson = jsonEncode(opts);
 
       final codePtr = options.codePhrase.toNativeUtf8();

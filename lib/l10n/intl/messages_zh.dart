@@ -78,6 +78,14 @@ const Map<String, String> zhMessages = {
   'language': '语言',
   'autoLanguage': '自动',
   'pureBlackMode': '纯黑模式',
+  'colorPalette': '配色方案',
+  'defaultLabel': '默认',
+  'customLabel': '自定义',
+  'colorBlue': '蓝',
+  'colorTeal': '青',
+  'colorPink': '粉',
+  'colorOrange': '橙',
+  'colorGreen': '绿',
 
   // About / Settings sections
   'about': '关于',

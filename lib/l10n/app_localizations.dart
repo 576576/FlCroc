@@ -114,6 +114,14 @@ class AppLocalizations {
   String get language => _('language');
   String get autoLanguage => _('autoLanguage');
   String get pureBlackMode => _('pureBlackMode');
+  String get colorPalette => _('colorPalette');
+  String get defaultLabel => _('defaultLabel');
+  String get customLabel => _('customLabel');
+  String get colorBlue => _('colorBlue');
+  String get colorTeal => _('colorTeal');
+  String get colorPink => _('colorPink');
+  String get colorOrange => _('colorOrange');
+  String get colorGreen => _('colorGreen');
 
   String get about => _('about');
   String get application => _('application');
