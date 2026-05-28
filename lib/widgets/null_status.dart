@@ -32,7 +32,7 @@ class NullStatusWidget extends StatelessWidget {
             TextButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+              label: Text(context.appLocalizations.retry),
             ),
           ],
         ],

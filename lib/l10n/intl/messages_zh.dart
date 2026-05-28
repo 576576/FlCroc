@@ -90,8 +90,9 @@ const Map<String, String> zhMessages = {
   // About / Settings sections
   'about': '关于',
   'application': '应用',
-  'appVersion': '应用版本',
-  'crocVersion': '内置 croc',
+  'appVersion': 'FlCroc版本',
+  'crocVersion': '内置Croc版本',
+  'unavailable': '不可用',
   'description': '描述',
   'desc': '基于 croc 的跨平台文件传输 GUI 客户端，简单易用。',
 

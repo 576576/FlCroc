@@ -197,6 +197,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                       icon: const Icon(Icons.qr_code_scanner, size: 16),
                       onPressed: _openScanner,
                       padding: EdgeInsets.zero,
+                      tooltip: l10n.scanQRCode,
                     ),
                   ),
                   SizedBox(
@@ -205,6 +206,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                       icon: const Icon(Icons.paste, size: 16),
                       onPressed: _pastePhrase,
                       padding: EdgeInsets.zero,
+                      tooltip: l10n.paste,
                     ),
                   ),
                 ],
@@ -384,7 +386,7 @@ class _QRScannerPageState extends State<_QRScannerPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scan QR Code'),
+        title: Text(context.appLocalizations.scanQRCode),
         actions: [
           IconButton(
             icon: Icon(

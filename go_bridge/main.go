@@ -107,8 +107,10 @@ func CrocPollProgress() *C.char {
 	select {
 	case ev, ok := <-progressChan:
 		if !ok {
+			// Channel closed — return completed sentinel.
 			progressChan = nil
-			return marshalEvent(nil)
+			closedEvent := progressEvent{Type: 2, TransferID: "closed"}
+			return marshalEvent(&closedEvent)
 		}
 		return marshalEvent(&ev)
 	default:

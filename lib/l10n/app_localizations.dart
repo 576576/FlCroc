@@ -127,6 +127,7 @@ class AppLocalizations {
   String get application => _('application');
   String get appVersion => _('appVersion');
   String get crocVersion => _('crocVersion');
+  String get unavailable => _('unavailable');
   String get description => _('description');
   String get desc => _('desc');
 

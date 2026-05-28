@@ -1,4 +1,5 @@
 import 'package:fl_croc/common/common.dart';
+import 'package:fl_croc/core/controller.dart';
 import 'package:fl_croc/core/lib.dart';
 import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/l10n/l10n.dart';
@@ -16,7 +17,22 @@ class SettingsView extends ConsumerStatefulWidget {
 }
 
 class _SettingsViewState extends ConsumerState<SettingsView> {
-  String _crocVersion = CoreLib.builtinCrocVersion;
+  String _crocVersion = '...';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCrocVersion();
+  }
+
+  Future<void> _loadCrocVersion() async {
+    try {
+      final v = await coreController.getVersion();
+      if (mounted) setState(() => _crocVersion = v);
+    } catch (_) {
+      if (mounted) setState(() => _crocVersion = 'unavailable');
+    }
+  }
   @override
   Widget build(BuildContext context) {
     final appSettings = ref.watch(appSettingProvider);
@@ -164,13 +180,13 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             items: [
               ListItem(
                 leading: const Icon(Icons.info),
-                title: Text(l10n.appName),
-                subtitle: Text('v${globalState.packageInfo.version}'),
+                title: Text(l10n.appVersion),
+                subtitle: Text(globalState.packageInfo.version),
               ),
               ListItem(
                 leading: const Icon(Icons.link),
                 title: Text(l10n.crocVersion),
-                subtitle: Text(_crocVersion),
+                subtitle: Text(_crocVersion == 'unavailable' ? l10n.unavailable : _crocVersion),
               ),
               ListItem(
                 leading: const Icon(Icons.description),
@@ -182,7 +198,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 title: Text(l10n.checkUpdate),
                 onTap: () {
                   globalState.openUrl(
-                    'https://github.com/576576/FlCroc',
+                    'https://github.com/$repository',
                   );
                 },
               ),
@@ -217,7 +233,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             },
           ),
           ChoiceChip(
-            label: const Text('English'),
+            label: Text('English'),
             selected: selectedKey == 'en',
             onSelected: (v) {
               if (v) {
@@ -228,7 +244,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             },
           ),
           ChoiceChip(
-            label: const Text('中文'),
+            label: Text('中文'),
             selected: selectedKey == 'zh',
             onSelected: (v) {
               if (v) {
@@ -361,25 +377,25 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   ];
 
   Widget _buildPaletteRow(WidgetRef ref, int current, AppLocalizations l10n) {
-    final presetColors = _kPresetColors.map((c) => Color(c)).toList();
+    final brightness = Theme.of(context).brightness;
     final isCustom = !_kPresetColors.contains(current) && current != defaultPrimaryColor;
     final labels = [l10n.defaultLabel, l10n.colorBlue, l10n.colorTeal, l10n.colorPink, l10n.colorOrange, l10n.colorGreen];
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
-        for (int i = 0; i < presetColors.length; i++)
+        for (int i = 0; i < _kPresetColors.length; i++)
           _ColorChip(
-            color: presetColors[i],
-            label: labels[i],
+            color: ColorScheme.fromSeed(seedColor: Color(_kPresetColors[i]), brightness: brightness).primary,
             isSelected: current == _kPresetColors[i],
             onTap: () => ref.read(themeSettingProvider.notifier).update((s) => s.copyWith(primaryColor: _kPresetColors[i])),
+            label: labels[i],
           ),
         _ColorChip(
-          color: isCustom ? Color(current) : Colors.grey.shade300,
-          label: l10n.customLabel,
+          color: ColorScheme.fromSeed(seedColor: Color(current), brightness: brightness).primary,
           isSelected: isCustom,
           onTap: () => _showColorPalette(ref, current),
+          label: l10n.customLabel,
         ),
       ],
     );

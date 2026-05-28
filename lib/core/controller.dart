@@ -50,7 +50,7 @@ class CoreController {
   }
 
   Future<String> getVersion() async {
-    if (_interface == null) return 'unavailable';
+    if (_interface == null) throw UnsupportedError('unavailable');
     return _interface!.getVersion();
   }
 

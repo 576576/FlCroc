@@ -17,7 +17,7 @@ class CoreLib extends CoreInterface {
   bool _isAvailable = false;
 
   /// Built-in croc version (synced with lib/croc vendored source).
-  static const builtinCrocVersion = 'croc v10.4.4';
+  static const builtinCrocVersion = '10.4.4';
 
   // Cached FFI function for freeing Go-allocated strings
   void Function(Pointer<Utf8>)? _freeGoString;
@@ -82,8 +82,24 @@ class CoreLib extends CoreInterface {
 
   @override
   Future<String> getVersion() async {
-    // Return static built-in version — avoids FFI call
-    return builtinCrocVersion;
+    // Try FFI first (live croc submodule version).
+    try {
+      final lib = _lib;
+      if (lib != null) {
+        final func = lib.lookupFunction<
+            Pointer<Utf8> Function(),
+            Pointer<Utf8> Function()>('CrocGetVersion');
+        final ptr = func();
+        final ver = ptr.toDartString();
+        _freeGoString?.call(ptr);
+        if (ver.isNotEmpty) return _stripCrocPrefix(ver);
+      }
+    } catch (_) {}
+    throw UnsupportedError('unavailable');
+  }
+
+  String _stripCrocPrefix(String raw) {
+    return raw.replaceAll(RegExp(r'^croc\s*v?'), '');
   }
 
   @override
@@ -323,10 +339,12 @@ class CoreLib extends CoreInterface {
           final type = event['type'] as int? ?? 0;
 
           if (type == 2) {
-            yield TransferProgress(
-              transferId: transferId,
-              status: TransferProgressStatus.completed,
-            );
+            if (event['transfer_id'] != 'closed') {
+              yield TransferProgress(
+                transferId: transferId,
+                status: TransferProgressStatus.completed,
+              );
+            }
             return;
           } else if (type == 3) {
             yield TransferProgress(

@@ -129,7 +129,16 @@ class CoreService extends CoreInterface {
 
   @override
   Future<String> getVersion() async {
-    return CoreLib.builtinCrocVersion;
+    try {
+      if (_crocPath != null && _isAvailable) {
+        final result = await Process.run(_crocPath!, ['--version']);
+        if (result.exitCode == 0) {
+          final raw = result.stdout.toString().trim();
+          if (raw.isNotEmpty) return raw.replaceAll(RegExp(r'^croc\s*v?'), '');
+        }
+      }
+    } catch (_) {}
+    throw UnsupportedError('unavailable');
   }
 
   @override

@@ -114,15 +114,18 @@ class _ApplicationState extends ConsumerState<Application> {
   ThemeData _buildDarkTheme(ThemeProps props) {
     final seedColor = Color(props.primaryColor);
     final settings = ref.read(appSettingProvider);
+    final isPureBlack = settings.pureBlackMode;
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
         seedColor: seedColor,
         brightness: Brightness.dark,
+      ).copyWith(
+        surface: isPureBlack ? const Color(0xFF0A0A0A) : null,
+        surfaceContainer: isPureBlack ? const Color(0xFF111111) : null,
+        surfaceContainerHighest: isPureBlack ? const Color(0xFF181818) : null,
       ),
-      scaffoldBackgroundColor: settings.pureBlackMode
-          ? Colors.black
-          : null,
+      scaffoldBackgroundColor: isPureBlack ? Colors.black : null,
     );
   }
 }

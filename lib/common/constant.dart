@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 const appName = 'FlCroc';
 const coreName = 'croc';
 const packageName = 'cn.sumitm.flcroc';
-const repository = 'your-org/FlCroc';
+const repository = '576576/FlCroc';
 
 const defaultRelay = 'croc.schollz.com';
 const defaultPort = '9009';

@@ -346,9 +346,9 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.refresh, size: 16), onPressed: _generateCode, padding: EdgeInsets.zero)),
-                  SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.paste, size: 16), onPressed: _pastePhrase, padding: EdgeInsets.zero)),
-                  SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.copy, size: 16), onPressed: _copyPhrase, padding: EdgeInsets.zero)),
+                  SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.refresh, size: 16), onPressed: _generateCode, padding: EdgeInsets.zero, tooltip: l10n.generate)),
+                  SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.copy, size: 16), onPressed: _copyPhrase, padding: EdgeInsets.zero, tooltip: l10n.copyCode)),
+                  SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.paste, size: 16), onPressed: _pastePhrase, padding: EdgeInsets.zero, tooltip: l10n.paste)),
                 ],
               ),
             ),

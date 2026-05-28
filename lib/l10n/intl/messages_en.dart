@@ -91,7 +91,8 @@ const Map<String, String> enMessages = {
   'about': 'About',
   'application': 'Application',
   'appVersion': 'App Version',
-  'crocVersion': 'Built-in croc',
+  'crocVersion': 'Built-in Croc Version',
+  'unavailable': 'Unavailable',
   'description': 'Description',
   'desc': 'A cross-platform file transfer GUI client powered by croc, simple and easy to use.',
 
