@@ -339,8 +339,8 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 	var totalSize int64
 	var fileNames []string
 	for _, f := range c.FilesToTransfer {
-		if !f.IsDir && f.SentName != "" {
-			fileNames = append(fileNames, f.SentName)
+		if f.Name != "" {
+			fileNames = append(fileNames, f.Name)
 			totalSize += f.Size
 		}
 	}
@@ -348,7 +348,7 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 	progressChan <- progressEvent{
 		Type:        2,
 		TransferID:  transferID,
-		TotalFiles:  int32(len(fileNames)),
+		TotalFiles:  len(fileNames),
 		TotalSize:   totalSize,
 		CurrentFile: strings.Join(fileNames, "\n"),
 	}
