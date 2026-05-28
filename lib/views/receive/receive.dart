@@ -5,6 +5,7 @@ import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/l10n/l10n.dart';
 import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/providers/providers.dart';
+import 'package:fl_croc/state.dart';
 import 'package:fl_croc/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -25,10 +26,9 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   ReceiveConfig _receiveConfig = const ReceiveConfig();
 
   // Received content tracking
-  final List<String> _receivedFiles = [];
-  String _receivedText = '';
+  final List<FileItem> _receivedFiles = [];
   int _selectedTab = 0; // 0=files, 1=text
-  bool _hasReceived = false;
+  bool _isTextReceived = false;
 
   @override
   void initState() {
@@ -71,6 +71,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   void _startReceive() {
     final code = _codeController.text.trim();
     if (code.isEmpty) return;
+    final l10n = context.appLocalizations;
 
     setState(() => _isReceiving = true);
 
@@ -78,7 +79,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
       id: appController.generateId(),
       direction: TransferDirection.received,
       status: TransferStatus.transferring,
-      files: [const FileItem(name: 'Receiving...', path: '', size: 0)],
+      files: [FileItem(name: l10n.receiving, path: '', size: 0)],
       totalSize: 0,
       startTime: DateTime.now(),
       codePhrase: code,
@@ -104,27 +105,40 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
         if (!mounted) return;
         switch (progress.status) {
           case TransferProgressStatus.transferring:
-            // Track incoming files
-            if (progress.currentFile.isNotEmpty &&
-                !_receivedFiles.contains(progress.currentFile)) {
-              _receivedFiles.add(progress.currentFile);
-              _hasReceived = true;
-              _selectedTab = 0; // auto-switch to files tab
-            }
             appController.updateTransferRecord(
               record.copyWith(
                 status: TransferStatus.transferring,
                 transferredSize: progress.transferredSize,
-                files: _receivedFiles.map((f) => FileItem(name: f, path: '', size: 0)).toList(),
               ),
             );
             if (mounted) setState(() {});
           case TransferProgressStatus.completed:
+            // Parse file names from the completed event
+            final fileNames = progress.currentFile.isNotEmpty
+                ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
+                : <String>[];
+            final fileItems = fileNames.map((n) => FileItem(
+              name: n,
+              path: _receiveConfig.outputPath.isNotEmpty
+                  ? '${_receiveConfig.outputPath}/$n'
+                  : n,
+              size: fileNames.length == 1 ? progress.totalSize : 0,
+            )).toList();
+
+            _receivedFiles.clear();
+            _receivedFiles.addAll(fileItems);
+            if (fileItems.isNotEmpty) {
+              _selectedTab = 0;
+              _isTextReceived = false;
+            }
             setState(() => _isReceiving = false);
+
             appController.updateTransferRecord(
               record.copyWith(
                 status: TransferStatus.completed,
                 transferredSize: progress.totalSize,
+                totalSize: progress.totalSize,
+                files: fileItems.isEmpty ? [const FileItem(name: 'file', path: '', size: 0)] : fileItems,
                 endTime: DateTime.now(),
               ),
             );
@@ -243,11 +257,83 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
               ),
             ),
 
-            // ── Received content (auto-populated) ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: _selectedTab == 0 ? _buildReceivedFiles() : _buildReceivedText(),
-            ),
+            // ── Received content (matches send page layout / behavior) ──
+            if (_selectedTab == 0)
+              _buildSection(l10n.files, Icons.insert_drive_file, [
+                if (_receivedFiles.isEmpty)
+                  NullStatusWidget(message: l10n.noReceivedFiles, icon: Icons.inbox_outlined)
+                else
+                  ..._receivedFiles.map((f) => ListTile(
+                    leading: const Icon(Icons.insert_drive_file),
+                    title: Text(f.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: f.size > 0 ? Text(f.size.fileSize, style: context.textTheme.bodySmall) : null,
+                    dense: true,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.open_in_new, size: 18),
+                          onPressed: () => globalState.openFile(f.path),
+                          tooltip: l10n.open,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                          onPressed: () => setState(() => _receivedFiles.remove(f)),
+                          tooltip: l10n.delete,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ),
+                  )),
+                Padding(
+                  padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: _receivedFiles.isNotEmpty
+                          ? () => setState(() => _receivedFiles.clear())
+                          : null,
+                      icon: const Icon(Icons.clear_all, size: 16),
+                      label: Text(l10n.clearFiles),
+                    ),
+                  ),
+                ),
+              ])
+            else
+              _buildSection(l10n.textMode, Icons.text_snippet, [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: TextField(
+                    controller: TextEditingController(text: _receivedFiles.map((f) => f.name).join('\n')),
+                    readOnly: true,
+                    maxLines: 5,
+                    decoration: InputDecoration(
+                      hintText: l10n.textHint,
+                      border: InputBorder.none,
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.copy, size: 20),
+                        onPressed: () {
+                          final text = _receivedFiles.map((f) => f.name).join('\n');
+                          if (text.isNotEmpty) Clipboard.setData(ClipboardData(text: text));
+                        },
+                        tooltip: l10n.copyCode,
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () => setState(() { _receivedFiles.clear(); _isTextReceived = false; }),
+                      icon: const Icon(Icons.clear_all, size: 16),
+                      label: Text(l10n.clearText),
+                    ),
+                  ),
+                ),
+              ]),
 
             const SizedBox(height: 16),
             const Divider(),
@@ -278,44 +364,6 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
       ),
       ),  // ScrollConfiguration
     );    // CommonScaffold
-  }
-
-  Widget _buildReceivedFiles() {
-    if (_receivedFiles.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Center(child: Icon(Icons.inbox, size: 32, color: context.colorScheme.onSurfaceVariant.withAlpha(80))),
-        ),
-      );
-    }
-    return Card(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: _receivedFiles.map((f) => ListTile(
-          leading: const Icon(Icons.insert_drive_file),
-          title: Text(f, maxLines: 1, overflow: TextOverflow.ellipsis),
-          dense: true,
-        )).toList(),
-      ),
-    );
-  }
-
-  Widget _buildReceivedText() {
-    if (_receivedText.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Center(child: Icon(Icons.text_fields, size: 32, color: context.colorScheme.onSurfaceVariant.withAlpha(80))),
-        ),
-      );
-    }
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: SelectableText(_receivedText, style: context.textTheme.bodyMedium),
-      ),
-    );
   }
 
   Widget _buildStatusChip(AppLocalizations l10n) {

@@ -449,7 +449,11 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                 padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   TextButton.icon(onPressed: _pickFiles, icon: const Icon(Icons.add, size: 16), label: Text(l10n.selectFiles)),
-                  if (_selectedFiles.isNotEmpty) TextButton.icon(onPressed: _clearFiles, icon: const Icon(Icons.clear_all, size: 16), label: Text(l10n.clearFiles)),
+                  TextButton.icon(
+                    onPressed: _selectedFiles.isNotEmpty ? _clearFiles : null,
+                    icon: const Icon(Icons.clear_all, size: 16),
+                    label: Text(l10n.clearFiles),
+                  ),
                 ]),
               ),
             ])),

@@ -129,6 +129,15 @@ class GlobalState {
       commonPrint('Failed to open URL: $e');
     }
   }
+
+  Future<void> openFile(String path) async {
+    if (path.isEmpty) return;
+    try {
+      await launchUrl(Uri.file(path));
+    } catch (e) {
+      commonPrint('Failed to open file: $e');
+    }
+  }
 }
 
 final globalState = GlobalState();

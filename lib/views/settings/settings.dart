@@ -36,7 +36,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   @override
   Widget build(BuildContext context) {
     final appSettings = ref.watch(appSettingProvider);
-    final themeProps = ref.watch(themeSettingProvider);
 
     final l10n = context.appLocalizations;
     return BaseScaffold(
@@ -140,9 +139,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ListItem(
                 leading: const Icon(Icons.palette),
                 title: Text(l10n.colorPalette),
-                subtitle: Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: _buildPaletteRow(ref, themeProps.primaryColor, l10n),
+                subtitle: const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: _PaletteSection(),
                 ),
               ),
             ],
@@ -375,33 +374,23 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     0xFFFF6F00, // Orange
     0xFF4CAF50, // Green
   ];
+}
 
-  Widget _buildPaletteRow(WidgetRef ref, int current, AppLocalizations l10n) {
-    final brightness = Theme.of(context).brightness;
-    final isCustom = !_kPresetColors.contains(current) && current != defaultPrimaryColor;
-    final labels = [l10n.defaultLabel, l10n.colorBlue, l10n.colorTeal, l10n.colorPink, l10n.colorOrange, l10n.colorGreen];
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (int i = 0; i < _kPresetColors.length; i++)
-          _ColorChip(
-            color: ColorScheme.fromSeed(seedColor: Color(_kPresetColors[i]), brightness: brightness).primary,
-            isSelected: current == _kPresetColors[i],
-            onTap: () => ref.read(themeSettingProvider.notifier).update((s) => s.copyWith(primaryColor: _kPresetColors[i])),
-            label: labels[i],
-          ),
-        _ColorChip(
-          color: ColorScheme.fromSeed(seedColor: Color(current), brightness: brightness).primary,
-          isSelected: isCustom,
-          onTap: () => _showColorPalette(ref, current),
-          label: l10n.customLabel,
-        ),
-      ],
-    );
-  }
+/// Isolated palette section — rebuilds independently when primaryColor changes,
+/// preventing the entire settings page from flickering.
+class _PaletteSection extends ConsumerWidget {
+  const _PaletteSection();
 
-  void _showColorPalette(WidgetRef ref, int currentColor) {
+  static final _labels = <String Function(AppLocalizations)>[
+    (l) => l.defaultLabel,
+    (l) => l.colorBlue,
+    (l) => l.colorTeal,
+    (l) => l.colorPink,
+    (l) => l.colorOrange,
+    (l) => l.colorGreen,
+  ];
+
+  void _showColorPalette(BuildContext context, WidgetRef ref, int currentColor) {
     final hsv = HSVColor.fromColor(Color(currentColor));
     showDialog(
       context: context,
@@ -411,6 +400,34 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         ref.read(themeSettingProvider.notifier).update((s) => s.copyWith(primaryColor: result.value));
       }
     });
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(themeSettingProvider.select((s) => s.primaryColor));
+    final brightness = Theme.of(context).brightness;
+    final l10n = context.appLocalizations;
+    final isCustom = !_SettingsViewState._kPresetColors.contains(current) && current != defaultPrimaryColor;
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (int i = 0; i < _SettingsViewState._kPresetColors.length; i++)
+          _ColorChip(
+            color: cachedColorScheme(_SettingsViewState._kPresetColors[i], brightness).primary,
+            isSelected: current == _SettingsViewState._kPresetColors[i],
+            onTap: () => ref.read(themeSettingProvider.notifier).update((s) => s.copyWith(primaryColor: _SettingsViewState._kPresetColors[i])),
+            label: _labels[i](l10n),
+          ),
+        _ColorChip(
+          color: cachedColorScheme(current, brightness).primary,
+          isSelected: isCustom,
+          onTap: () => _showColorPalette(context, ref, current),
+          label: l10n.customLabel,
+        ),
+      ],
+    );
   }
 }
 
@@ -582,7 +599,8 @@ class _ColorChip extends StatelessWidget {
       onSelected: (_) => onTap(),
       backgroundColor: color,
       selectedColor: color,
-      side: isSelected ? BorderSide(color: context.colorScheme.primary, width: 2) : BorderSide(color: Colors.transparent),
+      checkmarkColor: textColor,
+      side: isSelected ? BorderSide(color: textColor, width: 2) : BorderSide(color: Colors.transparent),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     );
   }

@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"unsafe"
 
@@ -334,7 +335,23 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		return
 	}
 
-	progressChan <- progressEvent{Type: 2, TransferID: transferID}
+	// Collect received file info
+	var totalSize int64
+	var fileNames []string
+	for _, f := range c.FilesToTransfer {
+		if !f.IsDir && f.SentName != "" {
+			fileNames = append(fileNames, f.SentName)
+			totalSize += f.Size
+		}
+	}
+
+	progressChan <- progressEvent{
+		Type:        2,
+		TransferID:  transferID,
+		TotalFiles:  int32(len(fileNames)),
+		TotalSize:   totalSize,
+		CurrentFile: strings.Join(fileNames, "\n"),
+	}
 }
 
 // ── Option types (mirror Dart models) ────────────────────────

@@ -3,7 +3,6 @@ import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/l10n/l10n.dart';
 import 'package:fl_croc/manager/theme_manager.dart';
-import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/pages/pages.dart';
 import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/state.dart';
@@ -35,8 +34,8 @@ class _ApplicationState extends ConsumerState<Application> {
         final locale = ref.watch(
           appSettingProvider.select((state) => state.locale),
         );
-        final themeProps = ref.watch(themeSettingProvider);
         final appSettings = ref.watch(appSettingProvider);
+        final themeProps = ref.watch(themeSettingProvider);
 
         return MaterialApp(
           debugShowCheckedModeBanner: false,
@@ -54,8 +53,8 @@ class _ApplicationState extends ConsumerState<Application> {
           locale: locale != null ? Locale(locale) : _resolveSystemLocale(),
           supportedLocales: AppLocalizations.supportedLocales,
           themeMode: _getThemeMode(appSettings.themeMode),
-          theme: _buildLightTheme(themeProps),
-          darkTheme: _buildDarkTheme(themeProps),
+          theme: _buildLightTheme(themeProps.primaryColor),
+          darkTheme: _buildDarkTheme(themeProps.primaryColor, appSettings.pureBlackMode),
           home: const HomePage(),
         );
       },
@@ -94,14 +93,10 @@ class _ApplicationState extends ConsumerState<Application> {
     return const Locale('en');
   }
 
-  ThemeData _buildLightTheme(ThemeProps props) {
-    final seedColor = Color(props.primaryColor);
+  ThemeData _buildLightTheme(int primaryColor) {
     return ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: seedColor,
-        brightness: Brightness.light,
-      ),
+      colorScheme: cachedColorScheme(primaryColor, Brightness.light),
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: CupertinoPageTransitionsBuilder(),
@@ -111,20 +106,18 @@ class _ApplicationState extends ConsumerState<Application> {
     );
   }
 
-  ThemeData _buildDarkTheme(ThemeProps props) {
-    final seedColor = Color(props.primaryColor);
-    final settings = ref.read(appSettingProvider);
-    final isPureBlack = settings.pureBlackMode;
+  ThemeData _buildDarkTheme(int primaryColor, bool isPureBlack) {
+    var scheme = cachedColorScheme(primaryColor, Brightness.dark);
+    if (isPureBlack) {
+      scheme = scheme.copyWith(
+        surface: const Color(0xFF0A0A0A),
+        surfaceContainer: const Color(0xFF111111),
+        surfaceContainerHighest: const Color(0xFF181818),
+      );
+    }
     return ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: seedColor,
-        brightness: Brightness.dark,
-      ).copyWith(
-        surface: isPureBlack ? const Color(0xFF0A0A0A) : null,
-        surfaceContainer: isPureBlack ? const Color(0xFF111111) : null,
-        surfaceContainerHighest: isPureBlack ? const Color(0xFF181818) : null,
-      ),
+      colorScheme: scheme,
       scaffoldBackgroundColor: isPureBlack ? Colors.black : null,
     );
   }

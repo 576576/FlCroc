@@ -155,6 +155,12 @@ class AppLocalizations {
   String get noHistory => _('noHistory');
   String get connecting => _('connecting');
   String get transferring => _('transferring');
+  String get receiving => _('receiving');
+  String get receivedFiles => _('receivedFiles');
+  String get receivedText => _('receivedText');
+  String get noReceivedFiles => _('noReceivedFiles');
+  String get noReceivedText => _('noReceivedText');
+  String get open => _('open');
   String get completed => _('completed');
   String get failed => _('failed');
   String get cancelled => _('cancelled');
