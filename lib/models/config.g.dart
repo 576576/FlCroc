@@ -33,6 +33,7 @@ _$AppSettingPropsImpl _$$AppSettingPropsImplFromJson(
   relayConfig: json['relayConfig'] == null
       ? const RelayConfig()
       : RelayConfig.fromJson(json['relayConfig'] as Map<String, dynamic>),
+  defaultSavePath: json['defaultSavePath'] as String? ?? '',
 );
 
 Map<String, dynamic> _$$AppSettingPropsImplToJson(
@@ -52,6 +53,7 @@ Map<String, dynamic> _$$AppSettingPropsImplToJson(
   'developerMode': instance.developerMode,
   'autoCheckUpdate': instance.autoCheckUpdate,
   'relayConfig': instance.relayConfig,
+  'defaultSavePath': instance.defaultSavePath,
 };
 
 const _$ThemeModeOptionEnumMap = {

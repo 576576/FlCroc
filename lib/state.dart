@@ -143,13 +143,17 @@ class GlobalState {
     if (filePath.isEmpty) return;
     try {
       if (Platform.isWindows) {
-        await Process.run('explorer', ['/select,', filePath]);
+        // Open directory directly; /select, for files to reveal in parent
+        final isDir = Directory(filePath).existsSync();
+        if (isDir) {
+          await Process.run('explorer', [filePath]);
+        } else {
+          await Process.run('explorer', ['/select,', filePath]);
+        }
       } else if (Platform.isMacOS) {
-        await Process.run('open', ['-R', filePath]);
+        await Process.run('open', [filePath]);
       } else {
-        // Linux: open the parent directory
-        final dir = Directory(filePath).parent.path;
-        await Process.run('xdg-open', [dir]);
+        await Process.run('xdg-open', [filePath]);
       }
     } catch (e) {
       commonPrint('Failed to open folder: $e');

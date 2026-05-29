@@ -35,6 +35,7 @@ mixin _$AppSettingProps {
   bool get developerMode => throw _privateConstructorUsedError;
   bool get autoCheckUpdate => throw _privateConstructorUsedError;
   RelayConfig get relayConfig => throw _privateConstructorUsedError;
+  String get defaultSavePath => throw _privateConstructorUsedError;
 
   /// Serializes this AppSettingProps to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -66,6 +67,7 @@ abstract class $AppSettingPropsCopyWith<$Res> {
     bool developerMode,
     bool autoCheckUpdate,
     RelayConfig relayConfig,
+    String defaultSavePath,
   });
 
   $RelayConfigCopyWith<$Res> get relayConfig;
@@ -98,6 +100,7 @@ class _$AppSettingPropsCopyWithImpl<$Res, $Val extends AppSettingProps>
     Object? developerMode = null,
     Object? autoCheckUpdate = null,
     Object? relayConfig = null,
+    Object? defaultSavePath = null,
   }) {
     return _then(
       _value.copyWith(
@@ -149,6 +152,10 @@ class _$AppSettingPropsCopyWithImpl<$Res, $Val extends AppSettingProps>
                 ? _value.relayConfig
                 : relayConfig // ignore: cast_nullable_to_non_nullable
                       as RelayConfig,
+            defaultSavePath: null == defaultSavePath
+                ? _value.defaultSavePath
+                : defaultSavePath // ignore: cast_nullable_to_non_nullable
+                      as String,
           )
           as $Val,
     );
@@ -187,6 +194,7 @@ abstract class _$$AppSettingPropsImplCopyWith<$Res>
     bool developerMode,
     bool autoCheckUpdate,
     RelayConfig relayConfig,
+    String defaultSavePath,
   });
 
   @override
@@ -219,6 +227,7 @@ class __$$AppSettingPropsImplCopyWithImpl<$Res>
     Object? developerMode = null,
     Object? autoCheckUpdate = null,
     Object? relayConfig = null,
+    Object? defaultSavePath = null,
   }) {
     return _then(
       _$AppSettingPropsImpl(
@@ -270,6 +279,10 @@ class __$$AppSettingPropsImplCopyWithImpl<$Res>
             ? _value.relayConfig
             : relayConfig // ignore: cast_nullable_to_non_nullable
                   as RelayConfig,
+        defaultSavePath: null == defaultSavePath
+            ? _value.defaultSavePath
+            : defaultSavePath // ignore: cast_nullable_to_non_nullable
+                  as String,
       ),
     );
   }
@@ -292,6 +305,7 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
     this.developerMode = false,
     this.autoCheckUpdate = false,
     this.relayConfig = const RelayConfig(),
+    this.defaultSavePath = '',
   }) : _dashboardWidgets = dashboardWidgets;
 
   factory _$AppSettingPropsImpl.fromJson(Map<String, dynamic> json) =>
@@ -340,10 +354,13 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
   @override
   @JsonKey()
   final RelayConfig relayConfig;
+  @override
+  @JsonKey()
+  final String defaultSavePath;
 
   @override
   String toString() {
-    return 'AppSettingProps(locale: $locale, dashboardWidgets: $dashboardWidgets, autoLaunch: $autoLaunch, silentLaunch: $silentLaunch, minimizeOnExit: $minimizeOnExit, themeMode: $themeMode, colorSchemeType: $colorSchemeType, fontFamily: $fontFamily, pureBlackMode: $pureBlackMode, developerMode: $developerMode, autoCheckUpdate: $autoCheckUpdate, relayConfig: $relayConfig)';
+    return 'AppSettingProps(locale: $locale, dashboardWidgets: $dashboardWidgets, autoLaunch: $autoLaunch, silentLaunch: $silentLaunch, minimizeOnExit: $minimizeOnExit, themeMode: $themeMode, colorSchemeType: $colorSchemeType, fontFamily: $fontFamily, pureBlackMode: $pureBlackMode, developerMode: $developerMode, autoCheckUpdate: $autoCheckUpdate, relayConfig: $relayConfig, defaultSavePath: $defaultSavePath)';
   }
 
   @override
@@ -375,7 +392,9 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
             (identical(other.autoCheckUpdate, autoCheckUpdate) ||
                 other.autoCheckUpdate == autoCheckUpdate) &&
             (identical(other.relayConfig, relayConfig) ||
-                other.relayConfig == relayConfig));
+                other.relayConfig == relayConfig) &&
+            (identical(other.defaultSavePath, defaultSavePath) ||
+                other.defaultSavePath == defaultSavePath));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -394,6 +413,7 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
     developerMode,
     autoCheckUpdate,
     relayConfig,
+    defaultSavePath,
   );
 
   /// Create a copy of AppSettingProps
@@ -428,6 +448,7 @@ abstract class _AppSettingProps implements AppSettingProps {
     final bool developerMode,
     final bool autoCheckUpdate,
     final RelayConfig relayConfig,
+    final String defaultSavePath,
   }) = _$AppSettingPropsImpl;
 
   factory _AppSettingProps.fromJson(Map<String, dynamic> json) =
@@ -458,6 +479,8 @@ abstract class _AppSettingProps implements AppSettingProps {
   bool get autoCheckUpdate;
   @override
   RelayConfig get relayConfig;
+  @override
+  String get defaultSavePath;
 
   /// Create a copy of AppSettingProps
   /// with the given fields replaced by the non-null parameter values.

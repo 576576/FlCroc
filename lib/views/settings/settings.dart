@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/core/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
@@ -23,10 +24,26 @@ class SettingsView extends ConsumerStatefulWidget {
 class _SettingsViewState extends ConsumerState<SettingsView> {
   String _crocVersion = '...';
 
+  late final _relayAddrCtrl = TextEditingController();
+  late final _relayPortCtrl = TextEditingController();
+  late final _relayPassCtrl = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     _loadCrocVersion();
+    final relay = ref.read(appSettingProvider).relayConfig;
+    _relayAddrCtrl.text = relay.address;
+    _relayPortCtrl.text = relay.port;
+    _relayPassCtrl.text = relay.password;
+  }
+
+  @override
+  void dispose() {
+    _relayAddrCtrl.dispose();
+    _relayPortCtrl.dispose();
+    _relayPassCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _loadCrocVersion() async {
@@ -99,6 +116,65 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     }
   }
 
+  String _defaultDownloadPath() {
+    try {
+      final dir = Directory('${_homePath()}${Platform.pathSeparator}Downloads');
+      if (dir.existsSync()) return dir.path;
+    } catch (_) {}
+    return _appOutPath();
+  }
+
+  String _homePath() {
+    final env = Platform.environment;
+    if (Platform.isWindows) return env['USERPROFILE'] ?? 'C:\\';
+    return env['HOME'] ?? '/';
+  }
+
+  String _appOutPath() {
+    try {
+      final exeDir = File(Platform.resolvedExecutable).parent.path;
+      final dir = Directory('$exeDir${Platform.pathSeparator}out');
+      if (!dir.existsSync()) dir.createSync(recursive: true);
+      return dir.path;
+    } catch (_) {
+      return _homePath();
+    }
+  }
+
+  Future<void> _pickSavePath(WidgetRef ref) async {
+    final result = await FilePicker.platform.getDirectoryPath();
+    if (result != null) {
+      ref.read(appSettingProvider.notifier).update(
+            (s) => s.copyWith(defaultSavePath: result),
+          );
+    }
+  }
+
+  void _updateRelayControllers(String address, String port, String password) {
+    _relayAddrCtrl.text = address;
+    _relayPortCtrl.text = port;
+    _relayPassCtrl.text = password;
+  }
+
+  Future<void> _resetAllSettings(BuildContext context) async {
+    final l10n = context.appLocalizations;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.resetAllSettings),
+        content: Text(l10n.resetAllConfirm),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.cancel)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.reset)),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await ref.read(appSettingProvider.notifier).resetAll();
+    ref.read(themeSettingProvider.notifier).resetToDefault();
+    if (mounted) context.showSnackBar(l10n.settingsReset);
+  }
+
   @override
   Widget build(BuildContext context) {
     final appSettings = ref.watch(appSettingProvider);
@@ -122,7 +198,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 _buildRelayField(
                   icon: Icons.link,
                   hint: l10n.relayAddress,
-                  value: appSettings.relayConfig.address,
+                  controller: _relayAddrCtrl,
                   suffix: IconButton(
                     icon: const Icon(Icons.restart_alt, size: 20),
                     padding: EdgeInsets.zero,
@@ -138,6 +214,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                               ),
                             ),
                           );
+                      _updateRelayControllers(defaultRelay, defaultPort, defaultPassphrase);
                     },
                   ),
                   onChanged: (v) {
@@ -151,7 +228,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 _buildRelayField(
                   icon: Icons.numbers,
                   hint: l10n.port,
-                  value: appSettings.relayConfig.port,
+                  controller: _relayPortCtrl,
                   onChanged: (v) {
                     ref.read(appSettingProvider.notifier).update(
                           (s) => s.copyWith(
@@ -162,7 +239,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 ),
                 _buildPasswordField(
                   hint: l10n.relayPassword,
-                  value: appSettings.relayConfig.password,
+                  controller: _relayPassCtrl,
                   onChanged: (v) {
                     ref.read(appSettingProvider.notifier).update(
                           (s) => s.copyWith(
@@ -204,7 +281,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ],
               ListItem(
                 leading: Consumer(
-                  builder: (_, ref, __) {
+                  builder: (_, ref, c) {
                     final primary = ref.watch(themeSettingProvider.select((s) => s.primaryColor));
                     return Icon(Icons.palette, color: cachedColorScheme(primary, Theme.of(context).brightness).primary);
                   },
@@ -213,7 +290,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   children: [
                     Expanded(child: Text(l10n.colorPalette)),
                     Consumer(
-                      builder: (_, ref, __) {
+                      builder: (_, ref, c) {
                         final current = ref.watch(themeSettingProvider.select((s) => s.primaryColor));
                         final isDefault = current == defaultPrimaryColor;
                         return TextButton.icon(
@@ -249,17 +326,46 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 title: Text(l10n.language),
                 subtitle: _buildLanguageChips(context, appSettings.locale, ref),
               ),
-              ListItem.switchItem(
-                leading: const Icon(Icons.update),
-                title: Text(l10n.checkUpdate),
-                delegate: SwitchDelegate(
-                  value: appSettings.autoCheckUpdate,
-                  onChanged: (v) {
-                    ref.read(appSettingProvider.notifier).update(
-                          (s) => s.copyWith(autoCheckUpdate: v),
-                        );
-                  },
+              ListItem(
+                leading: const Icon(Icons.folder),
+                title: Text(l10n.defaultSavePath),
+                subtitle: Text(appSettings.defaultSavePath.isEmpty ? _defaultDownloadPath() : appSettings.defaultSavePath),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (appSettings.defaultSavePath.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.restart_alt, size: 18),
+                        tooltip: l10n.reset,
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () {
+                          ref.read(appSettingProvider.notifier).update(
+                                (s) => s.copyWith(defaultSavePath: ''),
+                              );
+                        },
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.open_in_new, size: 18),
+                      tooltip: l10n.open,
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () {
+                        final path = appSettings.defaultSavePath.isEmpty ? _defaultDownloadPath() : appSettings.defaultSavePath;
+                        globalState.openFolder(path);
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.folder_open, size: 18),
+                      tooltip: l10n.selectFolder,
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => _pickSavePath(ref),
+                    ),
+                  ],
                 ),
+              ),
+              ListItem(
+                leading: const Icon(Icons.restart_alt, color: Colors.red),
+                title: Text(l10n.resetAllSettings, style: const TextStyle(color: Colors.red)),
+                onTap: () => _resetAllSettings(context),
               ),
             ],
           ),
@@ -296,7 +402,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 },
               ),
               ListItem(
-                leading: const Icon(Icons.code),
+                leading: const Icon(Icons.update),
                 title: Text(l10n.checkUpdate),
                 onTap: () => _checkForUpdate(context),
               ),
@@ -388,7 +494,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     );
   }
 
-  Widget _buildRelayField({required IconData icon, required String hint, required String value, Widget? suffix, required ValueChanged<String> onChanged}) {
+  Widget _buildRelayField({required IconData icon, required String hint, required TextEditingController controller, Widget? suffix, required ValueChanged<String> onChanged}) {
     return ListItem(
       minVerticalPadding: 4,
       leading: Icon(icon),
@@ -401,13 +507,13 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           suffixIcon: suffix ?? const SizedBox(width: 0, height: 0),
         ),
         style: context.textTheme.bodyLarge,
-        controller: TextEditingController(text: value),
+        controller: controller,
         onChanged: onChanged,
       ),
     );
   }
 
-  Widget _buildPasswordField({required String hint, required String value, required ValueChanged<String> onChanged}) {
+  Widget _buildPasswordField({required String hint, required TextEditingController controller, required ValueChanged<String> onChanged}) {
     var obscured = true;
     return StatefulBuilder(
       builder: (_, setLocal) {
@@ -429,7 +535,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ),
             ),
             style: context.textTheme.bodyLarge,
-            controller: TextEditingController(text: value),
+            controller: controller,
             onChanged: onChanged,
           ),
         );

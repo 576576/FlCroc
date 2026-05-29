@@ -25,12 +25,13 @@ class HistoryView extends ConsumerWidget {
       title: l10n.history,
       actions: [
         if (completed.isNotEmpty)
-          IconButton(
-            onPressed: () {
-              appController.clearHistory();
-            },
-            icon: const Icon(Icons.delete_sweep_outlined),
+          FilledButton.icon(
+            onPressed: () => appController.clearHistory(),
+            icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+            label: Text(l10n.clear),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
           ),
+        const SizedBox(width: 8),
       ],
       body: completed.isEmpty
           ? NullStatusWidget(

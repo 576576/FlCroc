@@ -63,37 +63,37 @@ class _TransferStatsWidgetState extends ConsumerState<TransferStatsWidget> {
       _ => Icons.repeat,
     };
 
-    return CommonCard(
+    return GestureDetector(
+      onTap: _cycle,
+      behavior: HitTestBehavior.opaque,
+      child: CommonCard(
       info: Info(iconData: infoIcon, label: infoLabel),
-      child: GestureDetector(
-        onTap: _cycle,
-        behavior: HitTestBehavior.opaque,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              primaryValue,
+              style: context.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: context.colorScheme.primary,
+              ),
+            ),
+            if (secondaryLabel != null) ...[
+              const SizedBox(height: 4),
               Text(
-                primaryValue,
-                style: context.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: context.colorScheme.primary,
+                secondaryLabel,
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colorScheme.onSurfaceVariant,
                 ),
               ),
-              if (secondaryLabel != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  secondaryLabel,
-                  style: context.textTheme.bodySmall?.copyWith(
-                    color: context.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
             ],
-          ),
+          ],
         ),
       ),
+    ),
     );
   }
 

@@ -91,6 +91,10 @@ class AppLocalizations {
   String get noCrocBackend => _('noCrocBackend');
   String get enterTextWarning => _('enterTextWarning');
   String get resetRelay => _('resetRelay');
+  String get reset => _('reset');
+  String get resetAllSettings => _('resetAllSettings');
+  String get resetAllConfirm => _('resetAllConfirm');
+  String get settingsReset => _('settingsReset');
 
   String get receiveFiles => _('receiveFiles');
   String get startReceive => _('startReceive');
@@ -135,6 +139,7 @@ class AppLocalizations {
   String get encryptionCurve => _('encryptionCurve');
   String get hashAlgorithm => _('hashAlgorithm');
   String get compression => _('compression');
+  String get enableCompression => _('enableCompression');
   String get overwrite => _('overwrite');
   String get zipFolder => _('zipFolder');
   String get localOnly => _('localOnly');
@@ -169,6 +174,11 @@ class AppLocalizations {
   String get openFolder => _('openFolder');
   String get acknowledgments => _('acknowledgments');
   String get openSourceProjects => _('openSourceProjects');
+  String get defaultSavePath => _('defaultSavePath');
+  String get selectFolder => _('selectFolder');
+  String get savePath => _('savePath');
+  String get savePathDefault => _('savePathDefault');
+  String get savePathCustom => _('savePathCustom');
   String get flutterDesc => _('flutterDesc');
   String get crocDesc => _('crocDesc');
   String get flClashDesc => _('flClashDesc');

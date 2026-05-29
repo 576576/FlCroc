@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/core/controller.dart';
@@ -68,6 +71,36 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     if (data?.text != null && data!.text!.isNotEmpty) {
       _codeController.text = data.text!;
+    }
+  }
+
+  String _defaultDownloadDir() {
+    try {
+      final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '/';
+      final dir = Directory('$home${Platform.pathSeparator}Downloads');
+      if (dir.existsSync()) return dir.path;
+    } catch (_) {}
+    return _appOutPath();
+  }
+
+  String _appOutPath() {
+    try {
+      final exeDir = File(Platform.resolvedExecutable).parent.path;
+      final dir = Directory('$exeDir${Platform.pathSeparator}out');
+      if (!dir.existsSync()) dir.createSync(recursive: true);
+      return dir.path;
+    } catch (_) {
+      return '/';
+    }
+  }
+
+  Future<void> _pickReceivePath() async {
+    final result = await FilePicker.platform.getDirectoryPath();
+    if (result != null && mounted) {
+      setState(() {
+        _receiveConfig = _receiveConfig.copyWith(outputPath: result);
+        _saveReceivePrefs();
+      });
     }
   }
   void _startReceive() {
@@ -359,7 +392,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
             // ── Options ──
             ExpansionTile(
               shape: const Border(),
-              title: Text(l10n.options),
+              title: Text(l10n.transferOptions),
               leading: const Icon(Icons.tune),
               initiallyExpanded: _phase == ReceivePhase.idle,
               onExpansionChanged: (_) => setState(() {}),
@@ -376,6 +409,58 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                       });
                     },
                   ),
+                ),
+                Consumer(
+                  builder: (_, ref, c) {
+                    final isCustom = _receiveConfig.outputPath.isNotEmpty;
+                    final globalPath = ref.watch(appSettingProvider.select((s) => s.defaultSavePath));
+                    final effectivePath = isCustom ? _receiveConfig.outputPath : (globalPath.isNotEmpty ? globalPath : _defaultDownloadDir());
+                    return ListItem(
+                      leading: const Icon(Icons.folder),
+                      title: Text(l10n.savePath),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              ChoiceChip(
+                                label: Text(l10n.savePathDefault, style: const TextStyle(fontSize: 12)),
+                                selected: !isCustom,
+                                onSelected: (v) {
+                                  if (v) setState(() {
+                                    _receiveConfig = _receiveConfig.copyWith(outputPath: '');
+                                    _saveReceivePrefs();
+                                  });
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              ChoiceChip(
+                                label: Text(l10n.savePathCustom, style: const TextStyle(fontSize: 12)),
+                                selected: isCustom,
+                                onSelected: (v) {
+                                  if (v && _receiveConfig.outputPath.isEmpty) setState(() {
+                                    _receiveConfig = _receiveConfig.copyWith(outputPath: effectivePath);
+                                    _saveReceivePrefs();
+                                  });
+                                },
+                              ),
+                              if (isCustom) ...[
+                                const SizedBox(width: 4),
+                                IconButton(
+                                  icon: const Icon(Icons.folder_open, size: 18),
+                                  visualDensity: VisualDensity.compact,
+                                  tooltip: l10n.selectFolder,
+                                  onPressed: _pickReceivePath,
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(effectivePath, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textTheme.bodySmall),
+                        ],
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 12),
               ],

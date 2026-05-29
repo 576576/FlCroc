@@ -19,7 +19,6 @@ jobs:
   # ── Prebuild: submodule update ──
   prebuild:
     runs-on: ubuntu-latest
-    outputs: {}
     steps:
       - uses: actions/checkout@v4
         with:

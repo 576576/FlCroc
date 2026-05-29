@@ -100,7 +100,7 @@ class _WindowTitleBarState extends State<WindowTitleBar> with WindowListener {
           onPressed: _togglePin,
           icon: ValueListenableBuilder(
             valueListenable: _isPinnedNotifier,
-            builder: (_, isPinned, __) {
+            builder: (_, isPinned, c) {
               return Icon(
                 isPinned ? Icons.push_pin : Icons.push_pin_outlined,
                 size: 18,
@@ -122,7 +122,7 @@ class _WindowTitleBarState extends State<WindowTitleBar> with WindowListener {
           onPressed: _toggleMaximize,
           icon: ValueListenableBuilder(
             valueListenable: _isMaximizedNotifier,
-            builder: (_, isMaximized, __) {
+            builder: (_, isMaximized, c) {
               return Icon(
                 isMaximized ? Icons.filter_none : Icons.crop_square,
                 size: 18,

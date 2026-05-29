@@ -43,6 +43,18 @@ class AppSettingNotifier extends StateNotifier<AppSettingProps> {
       }
     } catch (_) {}
   }
+
+  Future<void> resetAll() async {
+    state = const AppSettingProps();
+    try {
+      final prefs = await _getPrefs();
+      if (prefs != null) {
+        await prefs.remove('app_settings');
+        await prefs.remove('send_config');
+        await prefs.remove('receive_config');
+      }
+    } catch (_) {}
+  }
 }
 
 final themeSettingProvider =
@@ -81,6 +93,16 @@ class ThemeSettingNotifier extends StateNotifier<ThemeProps> {
       final prefs = await _getPrefs();
       if (prefs != null) {
         await prefs.setString('theme_settings', jsonEncode(state.toJson()));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> resetToDefault() async {
+    state = const ThemeProps();
+    try {
+      final prefs = await _getPrefs();
+      if (prefs != null) {
+        await prefs.remove('theme_settings');
       }
     } catch (_) {}
   }
