@@ -46,7 +46,7 @@ const Map<String, String> enMessages = {
   'autoCopyPhrase': 'Auto-copy phrase',
   'rememberConfig': 'Remember settings',
   'paste': 'Paste',
-  'sending': 'Sending...',
+  'sending': 'Sending',
   'pending': 'Pending',
   'enterPhraseWarning': 'Please enter a code phrase or select "Let croc decide"',
   'noCrocBackend': 'No croc backend available',
@@ -54,7 +54,7 @@ const Map<String, String> enMessages = {
   'resetRelay': 'Reset relay',
 
   // Receive
-  'receiveFiles': 'Receive Files',
+  'receiveFiles': 'Receiving',
   'startReceive': 'Start Receive',
   'scanQRCode': 'Scan QR Code',
   'options': 'Options',
@@ -116,6 +116,11 @@ const Map<String, String> enMessages = {
   'codeCopied': 'Code copied!',
   'confirmDelete': 'Confirm Delete?',
   'checkUpdate': 'Check Update',
+  'alreadyLatest': 'Already up to date',
+  'newVersionAvailable': 'New version available',
+  'latestVersion': 'Latest version',
+  'currentVersion': 'Current version',
+  'update': 'Update',
 
   // Status
   'noFiles': 'No files selected',
@@ -128,6 +133,12 @@ const Map<String, String> enMessages = {
   'noReceivedFiles': 'No files received',
   'noReceivedText': 'No text received',
   'open': 'Open',
+  'openFolder': 'Show in folder',
+  'acknowledgments': 'Acknowledgments',
+  'openSourceProjects': 'Open Source Projects',
+  'flutterDesc': 'UI toolkit for building natively compiled applications.',
+  'crocDesc': 'Easily and securely send things from one computer to another.',
+  'flClashDesc': 'A Clash client based on Flutter, supporting multiple platforms.',
   'completed': 'Completed',
   'failed': 'Failed',
   'cancelled': 'Cancelled',
@@ -139,6 +150,6 @@ const Map<String, String> enMessages = {
   'done': 'Done',
   'availableWidgets': 'Available Widgets',
   'active': 'active',
-  'transfersUnit': 'transfers',
+  'transfersUnit': 'Total transfers',
   'noTransfersYet': 'No transfers',
 };

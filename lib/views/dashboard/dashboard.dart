@@ -85,8 +85,7 @@ class _DashboardViewState extends ConsumerState<DashboardView>
 
   Map<DashboardWidget, Widget> _widgetBuilders() {
     return {
-      DashboardWidget.transferSpeed: const TransferSpeedWidget(),
-      DashboardWidget.totalTransferred: const TotalTransferredWidget(),
+      DashboardWidget.transferStats: const TransferStatsWidget(),
       DashboardWidget.quickSend: const QuickSendWidget(),
       DashboardWidget.quickReceive: const QuickReceiveWidget(),
       DashboardWidget.recentTransfers: const RecentTransfersWidget(),

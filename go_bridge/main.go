@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"unsafe"
@@ -44,6 +45,8 @@ type progressEvent struct {
 	Speed           float64 `json:"speed"`
 	CodePhrase      string  `json:"code_phrase"`
 	Error           string  `json:"error"`
+	IsText          bool    `json:"is_text"`
+	TextContent     string  `json:"text_content"`
 }
 
 // ── Exported C API ──────────────────────────────────────────
@@ -210,13 +213,15 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 		hashAlgo = defaultHashAlgo
 	}
 
+	relayPorts := parseRelayPorts(opts.RelayPorts)
+
 	crocOpts := croc.Options{
 		IsSender:      true,
 		SharedSecret:  code,
 		Debug:         false,
 		RelayAddress:  relayAddr,
 		RelayAddress6: relayAddr6,
-		RelayPorts:    defaultRelayPorts(),
+		RelayPorts:    relayPorts,
 		RelayPassword: relayPass,
 		NoPrompt:      true,
 		DisableLocal:  opts.DisableLocal,
@@ -287,6 +292,7 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 	if relayPass == "" {
 		relayPass = models.DEFAULT_PASSPHRASE
 	}
+	relayPorts := parseRelayPorts(opts.RelayPorts)
 
 	curve := opts.Curve
 	if curve == "" {
@@ -304,7 +310,7 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		Debug:         false,
 		RelayAddress:  relayAddr,
 		RelayAddress6: models.DEFAULT_RELAY6,
-		RelayPorts:    defaultRelayPorts(),
+		RelayPorts:    relayPorts,
 		RelayPassword: relayPass,
 		NoPrompt:      true,
 		OnlyLocal:     opts.OnlyLocal,
@@ -338,10 +344,23 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 	// Collect received file info
 	var totalSize int64
 	var fileNames []string
-	for _, f := range c.FilesToTransfer {
-		if f.Name != "" {
-			fileNames = append(fileNames, f.Name)
-			totalSize += f.Size
+	var isText bool
+	var textContent string
+
+	if c.Options.SendingText && len(c.FilesToTransfer) > 0 {
+		isText = true
+		f := c.FilesToTransfer[0]
+		filePath := filepath.Join(f.FolderRemote, f.Name)
+		data, err := os.ReadFile(filePath)
+		if err == nil {
+			textContent = string(data)
+		}
+	} else {
+		for _, f := range c.FilesToTransfer {
+			if f.Name != "" {
+				fileNames = append(fileNames, f.Name)
+				totalSize += f.Size
+			}
 		}
 	}
 
@@ -351,6 +370,8 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		TotalFiles:  len(fileNames),
 		TotalSize:   totalSize,
 		CurrentFile: strings.Join(fileNames, "\n"),
+		IsText:      isText,
+		TextContent: textContent,
 	}
 }
 
@@ -369,6 +390,7 @@ type sendOptions struct {
 	RelayAddress  string   `json:"relay_address"`
 	RelayAddress6 string   `json:"relay_address6"`
 	RelayPassword string   `json:"relay_password"`
+	RelayPorts    string   `json:"relay_ports"`
 	Exclude       []string `json:"exclude"`
 	SendingText   bool     `json:"sending_text"`
 	TextContent   string   `json:"text_content"`
@@ -383,6 +405,27 @@ type receiveOptions struct {
 	RelayAddress  string `json:"relay_address"`
 	RelayAddress6 string `json:"relay_address6"`
 	RelayPassword string `json:"relay_password"`
+	RelayPorts    string `json:"relay_ports"`
+}
+
+// parseRelayPorts parses comma-separated port string into []string.
+// Falls back to default port range if empty or invalid.
+func parseRelayPorts(raw string) []string {
+	if raw == "" {
+		return defaultRelayPorts()
+	}
+	parts := strings.Split(raw, ",")
+	var ports []string
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			ports = append(ports, p)
+		}
+	}
+	if len(ports) == 0 {
+		return defaultRelayPorts()
+	}
+	return ports
 }
 
 // defaultRelayPorts returns the default relay port range matching croc CLI defaults.

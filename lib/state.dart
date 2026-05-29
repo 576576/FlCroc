@@ -138,6 +138,23 @@ class GlobalState {
       commonPrint('Failed to open file: $e');
     }
   }
+
+  Future<void> openFolder(String filePath) async {
+    if (filePath.isEmpty) return;
+    try {
+      if (Platform.isWindows) {
+        await Process.run('explorer', ['/select,', filePath]);
+      } else if (Platform.isMacOS) {
+        await Process.run('open', ['-R', filePath]);
+      } else {
+        // Linux: open the parent directory
+        final dir = Directory(filePath).parent.path;
+        await Process.run('xdg-open', [dir]);
+      }
+    } catch (e) {
+      commonPrint('Failed to open folder: $e');
+    }
+  }
 }
 
 final globalState = GlobalState();

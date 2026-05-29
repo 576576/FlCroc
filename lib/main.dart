@@ -15,6 +15,7 @@ Future<void> main() async {
     if (isWindows || isLinux) {
       await windowManager.ensureInitialized();
       await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
+      await windowManager.setMinimumSize(const Size(400, 500));
     }
 
     await AppPrefs.init();

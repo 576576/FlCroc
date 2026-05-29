@@ -40,6 +40,7 @@ mixin _$SendOptions {
   String? get relayAddress => throw _privateConstructorUsedError;
   String? get relayAddress6 => throw _privateConstructorUsedError;
   String? get relayPassword => throw _privateConstructorUsedError;
+  String? get relayPorts => throw _privateConstructorUsedError;
 
   /// Serializes this SendOptions to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -78,6 +79,7 @@ abstract class $SendOptionsCopyWith<$Res> {
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,
+    String? relayPorts,
   });
 }
 
@@ -115,6 +117,7 @@ class _$SendOptionsCopyWithImpl<$Res, $Val extends SendOptions>
     Object? relayAddress = freezed,
     Object? relayAddress6 = freezed,
     Object? relayPassword = freezed,
+    Object? relayPorts = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -194,6 +197,10 @@ class _$SendOptionsCopyWithImpl<$Res, $Val extends SendOptions>
                 ? _value.relayPassword
                 : relayPassword // ignore: cast_nullable_to_non_nullable
                       as String?,
+            relayPorts: freezed == relayPorts
+                ? _value.relayPorts
+                : relayPorts // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -229,6 +236,7 @@ abstract class _$$SendOptionsImplCopyWith<$Res>
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,
+    String? relayPorts,
   });
 }
 
@@ -265,6 +273,7 @@ class __$$SendOptionsImplCopyWithImpl<$Res>
     Object? relayAddress = freezed,
     Object? relayAddress6 = freezed,
     Object? relayPassword = freezed,
+    Object? relayPorts = freezed,
   }) {
     return _then(
       _$SendOptionsImpl(
@@ -344,6 +353,10 @@ class __$$SendOptionsImplCopyWithImpl<$Res>
             ? _value.relayPassword
             : relayPassword // ignore: cast_nullable_to_non_nullable
                   as String?,
+        relayPorts: freezed == relayPorts
+            ? _value.relayPorts
+            : relayPorts // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -372,6 +385,7 @@ class _$SendOptionsImpl implements _SendOptions {
     this.relayAddress,
     this.relayAddress6,
     this.relayPassword,
+    this.relayPorts,
   }) : _filePaths = filePaths,
        _exclude = exclude;
 
@@ -442,10 +456,12 @@ class _$SendOptionsImpl implements _SendOptions {
   final String? relayAddress6;
   @override
   final String? relayPassword;
+  @override
+  final String? relayPorts;
 
   @override
   String toString() {
-    return 'SendOptions(filePaths: $filePaths, codePhrase: $codePhrase, curve: $curve, hashAlgorithm: $hashAlgorithm, noCompress: $noCompress, overwrite: $overwrite, zipFolder: $zipFolder, gitIgnore: $gitIgnore, onlyLocal: $onlyLocal, disableLocal: $disableLocal, sendingText: $sendingText, textContent: $textContent, socks5Proxy: $socks5Proxy, httpProxy: $httpProxy, throttleUpload: $throttleUpload, exclude: $exclude, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword)';
+    return 'SendOptions(filePaths: $filePaths, codePhrase: $codePhrase, curve: $curve, hashAlgorithm: $hashAlgorithm, noCompress: $noCompress, overwrite: $overwrite, zipFolder: $zipFolder, gitIgnore: $gitIgnore, onlyLocal: $onlyLocal, disableLocal: $disableLocal, sendingText: $sendingText, textContent: $textContent, socks5Proxy: $socks5Proxy, httpProxy: $httpProxy, throttleUpload: $throttleUpload, exclude: $exclude, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword, relayPorts: $relayPorts)';
   }
 
   @override
@@ -490,7 +506,9 @@ class _$SendOptionsImpl implements _SendOptions {
             (identical(other.relayAddress6, relayAddress6) ||
                 other.relayAddress6 == relayAddress6) &&
             (identical(other.relayPassword, relayPassword) ||
-                other.relayPassword == relayPassword));
+                other.relayPassword == relayPassword) &&
+            (identical(other.relayPorts, relayPorts) ||
+                other.relayPorts == relayPorts));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -516,6 +534,7 @@ class _$SendOptionsImpl implements _SendOptions {
     relayAddress,
     relayAddress6,
     relayPassword,
+    relayPorts,
   ]);
 
   /// Create a copy of SendOptions
@@ -553,6 +572,7 @@ abstract class _SendOptions implements SendOptions {
     final String? relayAddress,
     final String? relayAddress6,
     final String? relayPassword,
+    final String? relayPorts,
   }) = _$SendOptionsImpl;
 
   factory _SendOptions.fromJson(Map<String, dynamic> json) =
@@ -596,6 +616,8 @@ abstract class _SendOptions implements SendOptions {
   String? get relayAddress6;
   @override
   String? get relayPassword;
+  @override
+  String? get relayPorts;
 
   /// Create a copy of SendOptions
   /// with the given fields replaced by the non-null parameter values.
@@ -619,6 +641,7 @@ mixin _$ReceiveOptions {
   String? get relayAddress => throw _privateConstructorUsedError;
   String? get relayAddress6 => throw _privateConstructorUsedError;
   String? get relayPassword => throw _privateConstructorUsedError;
+  String? get relayPorts => throw _privateConstructorUsedError;
 
   /// Serializes this ReceiveOptions to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -646,6 +669,7 @@ abstract class $ReceiveOptionsCopyWith<$Res> {
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,
+    String? relayPorts,
   });
 }
 
@@ -672,6 +696,7 @@ class _$ReceiveOptionsCopyWithImpl<$Res, $Val extends ReceiveOptions>
     Object? relayAddress = freezed,
     Object? relayAddress6 = freezed,
     Object? relayPassword = freezed,
+    Object? relayPorts = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -707,6 +732,10 @@ class _$ReceiveOptionsCopyWithImpl<$Res, $Val extends ReceiveOptions>
                 ? _value.relayPassword
                 : relayPassword // ignore: cast_nullable_to_non_nullable
                       as String?,
+            relayPorts: freezed == relayPorts
+                ? _value.relayPorts
+                : relayPorts // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -731,6 +760,7 @@ abstract class _$$ReceiveOptionsImplCopyWith<$Res>
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,
+    String? relayPorts,
   });
 }
 
@@ -756,6 +786,7 @@ class __$$ReceiveOptionsImplCopyWithImpl<$Res>
     Object? relayAddress = freezed,
     Object? relayAddress6 = freezed,
     Object? relayPassword = freezed,
+    Object? relayPorts = freezed,
   }) {
     return _then(
       _$ReceiveOptionsImpl(
@@ -791,6 +822,10 @@ class __$$ReceiveOptionsImplCopyWithImpl<$Res>
             ? _value.relayPassword
             : relayPassword // ignore: cast_nullable_to_non_nullable
                   as String?,
+        relayPorts: freezed == relayPorts
+            ? _value.relayPorts
+            : relayPorts // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -808,6 +843,7 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
     this.relayAddress,
     this.relayAddress6,
     this.relayPassword,
+    this.relayPorts,
   });
 
   factory _$ReceiveOptionsImpl.fromJson(Map<String, dynamic> json) =>
@@ -833,10 +869,12 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
   final String? relayAddress6;
   @override
   final String? relayPassword;
+  @override
+  final String? relayPorts;
 
   @override
   String toString() {
-    return 'ReceiveOptions(codePhrase: $codePhrase, overwrite: $overwrite, onlyLocal: $onlyLocal, outputPath: $outputPath, curve: $curve, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword)';
+    return 'ReceiveOptions(codePhrase: $codePhrase, overwrite: $overwrite, onlyLocal: $onlyLocal, outputPath: $outputPath, curve: $curve, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword, relayPorts: $relayPorts)';
   }
 
   @override
@@ -858,7 +896,9 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
             (identical(other.relayAddress6, relayAddress6) ||
                 other.relayAddress6 == relayAddress6) &&
             (identical(other.relayPassword, relayPassword) ||
-                other.relayPassword == relayPassword));
+                other.relayPassword == relayPassword) &&
+            (identical(other.relayPorts, relayPorts) ||
+                other.relayPorts == relayPorts));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -873,6 +913,7 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
     relayAddress,
     relayAddress6,
     relayPassword,
+    relayPorts,
   );
 
   /// Create a copy of ReceiveOptions
@@ -902,6 +943,7 @@ abstract class _ReceiveOptions implements ReceiveOptions {
     final String? relayAddress,
     final String? relayAddress6,
     final String? relayPassword,
+    final String? relayPorts,
   }) = _$ReceiveOptionsImpl;
 
   factory _ReceiveOptions.fromJson(Map<String, dynamic> json) =
@@ -923,6 +965,8 @@ abstract class _ReceiveOptions implements ReceiveOptions {
   String? get relayAddress6;
   @override
   String? get relayPassword;
+  @override
+  String? get relayPorts;
 
   /// Create a copy of ReceiveOptions
   /// with the given fields replaced by the non-null parameter values.
@@ -948,6 +992,8 @@ mixin _$TransferProgress {
   double get speed => throw _privateConstructorUsedError;
   String? get codePhrase => throw _privateConstructorUsedError;
   String? get error => throw _privateConstructorUsedError;
+  bool get isText => throw _privateConstructorUsedError;
+  String get textContent => throw _privateConstructorUsedError;
 
   /// Serializes this TransferProgress to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -977,6 +1023,8 @@ abstract class $TransferProgressCopyWith<$Res> {
     double speed,
     String? codePhrase,
     String? error,
+    bool isText,
+    String textContent,
   });
 }
 
@@ -1005,6 +1053,8 @@ class _$TransferProgressCopyWithImpl<$Res, $Val extends TransferProgress>
     Object? speed = null,
     Object? codePhrase = freezed,
     Object? error = freezed,
+    Object? isText = null,
+    Object? textContent = null,
   }) {
     return _then(
       _value.copyWith(
@@ -1048,6 +1098,14 @@ class _$TransferProgressCopyWithImpl<$Res, $Val extends TransferProgress>
                 ? _value.error
                 : error // ignore: cast_nullable_to_non_nullable
                       as String?,
+            isText: null == isText
+                ? _value.isText
+                : isText // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            textContent: null == textContent
+                ? _value.textContent
+                : textContent // ignore: cast_nullable_to_non_nullable
+                      as String,
           )
           as $Val,
     );
@@ -1074,6 +1132,8 @@ abstract class _$$TransferProgressImplCopyWith<$Res>
     double speed,
     String? codePhrase,
     String? error,
+    bool isText,
+    String textContent,
   });
 }
 
@@ -1101,6 +1161,8 @@ class __$$TransferProgressImplCopyWithImpl<$Res>
     Object? speed = null,
     Object? codePhrase = freezed,
     Object? error = freezed,
+    Object? isText = null,
+    Object? textContent = null,
   }) {
     return _then(
       _$TransferProgressImpl(
@@ -1144,6 +1206,14 @@ class __$$TransferProgressImplCopyWithImpl<$Res>
             ? _value.error
             : error // ignore: cast_nullable_to_non_nullable
                   as String?,
+        isText: null == isText
+            ? _value.isText
+            : isText // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        textContent: null == textContent
+            ? _value.textContent
+            : textContent // ignore: cast_nullable_to_non_nullable
+                  as String,
       ),
     );
   }
@@ -1163,6 +1233,8 @@ class _$TransferProgressImpl implements _TransferProgress {
     this.speed = 0.0,
     this.codePhrase,
     this.error,
+    this.isText = false,
+    this.textContent = '',
   });
 
   factory _$TransferProgressImpl.fromJson(Map<String, dynamic> json) =>
@@ -1196,10 +1268,16 @@ class _$TransferProgressImpl implements _TransferProgress {
   final String? codePhrase;
   @override
   final String? error;
+  @override
+  @JsonKey()
+  final bool isText;
+  @override
+  @JsonKey()
+  final String textContent;
 
   @override
   String toString() {
-    return 'TransferProgress(transferId: $transferId, status: $status, totalFiles: $totalFiles, completedFiles: $completedFiles, totalSize: $totalSize, transferredSize: $transferredSize, currentFile: $currentFile, speed: $speed, codePhrase: $codePhrase, error: $error)';
+    return 'TransferProgress(transferId: $transferId, status: $status, totalFiles: $totalFiles, completedFiles: $completedFiles, totalSize: $totalSize, transferredSize: $transferredSize, currentFile: $currentFile, speed: $speed, codePhrase: $codePhrase, error: $error, isText: $isText, textContent: $textContent)';
   }
 
   @override
@@ -1223,7 +1301,10 @@ class _$TransferProgressImpl implements _TransferProgress {
             (identical(other.speed, speed) || other.speed == speed) &&
             (identical(other.codePhrase, codePhrase) ||
                 other.codePhrase == codePhrase) &&
-            (identical(other.error, error) || other.error == error));
+            (identical(other.error, error) || other.error == error) &&
+            (identical(other.isText, isText) || other.isText == isText) &&
+            (identical(other.textContent, textContent) ||
+                other.textContent == textContent));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1240,6 +1321,8 @@ class _$TransferProgressImpl implements _TransferProgress {
     speed,
     codePhrase,
     error,
+    isText,
+    textContent,
   );
 
   /// Create a copy of TransferProgress
@@ -1271,6 +1354,8 @@ abstract class _TransferProgress implements TransferProgress {
     final double speed,
     final String? codePhrase,
     final String? error,
+    final bool isText,
+    final String textContent,
   }) = _$TransferProgressImpl;
 
   factory _TransferProgress.fromJson(Map<String, dynamic> json) =
@@ -1296,6 +1381,10 @@ abstract class _TransferProgress implements TransferProgress {
   String? get codePhrase;
   @override
   String? get error;
+  @override
+  bool get isText;
+  @override
+  String get textContent;
 
   /// Create a copy of TransferProgress
   /// with the given fields replaced by the non-null parameter values.

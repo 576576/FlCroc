@@ -252,6 +252,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       onlyLocal: useNoRelay,
       relayAddress: useCustom ? relayConfig.address : null,
       relayPassword: useCustom ? relayConfig.password : null,
+      relayPorts: useCustom ? relayConfig.port : null,
     );
 
     setState(() => _phase = SendPhase.sending);
@@ -480,19 +481,14 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                   ]),
                 ),
               ),
-              const Divider(height: 0, indent: 56),
               ListItem.switchItem(
                 leading: const Icon(Icons.copy, size: 20),
                 title: Text(l10n.autoCopyPhrase),
                 delegate: SwitchDelegate(value: _autoCopyPhrase, onChanged: (v) => setState(() { _autoCopyPhrase = v; _saveSendPrefs(); })),
               ),
-              const Divider(height: 0, indent: 16),
               ListItem(leading: const Icon(Icons.show_chart), title: Text(l10n.encryptionCurve), subtitle: _buildCurveChips(l10n)),
-              const Divider(height: 0, indent: 56),
               ListItem(leading: const Icon(Icons.tag), title: Text(l10n.hashAlgorithm), subtitle: _buildHashChips(l10n)),
-              const Divider(height: 0, indent: 56),
               ListItem.switchItem(leading: const Icon(Icons.compress), title: Text(l10n.compression), delegate: SwitchDelegate(value: !_sendConfig.noCompress, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(noCompress: !v); _saveSendPrefs(); }))),
-              const Divider(height: 0, indent: 56),
               ListItem.switchItem(leading: const Icon(Icons.folder_zip), title: Text(l10n.zipFolder), delegate: SwitchDelegate(value: _sendConfig.zipFolder, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(zipFolder: v); _saveSendPrefs(); }))),
               const SizedBox(height: 12),
             ],

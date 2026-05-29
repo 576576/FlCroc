@@ -8,7 +8,7 @@ const packageName = 'cn.sumitm.flcroc';
 const repository = '576576/FlCroc';
 
 const defaultRelay = 'croc.schollz.com';
-const defaultPort = '9009';
+const defaultPort = '9009,9010,9011,9012,9013';
 const defaultPassphrase = 'pass123';
 
 const defaultCurve = 'p256';

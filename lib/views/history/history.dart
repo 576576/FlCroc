@@ -17,7 +17,8 @@ class HistoryView extends ConsumerWidget {
             t.status == TransferStatus.completed ||
             t.status == TransferStatus.failed ||
             t.status == TransferStatus.cancelled)
-        .toList();
+        .toList()
+      ..sort((a, b) => b.startTime.compareTo(a.startTime));
     final l10n = context.appLocalizations;
 
     return BaseScaffold(

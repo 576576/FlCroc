@@ -46,7 +46,7 @@ const Map<String, String> zhMessages = {
   'autoCopyPhrase': '自动复制短语',
   'rememberConfig': '记住设置',
   'paste': '粘贴',
-  'sending': '发送中...',
+  'sending': '发送中',
   'pending': '等待中',
   'enterPhraseWarning': '请输入代码短语或选择"由 croc 决定"',
   'noCrocBackend': '无可用 croc 后端',
@@ -54,7 +54,7 @@ const Map<String, String> zhMessages = {
   'resetRelay': '重置中继',
 
   // Receive
-  'receiveFiles': '接收文件',
+  'receiveFiles': '接收中',
   'startReceive': '开始接收',
   'scanQRCode': '扫描二维码',
   'options': '选项',
@@ -116,6 +116,11 @@ const Map<String, String> zhMessages = {
   'codeCopied': '代码已复制!',
   'confirmDelete': '确认删除?',
   'checkUpdate': '检查更新',
+  'alreadyLatest': '已是最新版本',
+  'newVersionAvailable': '发现新版本',
+  'latestVersion': '最新版本',
+  'currentVersion': '当前版本',
+  'update': '更新',
 
   // Status
   'noFiles': '未选择文件',
@@ -128,6 +133,12 @@ const Map<String, String> zhMessages = {
   'noReceivedFiles': '未接收文件',
   'noReceivedText': '未接收文本',
   'open': '打开',
+  'openFolder': '在资源管理器中显示',
+  'acknowledgments': '鸣谢',
+  'openSourceProjects': '开源项目',
+  'flutterDesc': 'Google 的开源 UI 工具包，用于构建跨平台原生编译应用。',
+  'crocDesc': '安全、便捷的端到端加密文件传输工具。',
+  'flClashDesc': '基于 Flutter 的 Material Design Clash 客户端。',
   'completed': '已完成',
   'failed': '失败',
   'cancelled': '已取消',
@@ -139,6 +150,6 @@ const Map<String, String> zhMessages = {
   'done': '完成',
   'availableWidgets': '可用组件',
   'active': '活跃',
-  'transfersUnit': '个传输',
+  'transfersUnit': '传输个数',
   'noTransfersYet': '暂无传输',
 };

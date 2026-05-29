@@ -1,6 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/core/controller.dart';
-import 'package:fl_croc/core/lib.dart';
 import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/l10n/l10n.dart';
 import 'package:fl_croc/providers/providers.dart';
@@ -8,6 +10,8 @@ import 'package:fl_croc/state.dart';
 import 'package:fl_croc/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'acknowledgments.dart';
 
 class SettingsView extends ConsumerStatefulWidget {
   const SettingsView({super.key});
@@ -33,6 +37,68 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       if (mounted) setState(() => _crocVersion = 'unavailable');
     }
   }
+
+  Future<void> _checkForUpdate(BuildContext context) async {
+    final l10n = context.appLocalizations;
+    final currentVer = globalState.packageInfo.version;
+
+    try {
+      final client = HttpClient();
+      try {
+        final uri = Uri.https('api.github.com', '/repos/$repository/releases/latest');
+        final request = await client.getUrl(uri);
+        request.headers.set('User-Agent', 'FlCroc');
+        request.headers.set('Accept', 'application/vnd.github+json');
+        final response = await request.close();
+        if (response.statusCode != 200) {
+          if (mounted) context.showSnackBar(l10n.alreadyLatest);
+          return;
+        }
+        final body = await response.transform(utf8.decoder).join();
+        final data = jsonDecode(body) as Map<String, dynamic>;
+        final latestTag = (data['tag_name'] as String?)?.replaceFirst(RegExp(r'^v'), '') ?? '';
+        if (latestTag.isEmpty || latestTag == currentVer) {
+          if (mounted) context.showSnackBar(l10n.alreadyLatest);
+          return;
+        }
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text(l10n.newVersionAvailable),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${l10n.latestVersion}: $latestTag'),
+                  const SizedBox(height: 4),
+                  Text('${l10n.currentVersion}: $currentVer'),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    globalState.openUrl('https://github.com/$repository/releases');
+                  },
+                  child: Text(l10n.update),
+                ),
+              ],
+            ),
+          );
+        }
+      } finally {
+        client.close();
+      }
+    } catch (_) {
+      if (mounted) context.showSnackBar(l10n.alreadyLatest);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final appSettings = ref.watch(appSettingProvider);
@@ -137,11 +203,37 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 ),
               ],
               ListItem(
-                leading: const Icon(Icons.palette),
-                title: Text(l10n.colorPalette),
+                leading: Consumer(
+                  builder: (_, ref, __) {
+                    final primary = ref.watch(themeSettingProvider.select((s) => s.primaryColor));
+                    return Icon(Icons.palette, color: cachedColorScheme(primary, Theme.of(context).brightness).primary);
+                  },
+                ),
+                title: Row(
+                  children: [
+                    Expanded(child: Text(l10n.colorPalette)),
+                    Consumer(
+                      builder: (_, ref, __) {
+                        final current = ref.watch(themeSettingProvider.select((s) => s.primaryColor));
+                        final isDefault = current == defaultPrimaryColor;
+                        return TextButton.icon(
+                          onPressed: isDefault ? null : () {
+                            ref.read(themeSettingProvider.notifier).update((s) => s.copyWith(primaryColor: defaultPrimaryColor));
+                          },
+                          icon: const Icon(Icons.restart_alt, size: 16),
+                          label: Text(l10n.defaultLabel, style: const TextStyle(fontSize: 12)),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
                 subtitle: const Padding(
                   padding: EdgeInsets.only(top: 8),
-                  child: _PaletteSection(),
+                  child: _HueSlider(),
                 ),
               ),
             ],
@@ -181,6 +273,12 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 leading: const Icon(Icons.info),
                 title: Text(l10n.appVersion),
                 subtitle: Text(globalState.packageInfo.version),
+                trailing: IconButton(
+                  icon: const Icon(Icons.open_in_new, size: 18),
+                  tooltip: l10n.open,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => globalState.openUrl('https://github.com/$repository'),
+                ),
               ),
               ListItem(
                 leading: const Icon(Icons.link),
@@ -188,18 +286,19 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 subtitle: Text(_crocVersion == 'unavailable' ? l10n.unavailable : _crocVersion),
               ),
               ListItem(
-                leading: const Icon(Icons.description),
-                title: Text(l10n.description),
-                subtitle: Text(l10n.desc),
+                leading: const Icon(Icons.favorite),
+                title: Text(l10n.acknowledgments),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AcknowledgmentsPage()),
+                  );
+                },
               ),
               ListItem(
                 leading: const Icon(Icons.code),
                 title: Text(l10n.checkUpdate),
-                onTap: () {
-                  globalState.openUrl(
-                    'https://github.com/$repository',
-                  );
-                },
+                onTap: () => _checkForUpdate(context),
               ),
             ],
           ),
@@ -366,242 +465,132 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     );
   }
 
-  static const _kPresetColors = <int>[
-    0xFF6750A4, // M3 default
-    0xFF1B6EF3, // Blue
-    0xFF00BFA5, // Teal
-    0xFFE91E63, // Pink
-    0xFFFF6F00, // Orange
-    0xFF4CAF50, // Green
-  ];
 }
 
-/// Isolated palette section — rebuilds independently when primaryColor changes,
-/// preventing the entire settings page from flickering.
-class _PaletteSection extends ConsumerWidget {
-  const _PaletteSection();
+/// Hue slider bar — replaces the 6-preset + custom chip palette.
+/// Dragging the hue updates the seed color in real time.
+class _HueSlider extends ConsumerStatefulWidget {
+  const _HueSlider();
 
-  static final _labels = <String Function(AppLocalizations)>[
-    (l) => l.defaultLabel,
-    (l) => l.colorBlue,
-    (l) => l.colorTeal,
-    (l) => l.colorPink,
-    (l) => l.colorOrange,
-    (l) => l.colorGreen,
+  @override
+  ConsumerState<_HueSlider> createState() => _HueSliderState();
+}
+
+class _HueSliderState extends ConsumerState<_HueSlider> {
+  double _dragHue = 0;
+  bool _isDragging = false;
+  final _hexCtrl = TextEditingController();
+  final _hexFocus = FocusNode();
+
+  static const _rainbow = [
+    Color(0xFFFF0000), Color(0xFFFFFF00), Color(0xFF00FF00),
+    Color(0xFF00FFFF), Color(0xFF0000FF), Color(0xFFFF00FF), Color(0xFFFF0000),
   ];
 
-  void _showColorPalette(BuildContext context, WidgetRef ref, int currentColor) {
-    final hsv = HSVColor.fromColor(Color(currentColor));
-    showDialog(
-      context: context,
-      builder: (ctx) => _ColorPaletteDialog(ref: ref, initialColor: hsv),
-    ).then((result) {
-      if (result != null && result is Color) {
-        ref.read(themeSettingProvider.notifier).update((s) => s.copyWith(primaryColor: result.value));
-      }
-    });
+  @override
+  void dispose() {
+    _hexCtrl.dispose();
+    _hexFocus.dispose();
+    super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final current = ref.watch(themeSettingProvider.select((s) => s.primaryColor));
-    final brightness = Theme.of(context).brightness;
-    final l10n = context.appLocalizations;
-    final isCustom = !_SettingsViewState._kPresetColors.contains(current) && current != defaultPrimaryColor;
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (int i = 0; i < _SettingsViewState._kPresetColors.length; i++)
-          _ColorChip(
-            color: cachedColorScheme(_SettingsViewState._kPresetColors[i], brightness).primary,
-            isSelected: current == _SettingsViewState._kPresetColors[i],
-            onTap: () => ref.read(themeSettingProvider.notifier).update((s) => s.copyWith(primaryColor: _SettingsViewState._kPresetColors[i])),
-            label: _labels[i](l10n),
-          ),
-        _ColorChip(
-          color: cachedColorScheme(current, brightness).primary,
-          isSelected: isCustom,
-          onTap: () => _showColorPalette(context, ref, current),
-          label: l10n.customLabel,
-        ),
-      ],
-    );
-  }
-}
-
-/// Simple HSL color palette dialog (FlClash-inspired).
-class _ColorPaletteDialog extends StatefulWidget {
-  final WidgetRef ref;
-  final HSVColor initialColor;
-  const _ColorPaletteDialog({required this.ref, required this.initialColor});
-
-  @override
-  State<_ColorPaletteDialog> createState() => _ColorPaletteDialogState();
-}
-
-class _ColorPaletteDialogState extends State<_ColorPaletteDialog> {
-  late double _hue;
-  late double _saturation;
-  late double _value;
-
-  @override
-  void initState() {
-    super.initState();
-    _hue = widget.initialColor.hue;
-    _saturation = widget.initialColor.saturation;
-    _value = widget.initialColor.value;
+  void _onPanUpdate(DragUpdateDetails d, double width) {
+    final dx = (d.localPosition.dx).clamp(0.0, width);
+    _dragHue = dx / width * 360;
+    _commit();
   }
 
-  Color get _currentColor => HSVColor.fromAHSV(1, _hue, _saturation, _value).toColor();
+  void _onTapUp(TapUpDetails d, double width) {
+    _dragHue = d.localPosition.dx.clamp(0.0, width) / width * 360;
+    _commit();
+  }
+
+  void _commit() {
+    final seed = HSVColor.fromAHSV(1, _dragHue, 0.5, 1.0).toColor().value;
+    ref.read(themeSettingProvider.notifier).update((s) => s.copyWith(primaryColor: seed));
+  }
+
+  void _onHexSubmit(String value) {
+    final hex = value.replaceFirst('#', '').trim();
+    if (hex.length != 6) return;
+    final parsed = int.tryParse(hex, radix: 16);
+    if (parsed == null) return;
+    ref.read(themeSettingProvider.notifier).update((s) => s.copyWith(primaryColor: 0xFF000000 | parsed));
+    _hexFocus.unfocus();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.appLocalizations;
-    return AlertDialog(
-      title: Text(l10n.colorPalette),
-      content: SizedBox(
-        width: 260,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Preview
-            Container(
-              width: 56, height: 56,
-              decoration: BoxDecoration(
-                color: _currentColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: context.colorScheme.outline),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Saturation / Value square
-            GestureDetector(
-              onPanDown: (d) => _updateSV(d.localPosition),
-              onPanUpdate: (d) => _updateSV(d.localPosition),
-              child: Container(
-                width: 240, height: 160,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  gradient: LinearGradient(
-                    colors: [Colors.white, HSVColor.fromAHSV(1, _hue, 1, 1).toColor()],
-                  ),
-                ),
-                foregroundDecoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0x00000000), Colors.black],
-                  ),
-                ),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      left: _saturation * 240 - 8,
-                      top: (1 - _value) * 160 - 8,
+    final current = ref.watch(themeSettingProvider.select((s) => s.primaryColor));
+    if (!_isDragging) {
+      _dragHue = HSVColor.fromColor(Color(current)).hue;
+    }
+
+    final seedColor = HSVColor.fromAHSV(1, _dragHue, 0.5, 1.0).toColor();
+    final hex = '#${seedColor.value.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
+
+    // Only update hex field when not focused (user isn't typing)
+    if (!_hexFocus.hasFocus) {
+      _hexCtrl.text = hex;
+    }
+
+    return Row(
+      children: [
+        // Hue bar — capped at 400px
+        Flexible(
+          child: SizedBox(
+            width: 400,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                return GestureDetector(
+                  onTapUp: (d) => _onTapUp(d, width),
+                  onPanStart: (_) => _isDragging = true,
+                  onPanUpdate: (d) => _onPanUpdate(d, width),
+                  onPanEnd: (_) => _isDragging = false,
+                  child: Container(
+                    height: 24,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: const LinearGradient(colors: _rainbow),
+                    ),
+                    child: Align(
+                      alignment: Alignment(-1 + _dragHue / 180, 0),
                       child: Container(
-                        width: 16, height: 16,
+                        width: 20, height: 20,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
+                          color: seedColor,
                           border: Border.all(color: Colors.white, width: 2),
                           boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 2)],
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Hue slider
-            Row(
-              children: [
-                const Icon(Icons.palette, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: GestureDetector(
-                    onPanDown: (d) => _updateHue(d.localPosition.dx, 224),
-                    onPanUpdate: (d) => _updateHue(d.localPosition.dx, 224),
-                    child: Container(
-                      height: 20,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFFFF0000), Color(0xFFFFFF00), Color(0xFF00FF00),
-                            Color(0xFF00FFFF), Color(0xFF0000FF), Color(0xFFFF00FF), Color(0xFFFF0000),
-                          ],
-                        ),
-                      ),
-                      child: Align(
-                        alignment: Alignment(-1 + _hue / 180, 0),
-                        child: Container(
-                          width: 16, height: 16,
-                          decoration: BoxDecoration(shape: BoxShape.circle, color: _currentColor, border: Border.all(color: Colors.white, width: 2)),
-                        ),
-                      ),
-                    ),
                   ),
-                ),
-              ],
+                );
+              },
             ),
-            const SizedBox(height: 8),
-            // HEX display
-            Text(
-              '#${_currentColor.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}',
-              style: context.textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
-            ),
-          ],
+          ),
         ),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
-        FilledButton(onPressed: () => Navigator.pop(context, _currentColor), child: Text(l10n.confirm)),
+        const SizedBox(width: 8),
+        // Hex input
+        SizedBox(
+          width: 100,
+          child: TextField(
+            controller: _hexCtrl,
+            focusNode: _hexFocus,
+            style: const TextStyle(fontSize: 13, fontFamily: 'monospace'),
+            decoration: const InputDecoration(
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              border: OutlineInputBorder(),
+              prefixText: '#',
+              prefixStyle: TextStyle(fontSize: 13, fontFamily: 'monospace', color: Colors.grey),
+            ),
+            onSubmitted: _onHexSubmit,
+          ),
+        ),
       ],
-    );
-  }
-
-  void _updateSV(Offset local) {
-    setState(() {
-      _saturation = (local.dx / 240).clamp(0.0, 1.0);
-      _value = (1 - local.dy / 160).clamp(0.0, 1.0);
-    });
-  }
-
-  void _updateHue(double dx, double width) {
-    setState(() {
-      _hue = ((dx / width).clamp(0.0, 1.0) * 360) % 360;
-    });
-  }
-}
-
-class _ColorChip extends StatelessWidget {
-  final Color color;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _ColorChip({
-    required this.color,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final textColor = ThemeData.estimateBrightnessForColor(color) == Brightness.dark ? Colors.white : Colors.black87;
-    return ChoiceChip(
-      label: Text(label, style: TextStyle(fontSize: 12, color: textColor, fontWeight: FontWeight.w600)),
-      selected: isSelected,
-      onSelected: (_) => onTap(),
-      backgroundColor: color,
-      selectedColor: color,
-      checkmarkColor: textColor,
-      side: isSelected ? BorderSide(color: textColor, width: 2) : BorderSide(color: Colors.transparent),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     );
   }
 }

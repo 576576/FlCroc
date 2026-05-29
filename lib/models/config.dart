@@ -7,8 +7,7 @@ part 'config.freezed.dart';
 part 'config.g.dart';
 
 const List<DashboardWidget> defaultDashboardWidgets = [
-  DashboardWidget.transferSpeed,
-  DashboardWidget.totalTransferred,
+  DashboardWidget.transferStats,
   DashboardWidget.quickSend,
   DashboardWidget.quickReceive,
   DashboardWidget.recentTransfers,

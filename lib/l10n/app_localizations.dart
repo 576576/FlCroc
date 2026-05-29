@@ -149,6 +149,11 @@ class AppLocalizations {
   String get codeCopied => _('codeCopied');
   String get confirmDelete => _('confirmDelete');
   String get checkUpdate => _('checkUpdate');
+  String get alreadyLatest => _('alreadyLatest');
+  String get newVersionAvailable => _('newVersionAvailable');
+  String get latestVersion => _('latestVersion');
+  String get currentVersion => _('currentVersion');
+  String get update => _('update');
 
   String get noFiles => _('noFiles');
   String get noTransfers => _('noTransfers');
@@ -161,6 +166,12 @@ class AppLocalizations {
   String get noReceivedFiles => _('noReceivedFiles');
   String get noReceivedText => _('noReceivedText');
   String get open => _('open');
+  String get openFolder => _('openFolder');
+  String get acknowledgments => _('acknowledgments');
+  String get openSourceProjects => _('openSourceProjects');
+  String get flutterDesc => _('flutterDesc');
+  String get crocDesc => _('crocDesc');
+  String get flClashDesc => _('flClashDesc');
   String get completed => _('completed');
   String get failed => _('failed');
   String get cancelled => _('cancelled');

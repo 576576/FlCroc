@@ -5,6 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="87ef0a2c-22ed-453e-b80b-d6a7dfee16ed" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go_bridge/flcroc_bridge.dll" beforeDir="false" afterPath="$PROJECT_DIR$/go_bridge/flcroc_bridge.dll" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go_bridge/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/go_bridge/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/common/common.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/common/common.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/common/constant.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/common/constant.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/core/lib.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/core/lib.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/croc/src/cli/cli_test.go" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/croc/src/comm/comm_test.go" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/croc/src/compress/compress_test.go" beforeDir="false" />
@@ -16,7 +22,24 @@
       <change beforePath="$PROJECT_DIR$/lib/croc/src/models/models_test.go" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/croc/src/tcp/tcp_test.go" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/croc/src/utils/utils_test.go" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/windows/runner/resources/app_icon.ico" beforeDir="false" afterPath="$PROJECT_DIR$/windows/runner/resources/app_icon.ico" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/enum/enum.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/enum/enum.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/l10n/app_localizations.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/l10n/app_localizations.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/l10n/intl/messages_en.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/l10n/intl/messages_en.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/l10n/intl/messages_zh.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/l10n/intl/messages_zh.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/main.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/main.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/models/config.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/models/config.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/models/core.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/models/core.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/models/core.freezed.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/models/core.freezed.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/models/core.g.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/models/core.g.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/pages/home.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/pages/home.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/state.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/state.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/views/dashboard/dashboard.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/dashboard/dashboard.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/views/dashboard/widgets/widgets.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/dashboard/widgets/widgets.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/views/history/history.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/history/history.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/views/receive/receive.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/receive/receive.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/views/send/send.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/send/send.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/views/settings/settings.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/settings/settings.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/widget_test.dart" beforeDir="false" afterPath="$PROJECT_DIR$/test/widget_test.dart" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

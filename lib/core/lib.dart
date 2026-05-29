@@ -168,6 +168,9 @@ class CoreLib extends CoreInterface {
       if (options.relayPassword != null && options.relayPassword!.isNotEmpty) {
         opts['relay_password'] = options.relayPassword;
       }
+      if (options.relayPorts != null && options.relayPorts!.isNotEmpty) {
+        opts['relay_ports'] = options.relayPorts;
+      }
       if (options.exclude.isNotEmpty) opts['exclude'] = options.exclude;
       final optsJson = jsonEncode(opts);
 
@@ -222,6 +225,8 @@ class CoreLib extends CoreInterface {
               totalFiles: (event['total_files'] as int?) ?? 0,
               totalSize: (event['total_size'] as int?) ?? 0,
               currentFile: event['current_file'] as String? ?? '',
+              isText: event['is_text'] as bool? ?? false,
+              textContent: event['text_content'] as String? ?? '',
             );
             return;
           } else if (type == 3) {
@@ -295,6 +300,9 @@ class CoreLib extends CoreInterface {
       if (options.relayPassword != null && options.relayPassword!.isNotEmpty) {
         opts['relay_password'] = options.relayPassword;
       }
+      if (options.relayPorts != null && options.relayPorts!.isNotEmpty) {
+        opts['relay_ports'] = options.relayPorts;
+      }
       // Always include hash_algorithm so receiver matches sender's hash
       opts['hash_algorithm'] = 'xxhash';
       final optsJson = jsonEncode(opts);
@@ -349,6 +357,8 @@ class CoreLib extends CoreInterface {
                 totalFiles: (event['total_files'] as int?) ?? 0,
                 totalSize: (event['total_size'] as int?) ?? 0,
                 currentFile: event['current_file'] as String? ?? '',
+                isText: event['is_text'] as bool? ?? false,
+                textContent: event['text_content'] as String? ?? '',
               );
             }
             return;
