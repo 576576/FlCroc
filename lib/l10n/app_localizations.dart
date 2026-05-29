@@ -52,15 +52,12 @@ class AppLocalizations {
   String get recentTransfers => _('recentTransfers');
   String get crocStatus => _('crocStatus');
 
-  String get sendFiles => _('sendFiles');
   String get selectFiles => _('selectFiles');
-  String get startSend => _('startSend');
   String get codePhrase => _('codePhrase');
   String get enterCodePhrase => _('enterCodePhrase');
   String get phraseHintCroc => _('phraseHintCroc');
   String get phraseHintRandom => _('phraseHintRandom');
   String get textHint => _('textHint');
-  String get customCodeHint => _('customCodeHint');
   String get generate => _('generate');
   String get files => _('files');
   String get fileMode => _('fileMode');
@@ -74,14 +71,14 @@ class AppLocalizations {
   String get phraseModeDefault => _('phraseModeDefault');
   String get phraseModeOn => _('phraseModeOn');
   String get phraseModeNever => _('phraseModeNever');
-  String get phraseSettings => _('phraseSettings');
   String get autoCopyPhrase => _('autoCopyPhrase');
-  String get rememberConfig => _('rememberConfig');
   String get paste => _('paste');
   String get sending => _('sending');
   String get pending => _('pending');
   String get enterPhraseWarning => _('enterPhraseWarning');
   String get noCrocBackend => _('noCrocBackend');
+  String get receiveFailed => _('receiveFailed');
+  String get sendFailed => _('sendFailed');
   String get enterTextWarning => _('enterTextWarning');
   String get resetRelay => _('resetRelay');
   String get reset => _('reset');
@@ -120,12 +117,6 @@ class AppLocalizations {
   String get pureBlackMode => _('pureBlackMode');
   String get colorPalette => _('colorPalette');
   String get defaultLabel => _('defaultLabel');
-  String get customLabel => _('customLabel');
-  String get colorBlue => _('colorBlue');
-  String get colorTeal => _('colorTeal');
-  String get colorPink => _('colorPink');
-  String get colorOrange => _('colorOrange');
-  String get colorGreen => _('colorGreen');
 
   String get about => _('about');
   String get application => _('application');
@@ -133,26 +124,21 @@ class AppLocalizations {
   String get crocVersion => _('crocVersion');
   String get unavailable => _('unavailable');
   String get description => _('description');
-  String get desc => _('desc');
 
   String get transferOptions => _('transferOptions');
   String get encryptionCurve => _('encryptionCurve');
   String get hashAlgorithm => _('hashAlgorithm');
-  String get compression => _('compression');
   String get enableCompression => _('enableCompression');
   String get overwrite => _('overwrite');
   String get zipFolder => _('zipFolder');
   String get localOnly => _('localOnly');
-  String get excludePatterns => _('excludePatterns');
 
   String get cancel => _('cancel');
   String get confirm => _('confirm');
   String get delete => _('delete');
   String get clear => _('clear');
-  String get exportData => _('exportData');
   String get copyCode => _('copyCode');
   String get codeCopied => _('codeCopied');
-  String get confirmDelete => _('confirmDelete');
   String get checkUpdate => _('checkUpdate');
   String get alreadyLatest => _('alreadyLatest');
   String get newVersionAvailable => _('newVersionAvailable');
@@ -161,15 +147,11 @@ class AppLocalizations {
   String get update => _('update');
 
   String get noFiles => _('noFiles');
-  String get noTransfers => _('noTransfers');
   String get noHistory => _('noHistory');
   String get connecting => _('connecting');
   String get transferring => _('transferring');
   String get receiving => _('receiving');
-  String get receivedFiles => _('receivedFiles');
-  String get receivedText => _('receivedText');
   String get noReceivedFiles => _('noReceivedFiles');
-  String get noReceivedText => _('noReceivedText');
   String get open => _('open');
   String get openFolder => _('openFolder');
   String get acknowledgments => _('acknowledgments');

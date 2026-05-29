@@ -69,7 +69,9 @@ case "${ARCH}" in
 esac
 
 mkdir -p "${OUTPUT_DIR}"
-go build -buildmode=c-shared -o "${OUTPUT_DIR}/libcroc_bridge${EXT}" -ldflags="-s -w" .
+LDFLAGS="-s -w"
+[ "${PLATFORM}" = "windows" ] && LDFLAGS="${LDFLAGS} -H windowsgui"
+go build -buildmode=c-shared -o "${OUTPUT_DIR}/libcroc_bridge${EXT}" -ldflags="${LDFLAGS}" .
 echo "[OK] Built"
 
 # --- Copy ---

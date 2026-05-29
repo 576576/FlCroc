@@ -119,7 +119,7 @@ jobs:
 
       - name: Update submodule to latest croc
         run: |
-          cd lib/croc
+          cd submodules/croc
           for i in 1 2 3; do
             echo "Attempt $i..."
             git fetch --tags --depth 1 && break
@@ -130,7 +130,7 @@ jobs:
             git checkout "$latest" 2>/dev/null || echo "⚠️ Checkout failed — using existing ref"
           fi
           cd ../..
-          find lib/croc -name '*_test.go' -delete
+          find submodules/croc -name '*_test.go' -delete
 
       - name: Determine platforms
         id: platform
@@ -220,7 +220,7 @@ jobs:
           $env:GOOS = "windows"
           $env:GOARCH = "amd64"
           $env:CC = "gcc"
-          go build -buildmode=c-shared -ldflags="-s -w" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
+          go build -buildmode=c-shared -ldflags="-s -w -H windowsgui" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
           Pop-Location
 
       - name: Verify .dll
@@ -375,6 +375,29 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+
+      - name: Setup Android NDK
+        id: ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r27c
+          add-to-path: false
+
+      - name: Build Go bridge for Android (.so)
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: |
+          mkdir -p android/app/src/main/jniLibs/arm64-v8a
+          cd go_bridge
+          go mod tidy
+          export HOST_TAG=linux-x86_64
+          export CC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/${HOST_TAG}/bin/aarch64-linux-android21-clang"
+          CGO_ENABLED=1 GOOS=android GOARCH=arm64 \
+            go build -buildmode=c-shared -ldflags="-s -w" \
+            -o ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so .
+          cd ..
+          echo "✓ Go bridge built for Android ARM64"
+          file android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so
 
       - uses: subosito/flutter-action@v2
         with:

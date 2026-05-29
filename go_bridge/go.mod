@@ -28,4 +28,4 @@ require (
 	golang.org/x/time v0.15.0 // indirect
 )
 
-replace github.com/schollz/croc/v10 => ../lib/croc
+replace github.com/schollz/croc/v10 => ../submodules/croc

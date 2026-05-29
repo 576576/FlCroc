@@ -27,7 +27,7 @@
 
 | | |
 |---|---|
-| 🐊 **Built-in croc** | All capabilities of [croc](https://github.com/schollz/croc) — encrypted transfer, PAKE, relay, text & file, code phrases. See [croc README](lib/croc/README.md). |
+| 🐊 **Built-in croc** | All capabilities of [croc](https://github.com/schollz/croc) — encrypted transfer, PAKE, relay, text & file, code phrases. See [croc README](submodules/croc/README.md). |
 | 🎨 **Modern UI** | Material 3 design with light/dark/pure-black themes, responsive layout, drag-and-drop, collapsible settings. |
 | 🖥️ **Cross-platform** | Android · Windows · Linux · macOS — single codebase, native performance. |
 | 🌍 **Multi-language** | Supports most alphabet & non-Alphabet languages, extensible via `lib/l10n/`. Contribute to your language support through pull-request! |
@@ -37,7 +37,7 @@
 ### Prerequisites
 
 - Flutter SDK ≥ 3.12
-- Go ≥ 1.23 (croc source is vendored at `lib/croc/`)
+- Go ≥ 1.23 (croc source is vendored at `submodules/croc/`)
 
 ### Install
 
@@ -56,7 +56,7 @@ flutter run
 
 ## 🔨 Build
 
-croc source is linked AS-IS at `lib/croc/`. The Go bridge in `go_bridge/` builds as a CGO shared library (`.so` / `.dll` / `.dylib`) loaded via `dart:ffi`.
+croc source is linked AS-IS at `submodules/croc/`. The Go bridge in `go_bridge/` builds as a CGO shared library (`.so` / `.dll` / `.dylib`) loaded via `dart:ffi`.
 
 ### Windows
 ```bash
@@ -94,7 +94,7 @@ lib/
 ├── providers/             # Riverpod state providers
 ├── core/                  # Croc backend (Go FFI bridge)
 ├── go_bridge/             # Go CGO shared library
-├── lib/croc/              # Vendored croc source
+├── submodules/croc/       # Vendored croc source
 ├── l10n/                  # Localization (en, zh)
 ├── pages/                 # HomePage
 ├── views/                 # Feature views (send, receive, history, settings)

@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/controller.dart';
@@ -79,25 +77,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
     }
   }
 
-  String _defaultDownloadDir() {
-    try {
-      final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '/';
-      final dir = Directory('$home${Platform.pathSeparator}Downloads');
-      if (dir.existsSync()) return dir.path;
-    } catch (_) {}
-    return _appOutPath();
-  }
-
-  String _appOutPath() {
-    try {
-      final exeDir = File(Platform.resolvedExecutable).parent.path;
-      final dir = Directory('$exeDir${Platform.pathSeparator}out');
-      if (!dir.existsSync()) dir.createSync(recursive: true);
-      return dir.path;
-    } catch (_) {
-      return '/';
-    }
-  }
+  String _defaultDownloadDir() => AppPaths.savePathSync;
 
   Future<void> _pickReceivePath() async {
     final result = await FilePicker.platform.getDirectoryPath();
@@ -112,6 +92,11 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
     final code = _codeController.text.trim();
     if (code.isEmpty) return;
     final l10n = context.appLocalizations;
+
+    if (!coreController.isAvailable) {
+      context.showSnackBar(l10n.noCrocBackend);
+      return;
+    }
 
     setState(() { _isReceiving = true; _phase = ReceivePhase.pending; });
 
@@ -217,7 +202,10 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
               ),
             );
             if (progress.error != null && mounted) {
-              context.showSnackBar(progress.error!);
+              final errMsg = progress.error == 'No croc backend available'
+                  ? l10n.noCrocBackend
+                  : progress.error!;
+              context.showSnackBar(errMsg);
             }
           case TransferProgressStatus.cancelled:
             setState(() => _isReceiving = false);
@@ -232,7 +220,11 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
       onError: (e) {
         if (!mounted) return;
         setState(() => _isReceiving = false);
-        context.showSnackBar('Receive failed: $e');
+        final l10n = context.appLocalizations;
+        final errMsg = e.toString() == 'UnsupportedError: unavailable'
+            ? l10n.noCrocBackend
+            : '${l10n.receiveFailed}: $e';
+        context.showSnackBar(errMsg);
       },
       onDone: () {
         if (mounted) setState(() => _isReceiving = false);

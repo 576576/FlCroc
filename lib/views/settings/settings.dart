@@ -116,38 +116,27 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     }
   }
 
-  String _defaultDownloadPath() {
-    try {
-      final dir = Directory('${_homePath()}${Platform.pathSeparator}Downloads');
-      if (dir.existsSync()) return dir.path;
-    } catch (_) {}
-    return _appOutPath();
-  }
-
-  String _homePath() {
-    final env = Platform.environment;
-    if (Platform.isWindows) return env['USERPROFILE'] ?? 'C:\\';
-    return env['HOME'] ?? '/';
-  }
-
-  String _appOutPath() {
-    try {
-      final exeDir = File(Platform.resolvedExecutable).parent.path;
-      final dir = Directory('$exeDir${Platform.pathSeparator}out');
-      if (!dir.existsSync()) dir.createSync(recursive: true);
-      return dir.path;
-    } catch (_) {
-      return _homePath();
-    }
-  }
+  String _defaultDownloadPath() => AppPaths.savePathSync;
 
   Future<void> _pickSavePath(WidgetRef ref) async {
+    final l10n = context.appLocalizations;
     final result = await FilePicker.platform.getDirectoryPath();
-    if (result != null) {
-      ref.read(appSettingProvider.notifier).update(
-            (s) => s.copyWith(defaultSavePath: result),
-          );
+    if (result == null) return;
+
+    if (!AppPaths.isWritablePath(result)) {
+      if (mounted) {
+        context.showSnackBar(
+          Platform.isAndroid
+              ? '所选目录无法直接写入（Android 分区存储限制），已回退到默认保存路径'
+              : 'Selected directory is not writable, using default path',
+        );
+      }
+      return;
     }
+
+    ref.read(appSettingProvider.notifier).update(
+          (s) => s.copyWith(defaultSavePath: result),
+        );
   }
 
   void _updateRelayControllers(String address, String port, String password) {
@@ -329,7 +318,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ListItem(
                 leading: const Icon(Icons.folder),
                 title: Text(l10n.defaultSavePath),
-                subtitle: Text(appSettings.defaultSavePath.isEmpty ? _defaultDownloadPath() : appSettings.defaultSavePath),
+                subtitle: Text(formatPathForDisplay(appSettings.defaultSavePath.isEmpty ? _defaultDownloadPath() : appSettings.defaultSavePath)),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [

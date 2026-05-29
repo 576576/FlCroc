@@ -25,6 +25,9 @@ class GlobalState {
   Future<ProviderContainer> init(int version) async {
     packageInfo = await PackageInfo.fromPlatform();
 
+    // 初始化跨平台下载路径缓存
+    await AppPaths.init();
+
     final container = ProviderContainer();
 
     // SharedPreferences may be corrupted from IDE crash — delete bad file & retry.

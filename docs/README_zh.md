@@ -15,7 +15,7 @@
 
 | | |
 |---|---|
-| 🐊 **内建 croc** | 拥有 [croc](https://github.com/schollz/croc) 的全部能力——加密传输、PAKE、中继、文本/文件、代码短语。详见 [croc README](../lib/croc/README.md)。 |
+| 🐊 **内建 croc** | 拥有 [croc](https://github.com/schollz/croc) 的全部能力——加密传输、PAKE、中继、文本/文件、代码短语。详见 [croc README](../submodules/croc/README.md)。 |
 | 🎨 **现代化 UI** | Material 3 设计，浅色/深色/纯黑主题，响应式布局，拖拽操作，可折叠设置。 |
 | 🖥️ **全平台** | Android · Windows · Linux · macOS，一套代码，原生性能。 |
 | 🌍 **多语言** | 支持添加大部分语言的支持，通过 `lib/l10n/` 可扩展，请通过`pull-request`提交翻译。 |
@@ -41,7 +41,7 @@ flutter run
 
 ### 构建
 
-croc 源码*按原样*链接在 `lib/croc/`，通过Go bridge 编译为 CGO 共享库。
+croc 源码*按原样*链接在 `submodules/croc/`，通过Go bridge 编译为 CGO 共享库。
 
 ```bash
 # Windows
@@ -67,7 +67,7 @@ lib/
 ├── providers/             # Riverpod 状态管理
 ├── core/                  # Croc 后端 (Go FFI)
 ├── go_bridge/             # Go CGO 共享库
-├── lib/croc/              # Vendored croc 源码
+├── submodules/croc/       # Vendored croc 源码
 ├── l10n/                  # 多语言 (en, zh)
 ├── pages/                 # 首页
 ├── views/                 # 功能视图 (发送、接收、历史、设置)

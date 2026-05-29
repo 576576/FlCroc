@@ -12,7 +12,7 @@ import 'package:path/path.dart' as p;
 ///
 /// Binary search order:
 ///   1. `{appDir}/croc{exe}`       — alongside the Flutter executable (desktop)
-///   2. `{appDir}/lib/croc{exe}`    — bundled lib dir
+///   2. `{appDir}/lib/croc{exe}`    — bundled lib dir (legacy)
 ///   3. `{dataDir}/croc{exe}`       — extracted from assets (Android)
 ///   4. `croc` in system PATH       — development convenience
 class CoreService extends CoreInterface {

@@ -212,13 +212,14 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   // ── Send ──
 
   Future<void> _startSend() async {
+    final l10n = context.appLocalizations;
     try {
       await _doSend();
     } catch (e, s) {
       debugPrint('_startSend crashed: $e\n$s');
       if (mounted) {
         setState(() => _phase = SendPhase.fail);
-        _showWarning('Send error: $e');
+        _showWarning('${l10n.sendFailed}: $e');
       }
     }
   }
@@ -265,13 +266,17 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
     setState(() => _phase = SendPhase.pending);
 
+    // Generate transfer ID early so cancel can always find it
+    final transferId = appController.generateId();
+    _activeTransferId = transferId;
+
     final files = isText
         ? [FileItem(name: l10n.sentText, path: '', size: textContent.length)]
         : _selectedFiles.map((f) => FileItem(name: f.name, path: f.path ?? '', size: f.size)).toList();
     final totalSize = isText ? textContent.length : files.fold<int>(0, (a, f) => a + f.size);
 
     final record = TransferRecord(
-      id: appController.generateId(),
+      id: transferId,
       direction: TransferDirection.sent,
       status: TransferStatus.pending,
       files: files, totalSize: totalSize,
@@ -347,13 +352,17 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   }
 
   Future<void> _cancelSend() async {
-    final sub = _sendSubscription;
-    if (sub == null) return;
-    await sub.cancel();
-    _sendSubscription = null;
+    // Always attempt Go-side cancel first — it uses the global activeClient
+    // and works even if the Dart stream subscription hasn't been created yet.
     final tid = _activeTransferId;
     if (tid != null) {
       coreController.cancelTransfer(tid);
+    }
+    // Then cancel the stream subscription (non-null only after listen starts)
+    final sub = _sendSubscription;
+    if (sub != null) {
+      await sub.cancel();
+      _sendSubscription = null;
     }
     if (mounted) setState(() => _phase = SendPhase.fail);
   }

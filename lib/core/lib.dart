@@ -10,13 +10,13 @@ import 'package:fl_croc/models/models.dart';
 
 /// FFI binding for the Go croc bridge shared library.
 ///
-/// Uses the vendored croc at `lib/croc/` via the Go bridge in `go_bridge/`.
+/// Uses the vendored croc at `submodules/croc/` via the Go bridge in `go_bridge/`.
 class CoreLib extends CoreInterface {
   static CoreLib? _instance;
   DynamicLibrary? _lib;
   bool _isAvailable = false;
 
-  /// Built-in croc version (synced with lib/croc vendored source).
+  /// Built-in croc version (synced with submodules/croc vendored source).
   static const builtinCrocVersion = '10.4.4';
 
   // Cached FFI function for freeing Go-allocated strings
