@@ -378,7 +378,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ListItem(
                 leading: const Icon(Icons.info),
                 title: Text(l10n.appVersion),
-                subtitle: Text(globalState.packageInfo.version),
+                subtitle: Text('${globalState.packageInfo.version}+${globalState.packageInfo.buildNumber}'),
                 trailing: IconButton(
                   icon: const Icon(Icons.open_in_new, size: 18),
                   tooltip: l10n.open,
