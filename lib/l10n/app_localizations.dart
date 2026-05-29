@@ -79,6 +79,30 @@ class AppLocalizations {
   String get noCrocBackend => _('noCrocBackend');
   String get receiveFailed => _('receiveFailed');
   String get sendFailed => _('sendFailed');
+  String get errorRoomNotReady => _('errorRoomNotReady');
+  String get errorPeerDisconnected => _('errorPeerDisconnected');
+  String get errorCouldNotConnect => _('errorCouldNotConnect');
+  String get errorCodeIncorrect => _('errorCodeIncorrect');
+
+  /// 将 croc 原始错误信息映射为本地化文案。
+  /// 匹配已知错误关键词；无匹配时返回 [receiveFailed] 或 [sendFailed]。
+  String localizeCrocError(String error, {bool isSend = false}) {
+    final lower = error.toLowerCase();
+    if (lower.contains('room') && (lower.contains('not ready') || lower.contains('secure channel'))) {
+      return errorRoomNotReady;
+    }
+    if (lower.contains('peer') && lower.contains('disconnect')) {
+      return errorPeerDisconnected;
+    }
+    if (lower.contains('could not connect') || lower.contains('connection refused') || lower.contains('no such host')) {
+      return errorCouldNotConnect;
+    }
+    if (lower.contains('code') && (lower.contains('incorrect') || lower.contains('wrong') || lower.contains('invalid')) ||
+        lower.contains('phrase') && lower.contains('incorrect')) {
+      return errorCodeIncorrect;
+    }
+    return isSend ? sendFailed : receiveFailed;
+  }
   String get enterTextWarning => _('enterTextWarning');
   String get resetRelay => _('resetRelay');
   String get reset => _('reset');

@@ -1,7 +1,14 @@
 plugins {
     id("com.android.application")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// ── Signing ────────────────────────────────────────────────
+// Priority: key.properties > CI env vars > debug (fallback)
+var keystoreProperties = java.util.Properties()
+val keystoreFile = rootProject.file("key.properties")
+if (keystoreFile.exists()) {
+    keystoreProperties.load(keystoreFile.inputStream())
 }
 
 android {
@@ -22,11 +29,36 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            val envStore = System.getenv("ANDROID_KEYSTORE_BASE64")
+            if (envStore != null && envStore.isNotEmpty()) {
+                // CI: decode base64 keystore from env
+                storeFile = file("${System.getProperty("java.io.tmpdir")}/flcroc.p12")
+                val decoded = java.util.Base64.getDecoder().decode(envStore)
+                storeFile.writeBytes(decoded)
+                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: ""
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: "flcroc"
+                keyPassword = System.getenv("ANDROID_KEY_PASSWORD") ?: storePassword
+            } else if (keystoreProperties.containsKey("storeFile")) {
+                // Local: read from key.properties
+                storeFile = rootProject.file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String? ?: "flcroc"
+                keyPassword = keystoreProperties["keyPassword"] as String? ?: storePassword
+            } else {
+                // Fallback to debug — only for local development
+                storeFile = signingConfigs.getByName("debug").storeFile
+                storePassword = signingConfigs.getByName("debug").storePassword
+                keyAlias = signingConfigs.getByName("debug").keyAlias
+                keyPassword = signingConfigs.getByName("debug").keyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

@@ -39,6 +39,7 @@ Thumbs.db
 *.keystore
 **/android/captures/
 **/android/key.properties
+*.jks
 **/android/local.properties
 **/android/**/gradle-wrapper.jar
 **/android/**/GeneratedPluginRegistrant.java
@@ -150,3 +151,4 @@ submodules/croc/.github
 !**/ios/**/default.pbxuser
 !**/ios/**/default.perspectivev3
 
+android/key.properties.example

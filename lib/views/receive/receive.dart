@@ -208,9 +208,9 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
               ),
             );
             if (progress.error != null && mounted) {
-              final errMsg = progress.error == 'No croc backend available'
+              final errMsg = progress.error == CoreController.noBackendError
                   ? l10n.noCrocBackend
-                  : progress.error!;
+                  : l10n.localizeCrocError(progress.error!);
               context.showSnackBar(errMsg);
             }
           case TransferProgressStatus.cancelled:
@@ -229,8 +229,9 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
         final l10n = context.appLocalizations;
         final errMsg = e.toString() == 'UnsupportedError: unavailable'
             ? l10n.noCrocBackend
-            : '${l10n.receiveFailed}: $e';
+            : l10n.localizeCrocError(e.toString());
         context.showSnackBar(errMsg);
+        commonPrint('Receive error: $e');
       },
       onDone: () {
         if (mounted) setState(() => _isReceiving = false);

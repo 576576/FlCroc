@@ -42,6 +42,7 @@ class CoreService extends CoreInterface {
       final result = await Process.run(
         _crocPath!,
         ['--version'],
+        runInShell: false,
         environment: {'CROC_SECRET': ''},
       );
       if (result.exitCode == 0) {
@@ -202,7 +203,7 @@ class CoreService extends CoreInterface {
         codePhrase: code,
       );
 
-      final process = await Process.start(_crocPath!, args);
+      final process = await Process.start(_crocPath!, args, runInShell: false);
       _process = process;
 
       await for (final line in process.stdout
@@ -276,7 +277,7 @@ class CoreService extends CoreInterface {
         status: TransferProgressStatus.connecting,
       );
 
-      final process = await Process.start(_crocPath!, args);
+      final process = await Process.start(_crocPath!, args, runInShell: false);
       _process = process;
 
       await for (final line in process.stdout

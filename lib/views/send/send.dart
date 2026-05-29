@@ -323,11 +323,14 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
           case TransferProgressStatus.failed:
             setState(() => _phase = SendPhase.fail);
             appController.updateTransferRecord(record.copyWith(status: TransferStatus.failed, endTime: DateTime.now()));
-            if (progress.error != null && mounted) context.showSnackBar(progress.error!);
+            if (progress.error != null && mounted) {
+              commonPrint('Send failed: ${progress.error}');
+              context.showSnackBar(l10n.localizeCrocError(progress.error!, isSend: true));
+            }
             _sendSubscription = null;
             break;
           case TransferProgressStatus.cancelled:
-            setState(() => _phase = SendPhase.fail);
+            setState(() => _phase = SendPhase.cancelled);
             appController.updateTransferRecord(record.copyWith(status: TransferStatus.cancelled, endTime: DateTime.now()));
             _sendSubscription = null;
             break;
@@ -341,19 +344,22 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
         if (!mounted) return;
         setState(() => _phase = SendPhase.fail);
         appController.updateTransferRecord(record.copyWith(status: TransferStatus.failed, endTime: DateTime.now()));
-        context.showSnackBar('Send failed: $e');
+        context.showSnackBar(l10n.localizeCrocError(e.toString(), isSend: true));
+        commonPrint('Send error: $e');
         _sendSubscription = null;
       },
       onDone: () {
-        if (mounted && _phase != SendPhase.success) setState(() => _phase = SendPhase.fail);
+        if (mounted && _phase != SendPhase.success && _phase != SendPhase.cancelled) setState(() => _phase = SendPhase.fail);
         _sendSubscription = null;
       },
     );
   }
 
   Future<void> _cancelSend() async {
+    // Immediately show cancelled state — no delay
+    if (mounted) setState(() => _phase = SendPhase.cancelled);
+
     // Always attempt Go-side cancel first — it uses the global activeClient
-    // and works even if the Dart stream subscription hasn't been created yet.
     final tid = _activeTransferId;
     if (tid != null) {
       coreController.cancelTransfer(tid);
@@ -364,7 +370,12 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       await sub.cancel();
       _sendSubscription = null;
     }
-    if (mounted) setState(() => _phase = SendPhase.fail);
+
+    // 2s cooldown before re-enabling the send button
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted && _phase == SendPhase.cancelled) {
+      setState(() => _phase = SendPhase.idle);
+    }
   }
 
   void _showWarning(String msg) {
@@ -411,7 +422,9 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
           FilledButtonWidget(
             onPressed: _phase == SendPhase.sending || _phase == SendPhase.pending
                 ? _cancelSend
-                : _startSend,
+                : _phase == SendPhase.cancelled
+                    ? null
+                    : _startSend,
             text: _phase == SendPhase.sending || _phase == SendPhase.pending
                 ? l10n.cancel
                 : l10n.send,
@@ -652,6 +665,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       SendPhase.sending => (l10n.sending, context.colorScheme.primary),
       SendPhase.success => (l10n.completed, Colors.green),
       SendPhase.fail => (l10n.failed, Colors.red),
+      SendPhase.cancelled => (l10n.cancelled, Colors.grey),
       _ => ('', Colors.transparent),
     };
     if (label.isEmpty) return const SizedBox.shrink();
@@ -674,4 +688,4 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   );
 }
 
-enum SendPhase { idle, pending, sending, success, fail }
+enum SendPhase { idle, pending, sending, success, fail, cancelled }
