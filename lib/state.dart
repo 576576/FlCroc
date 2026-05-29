@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:open_filex/open_filex.dart' hide ResultType;
 import 'package:url_launcher/url_launcher.dart';
 
 class GlobalState {
@@ -136,7 +137,10 @@ class GlobalState {
   Future<void> openFile(String path) async {
     if (path.isEmpty) return;
     try {
-      await launchUrl(Uri.file(path));
+      final result = await OpenFilex.open(path);
+      if (result.message.isNotEmpty) {
+        commonPrint('Open file result: ${result.message}');
+      }
     } catch (e) {
       commonPrint('Failed to open file: $e');
     }
@@ -146,7 +150,6 @@ class GlobalState {
     if (filePath.isEmpty) return;
     try {
       if (Platform.isWindows) {
-        // Open directory directly; /select, for files to reveal in parent
         final isDir = Directory(filePath).existsSync();
         if (isDir) {
           await Process.run('explorer', [filePath]);
@@ -155,8 +158,14 @@ class GlobalState {
         }
       } else if (Platform.isMacOS) {
         await Process.run('open', [filePath]);
-      } else {
+      } else if (Platform.isLinux) {
         await Process.run('xdg-open', [filePath]);
+      } else {
+        // Android / iOS: open parent folder via downloadsfolder
+        final dir = Directory(filePath).existsSync()
+            ? filePath
+            : File(filePath).parent.path;
+        await OpenFilex.open(dir);
       }
     } catch (e) {
       commonPrint('Failed to open folder: $e');

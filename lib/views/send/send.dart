@@ -155,7 +155,14 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
             children: [
               SizedBox(
                 width: 200, height: 200,
-                child: QrImageView(data: code, version: QrVersions.auto, size: 200),
+                child: QrImageView(
+                  data: code,
+                  version: QrVersions.auto,
+                  size: 200,
+                  foregroundColor: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.black,
+                ),
               ),
               const SizedBox(height: 12),
               Text(code, style: const TextStyle(fontFamily: 'monospace', fontSize: 14, fontWeight: FontWeight.w600)),
@@ -570,7 +577,14 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
           // QR code — below transfer options
           if (_currentPhrase.isNotEmpty)
-            Padding(padding: const EdgeInsets.all(16), child: Center(child: QrImageView(data: _currentPhrase, version: QrVersions.auto, size: 160))),
+            Padding(padding: const EdgeInsets.all(16), child: Center(child: QrImageView(
+              data: _currentPhrase,
+              version: QrVersions.auto,
+              size: 160,
+              foregroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : Colors.black,
+            ))),
 
           const SizedBox(height: 32),
         ],

@@ -11,7 +11,7 @@ import 'package:fl_croc/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:gscankit/gscankit.dart';
 
 class ReceiveView extends ConsumerStatefulWidget {
   const ReceiveView({super.key});
@@ -186,6 +186,12 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
               _receivedText = '';
               if (fileItems.isNotEmpty) {
                 _selectedTab = 0;
+                // Android: export to Downloads via MediaStore
+                if (isAndroid) {
+                  for (final f in fileItems) {
+                    AppPaths.exportToDownloads(f.path);
+                  }
+                }
               }
               setState(() { _isReceiving = false; _phase = ReceivePhase.completed; });
 
@@ -525,8 +531,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   }
 }
 
-/// Mobile-only QR scanner page with camera + image picker.
-/// Returns the scanned code phrase as a String via Navigator.pop.
+/// QR scanner page powered by gscankit.
 class _QRScannerPage extends StatefulWidget {
   const _QRScannerPage();
 
@@ -535,12 +540,12 @@ class _QRScannerPage extends StatefulWidget {
 }
 
 class _QRScannerPageState extends State<_QRScannerPage> {
-  final _scannerController = MobileScannerController();
+  final _controller = MobileScannerController();
   bool _hasScanned = false;
 
   @override
   void dispose() {
-    _scannerController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -553,26 +558,6 @@ class _QRScannerPageState extends State<_QRScannerPage> {
     }
   }
 
-  Future<void> _pickAndScanImage() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image);
-    if (result == null || result.files.isEmpty) return;
-    final path = result.files.first.path;
-    if (path == null) return;
-
-    try {
-      final capture = await _scannerController.analyzeImage(path);
-      if (capture != null && mounted && !_hasScanned) {
-        final barcode = capture.barcodes.firstOrNull;
-        if (barcode?.rawValue != null) {
-          _hasScanned = true;
-          Navigator.of(context).pop(barcode!.rawValue!);
-        }
-      }
-    } catch (_) {
-      if (mounted) context.showSnackBar(context.appLocalizations.noQRFound);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = context.appLocalizations;
@@ -580,28 +565,24 @@ class _QRScannerPageState extends State<_QRScannerPage> {
       appBar: AppBar(
         title: Text(l10n.scanQRCode),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.image),
-            tooltip: l10n.selectQRImage,
-            onPressed: _pickAndScanImage,
-          ),
-          IconButton(
-            icon: Icon(
-              _scannerController.torchEnabled ? Icons.flash_on : Icons.flash_off,
-            ),
-            tooltip: l10n.flashlight,
-            onPressed: () => _scannerController.toggleTorch(),
+          GalleryButton(
+            controller: _controller,
+            isSuccess: ValueNotifier<bool?>(null),
+            onDetect: _onDetect,
+            text: '',
+            icon: const Icon(Icons.image, color: Colors.white, size: 22),
           ),
           IconButton(
             icon: const Icon(Icons.flip_camera_android),
             tooltip: l10n.flipCamera,
-            onPressed: () => _scannerController.switchCamera(),
+            onPressed: () => _controller.switchCamera(),
           ),
         ],
       ),
-      body: MobileScanner(
-        controller: _scannerController,
+      body: GscanKit(
+        controller: _controller,
         onDetect: _onDetect,
+        gscanOverlayConfig: const GscanOverlayConfig(),
       ),
     );
   }

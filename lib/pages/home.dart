@@ -114,10 +114,11 @@ class HomePage extends StatelessWidget {
             ]),
           );
         }
-        return Column(children: [
-          pageBody,
-          SafeArea(child: navBar),
-        ]);
+        // Mobile: use Scaffold so keyboard / system bars are handled correctly
+        return Scaffold(
+          body: pageBody,
+          bottomNavigationBar: navBar,
+        );
       },
     );
   }
