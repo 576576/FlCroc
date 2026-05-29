@@ -92,22 +92,21 @@ jobs:
             git commit -m "sync-ver: $NEW_VERSION [skip ci]"
             git push
           else
-            # ── Non-release: append build hash ──
+            # ── Non-release: increment build number ──
             BASE=$(echo "$CUR_VER" | sed -E 's/(b?)\+.*//' | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+b?')
             if [ -z "$BASE" ]; then BASE="$CUR_VER"; fi
-            NEW_VERSION="${BASE}+${SHA}"
-            if echo "$CUR_VER" | grep -q "+${SHA}$"; then
-              echo "Version already includes this SHA, skip sync"
-            else
-              echo "Syncing dev version: $NEW_VERSION"
-              sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
-              git config user.name "github-actions[bot]"
-              git config user.email "github-actions[bot]@users.noreply.github.com"
-              git add pubspec.yaml
-              git diff --cached --quiet && exit 0
-              git commit -m "sync-ver: $NEW_VERSION [skip ci]"
-              git push
-            fi
+            CUR_BUILD=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}' | grep -oE '\+[0-9]+$' | tr -d '+')
+            CUR_BUILD=${CUR_BUILD:-0}
+            NEW_BUILD=$((CUR_BUILD + 1))
+            NEW_VERSION="${BASE}+${NEW_BUILD}"
+            echo "Syncing dev version: $NEW_VERSION (build $CUR_BUILD → $NEW_BUILD)"
+            sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add pubspec.yaml
+            git diff --cached --quiet && exit 0
+            git commit -m "sync-ver: $NEW_VERSION [skip ci]"
+            git push
           fi
 
       - name: Update submodule to latest croc
