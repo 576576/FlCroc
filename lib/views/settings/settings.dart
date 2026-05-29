@@ -30,7 +30,8 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   @override
   void initState() {
     super.initState();
-    _loadCrocVersion();
+    // Delay version check until after core controller initializes (post first frame)
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadCrocVersion());
     final relay = ref.read(appSettingProvider).relayConfig;
     _relayAddrCtrl.text = relay.address;
     _relayPortCtrl.text = relay.port;

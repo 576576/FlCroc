@@ -118,6 +118,15 @@ app.*.symbols
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 !/dev/ci/**/Gemfile.lock
 /.idea
+
+# Auto-generated launcher icons (regenerated from assets/images/icon.png)
+**/android/**/mipmap-*/ic_launcher.png
+**/ios/**/AppIcon.appiconset/Icon-*.png
+**/macos/**/AppIcon.appiconset/app_icon_*.png
+web/favicon.png
+web/icons/
+**/windows/runner/resources/app_icon.ico
+**/linux/runner/resources/icon.png
 .github/workflows/build-android.yml
 .github/workflows/build-linux.yml
 .github/workflows/build-windows.yml
@@ -125,3 +134,6 @@ lib/croc/.github
 /.idea
 /go_bridge/test_send
 flcroc-test-979183780.txt
+/ios/Runner
+/android/app/src/main/res
+go_bridge/flcroc_bridge.dll

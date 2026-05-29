@@ -138,6 +138,47 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     }
   }
 
+  void _showQRCode() {
+    final code = _currentPhrase;
+    if (code.isEmpty) {
+      if (mounted) context.showSnackBar(context.appLocalizations.phraseEmpty);
+      return;
+    }
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final l10n = context.appLocalizations;
+        return AlertDialog(
+          title: Text(l10n.generateQRCode),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 200, height: 200,
+                child: QrImageView(data: code, version: QrVersions.auto, size: 200),
+              ),
+              const SizedBox(height: 12),
+              Text(code, style: const TextStyle(fontFamily: 'monospace', fontSize: 14, fontWeight: FontWeight.w600)),
+            ],
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: code));
+                if (mounted) context.showSnackBar(context.appLocalizations.codeCopied);
+              },
+              child: Text(l10n.copyCode),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.confirm),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   String get _currentPhrase => _codeController.text.trim();
   bool get _allowEmptyPhrase => _phraseMode == PhraseMode.defaultMode;
 
@@ -347,7 +388,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.refresh, size: 16), onPressed: _generateCode, padding: EdgeInsets.zero, tooltip: l10n.generate)),
+                  SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.qr_code, size: 16), onPressed: _showQRCode, padding: EdgeInsets.zero, tooltip: l10n.generateQRCode)),
                   SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.copy, size: 16), onPressed: _copyPhrase, padding: EdgeInsets.zero, tooltip: l10n.copyCode)),
                   SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.paste, size: 16), onPressed: _pastePhrase, padding: EdgeInsets.zero, tooltip: l10n.paste)),
                 ],
@@ -478,6 +519,17 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                     _phraseChip(l10n.phraseModeDefault, PhraseMode.defaultMode),
                     _phraseChip(l10n.phraseModeOn, PhraseMode.on),
                     _phraseChip(l10n.phraseModeNever, PhraseMode.never),
+                    if (_phraseMode == PhraseMode.never)
+                      SizedBox(
+                        height: 32,
+                        child: IconButton(
+                          icon: const Icon(Icons.refresh, size: 16),
+                          tooltip: l10n.generate,
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          onPressed: _generateCode,
+                        ),
+                      ),
                   ]),
                 ),
               ),

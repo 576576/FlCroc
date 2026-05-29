@@ -30,15 +30,11 @@ class _TransferStatsWidgetState extends ConsumerState<TransferStatsWidget> {
     final transferCount = transfers.length;
 
     // Total elapsed time across all completed transfers
-    final totalSeconds = transfers
+    transfers
         .where((t) => t.endTime != null)
         .fold<int>(0, (a, t) => a + t.endTime!.difference(t.startTime).inSeconds);
-    final totalTimeStr = totalSeconds > 0
-        ? _formatTime(totalSeconds)
-        : '--';
 
     String primaryValue;
-    String? secondaryLabel;
 
     switch (_cycleIndex) {
       case 0:
@@ -81,15 +77,6 @@ class _TransferStatsWidgetState extends ConsumerState<TransferStatsWidget> {
                 color: context.colorScheme.primary,
               ),
             ),
-            if (secondaryLabel != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                secondaryLabel,
-                style: context.textTheme.bodySmall?.copyWith(
-                  color: context.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
           ],
         ),
       ),
@@ -97,12 +84,4 @@ class _TransferStatsWidgetState extends ConsumerState<TransferStatsWidget> {
     );
   }
 
-  String _formatTime(int totalSeconds) {
-    final h = totalSeconds ~/ 3600;
-    final m = (totalSeconds % 3600) ~/ 60;
-    final s = totalSeconds % 60;
-    if (h > 0) return '${h}h ${m}m';
-    if (m > 0) return '${m}m ${s}s';
-    return '${s}s';
-  }
 }

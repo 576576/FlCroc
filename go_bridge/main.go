@@ -127,8 +127,7 @@ func CrocCancelTransfer(transferID *C.char) C.int {
 	mu.Lock()
 	defer mu.Unlock()
 	if activeClient != nil {
-		// croc.Client does not support cancellation natively;
-		// we rely on process kill from the Dart side
+		activeClient.Cancel()
 		return 1
 	}
 	return 0

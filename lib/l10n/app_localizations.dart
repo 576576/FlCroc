@@ -1,20 +1,14 @@
 /// FlCroc internationalization (i18n).
 ///
-/// **Architecture** — code and translations are fully decoupled:
-///   - This file: `AppLocalizations` class with typed getters
-///   - `intl/messages_en.dart` — English `Map<String, String>`
-///   - `intl/messages_zh.dart` — Chinese `Map<String, String>`
-///
-/// **Adding a new language:**
-///   1. Create `intl/messages_xx.dart` exporting a `const Map<String, String>`
-///   2. Import and add to `_lookupMap` in the delegate below
-///   3. Add the locale to `supportedLocales`
+/// **Architecture** — translations stored in JSON bundles under `assets/bundles/`:
+///   - `en.json` — English
+///   - `zh.json` — Chinese
 library;
 
-import 'package:flutter/material.dart';
+import 'dart:convert';
 
-import 'intl/messages_en.dart';
-import 'intl/messages_zh.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 // ────────────────────────────────────────────────────────────
 // AppLocalizations
@@ -36,7 +30,6 @@ class AppLocalizations {
   static const List<Locale> supportedLocales = [
     Locale('en'),
     Locale('zh'),
-    Locale('zh', 'CN'),
   ];
 
   /// Look up a message by key. Falls back to the key itself.
@@ -99,6 +92,13 @@ class AppLocalizations {
   String get receiveFiles => _('receiveFiles');
   String get startReceive => _('startReceive');
   String get scanQRCode => _('scanQRCode');
+  String get generateQRCode => _('generateQRCode');
+  String get phraseEmpty => _('phraseEmpty');
+  String get selectQRImage => _('selectQRImage');
+  String get flashlight => _('flashlight');
+  String get flipCamera => _('flipCamera');
+  String get noQRFound => _('noQRFound');
+  String get scanMobileOnly => _('scanMobileOnly');
   String get options => _('options');
 
   String get relayType => _('relayType');
@@ -240,21 +240,24 @@ class _AppLocalizationsDelegate
     extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
-  /// Language lookup registry.
-  /// Add new languages by importing their message map and adding an entry here.
-  static final Map<String, Map<String, String>> _lookupMap = {
-    'en': enMessages,
-    'zh': zhMessages,
-  };
+  static final Map<String, Map<String, String>> _cache = {};
 
   @override
   bool isSupported(Locale locale) =>
-      _lookupMap.containsKey(locale.languageCode);
+      AppLocalizations.supportedLocales.any((l) => l.languageCode == locale.languageCode);
 
   @override
   Future<AppLocalizations> load(Locale locale) async {
-    final messages = _lookupMap[locale.languageCode] ??
-        _lookupMap['zh']!;
+    final code = locale.languageCode;
+    if (!_cache.containsKey(code)) {
+      try {
+        final json = await rootBundle.loadString('assets/bundles/$code.json');
+        _cache[code] = Map<String, String>.from(jsonDecode(json) as Map);
+      } catch (_) {
+        _cache[code] = {};
+      }
+    }
+    final messages = _cache[code]!.isNotEmpty ? _cache[code]! : (_cache['en'] ?? {});
     return AppLocalizations._(locale, messages);
   }
 

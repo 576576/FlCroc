@@ -86,10 +86,10 @@ class HomePage extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.all(12),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(12),
                           child: Image.asset(
                             'assets/images/icon.png',
-                            width: 64, height: 64,
+                            width: 40, height: 40,
                             errorBuilder: (_, _, _) => Icon(Icons.upload_file, size: 40, color: context.colorScheme.primary),
                           ),
                         ),

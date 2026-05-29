@@ -34,6 +34,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   final List<FileItem> _receivedFiles = [];
   int _selectedTab = 0; // 0=files, 1=text
   String _receivedText = '';
+  String _effectiveOutputPath = '';
 
   @override
   void initState() {
@@ -57,6 +58,10 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   }
 
   void _openScanner() async {
+    if (isDesktop) {
+      if (mounted) context.showSnackBar(context.appLocalizations.scanMobileOnly);
+      return;
+    }
     final result = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (_) => const _QRScannerPage(),
@@ -126,11 +131,19 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
     final useNoRelay = relayConfig.type == RelayType.noRelay;
     final useCustom = relayConfig.type == RelayType.customRelay;
 
+    // Resolve effective output path
+    final effectivePath = _receiveConfig.outputPath.isNotEmpty
+        ? _receiveConfig.outputPath
+        : (ref.read(appSettingProvider).defaultSavePath.isNotEmpty
+            ? ref.read(appSettingProvider).defaultSavePath
+            : _defaultDownloadDir());
+    _effectiveOutputPath = effectivePath;
+
     final options = ReceiveOptions(
       codePhrase: code,
       overwrite: _receiveConfig.overwrite,
       onlyLocal: useNoRelay,
-      outputPath: _receiveConfig.outputPath,
+      outputPath: effectivePath,
       relayAddress: useCustom ? relayConfig.address : null,
       relayPassword: useCustom ? relayConfig.password : null,
       relayPorts: useCustom ? relayConfig.port : null,
@@ -173,9 +186,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                   : <String>[];
               final fileItems = fileNames.map((n) => FileItem(
                 name: n,
-                path: _receiveConfig.outputPath.isNotEmpty
-                    ? '${_receiveConfig.outputPath}/$n'
-                    : n,
+                path: '$_effectiveOutputPath/$n',
                 size: fileNames.length == 1 ? progress.totalSize : 0,
               )).toList();
 
@@ -515,7 +526,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   }
 }
 
-/// Full-screen QR code scanner page.
+/// Mobile-only QR scanner page with camera + image picker.
 /// Returns the scanned code phrase as a String via Navigator.pop.
 class _QRScannerPage extends StatefulWidget {
   const _QRScannerPage();
@@ -525,7 +536,7 @@ class _QRScannerPage extends StatefulWidget {
 }
 
 class _QRScannerPageState extends State<_QRScannerPage> {
-  final MobileScannerController _scannerController = MobileScannerController();
+  final _scannerController = MobileScannerController();
   bool _hasScanned = false;
 
   @override
@@ -543,20 +554,48 @@ class _QRScannerPageState extends State<_QRScannerPage> {
     }
   }
 
+  Future<void> _pickAndScanImage() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.image);
+    if (result == null || result.files.isEmpty) return;
+    final path = result.files.first.path;
+    if (path == null) return;
+
+    try {
+      final capture = await _scannerController.analyzeImage(path);
+      if (capture != null && mounted && !_hasScanned) {
+        final barcode = capture.barcodes.firstOrNull;
+        if (barcode?.rawValue != null) {
+          _hasScanned = true;
+          Navigator.of(context).pop(barcode!.rawValue!);
+        }
+      }
+    } catch (_) {
+      if (mounted) context.showSnackBar(context.appLocalizations.noQRFound);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = context.appLocalizations;
     return Scaffold(
       appBar: AppBar(
-        title: Text(context.appLocalizations.scanQRCode),
+        title: Text(l10n.scanQRCode),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.image),
+            tooltip: l10n.selectQRImage,
+            onPressed: _pickAndScanImage,
+          ),
           IconButton(
             icon: Icon(
               _scannerController.torchEnabled ? Icons.flash_on : Icons.flash_off,
             ),
+            tooltip: l10n.flashlight,
             onPressed: () => _scannerController.toggleTorch(),
           ),
           IconButton(
             icon: const Icon(Icons.flip_camera_android),
+            tooltip: l10n.flipCamera,
             onPressed: () => _scannerController.switchCamera(),
           ),
         ],
