@@ -3,9 +3,12 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+import java.util.Properties
+import java.util.Base64
+
 // ── Signing ────────────────────────────────────────────────
 // Priority: key.properties > CI env vars > debug (fallback)
-var keystoreProperties = java.util.Properties()
+val keystoreProperties = Properties()
 val keystoreFile = rootProject.file("key.properties")
 if (keystoreFile.exists()) {
     keystoreProperties.load(keystoreFile.inputStream())
@@ -32,11 +35,11 @@ android {
     signingConfigs {
         create("release") {
             val envStore = System.getenv("ANDROID_KEYSTORE_BASE64")
-            if (envStore != null && envStore.isNotEmpty()) {
+            if (!envStore.isNullOrEmpty()) {
                 // CI: decode base64 keystore from env
-                storeFile = file("${System.getProperty("java.io.tmpdir")}/flcroc.p12")
-                val decoded = java.util.Base64.getDecoder().decode(envStore)
-                storeFile.writeBytes(decoded)
+                val tmpFile = file("${System.getProperty("java.io.tmpdir")}/flcroc.p12")
+                tmpFile.writeBytes(Base64.getDecoder().decode(envStore))
+                storeFile = tmpFile
                 storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: ""
                 keyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: "flcroc"
                 keyPassword = System.getenv("ANDROID_KEY_PASSWORD") ?: storePassword
