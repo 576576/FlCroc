@@ -20,11 +20,9 @@ class HomePage extends StatelessWidget {
         final isNarrow = MediaQuery.of(context).size.width < maxMobileWidth;
 
         // ── Shared body: page content area ──
-        Widget pageBody = Expanded(
-          child: IndexedStack(
-            index: safeIndex,
-            children: navigationItems.map((e) => e.builder(context)).toList(),
-          ),
+        Widget pageBody = IndexedStack(
+          index: safeIndex,
+          children: navigationItems.map((e) => e.builder(context)).toList(),
         );
 
         // ── Wide: NavigationRail sidebar ──
@@ -32,6 +30,9 @@ class HomePage extends StatelessWidget {
           final labelStyle = context.textTheme.labelMedium?.copyWith(
             overflow: TextOverflow.ellipsis,
           );
+          final screenHeight = MediaQuery.of(context).size.height;
+          final showLogo = screenHeight >= 500; // hide logo when height is tight (e.g. landscape)
+
           final rail = Material(
             color: context.colorScheme.surfaceContainer,
             child: SafeArea(
@@ -39,19 +40,21 @@ class HomePage extends StatelessWidget {
                 width: 88,
                 child: Column(
                   children: [
-                    const SizedBox(height: 10),
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.asset(
-                          'assets/images/icon.png',
-                          width: 40, height: 40,
-                          errorBuilder: (_, _, _) => Icon(Icons.upload_file, size: 40, color: context.colorScheme.primary),
+                    if (showLogo) ...[
+                      const SizedBox(height: 10),
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.asset(
+                            'assets/images/icon.png',
+                            width: 40, height: 40,
+                            errorBuilder: (_, _, _) => Icon(Icons.upload_file, size: 40, color: context.colorScheme.primary),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
+                      const SizedBox(height: 8),
+                    ],
                     Expanded(
                       child: NavigationRail(
                         backgroundColor: Colors.transparent,
@@ -79,7 +82,7 @@ class HomePage extends StatelessWidget {
               ),
             ),
           );
-          final wideBody = Row(children: [rail, pageBody]);
+          final wideBody = Row(children: [rail, Expanded(child: pageBody)]);
           if (isDesktop) {
             return Container(
               color: context.colorScheme.surface,
@@ -109,7 +112,7 @@ class HomePage extends StatelessWidget {
             color: context.colorScheme.surface,
             child: Column(children: [
               const WindowTitleBar(),
-              pageBody,
+              Expanded(child: pageBody),
               SafeArea(child: navBar),
             ]),
           );
