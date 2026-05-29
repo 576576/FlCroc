@@ -120,9 +120,14 @@ web/icons/
 **/linux/runner/resources/icon.png
 
 # ============================================================
-# Go / FFI 跨语言桥接
+# Go / FFI 跨语言桥接（构建产物）
 # ============================================================
+**/libcroc_bridge.dll
+**/libcroc_bridge.so
+**/libcroc_bridge.dylib
+**/libcroc_bridge.h
 go_bridge/flcroc_bridge.dll
+go_bridge/flcroc_bridge.h
 
 # ============================================================
 # CI / Workflow（已合并为单一 build.yml）

@@ -98,7 +98,13 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
       return;
     }
 
-    setState(() { _isReceiving = true; _phase = ReceivePhase.pending; });
+    setState(() {
+      _isReceiving = true;
+      _phase = ReceivePhase.pending;
+      _receivedFiles.clear();
+      _receivedText = '';
+      _selectedTab = 0;
+    });
 
     final record = TransferRecord(
       id: appController.generateId(),
