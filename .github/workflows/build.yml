@@ -96,7 +96,16 @@ jobs:
             git commit -m "sync-ver: $NEW_VERSION [skip ci]"
             git push
           else
-            # ── Non-release: increment build number ──
+            # ── Non-release: increment build number (only if a build job will run) ──
+            # Check if any platform build trigger is in the commit message
+            if ! echo "$MSG" | grep -qE '\b(b-win|b-linux|b-mobile|b-all)\b'; then
+              echo "No build trigger in commit message, skip version sync"
+              echo "nightly_version=${CUR_VER}" >> $GITHUB_OUTPUT
+              echo "nightly_date=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
+              echo "synced_version=${CUR_VER}" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
             BASE=$(echo "$CUR_VER" | sed -E 's/(b?)\+.*//' | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+b?')
             if [ -z "$BASE" ]; then BASE="$CUR_VER"; fi
             CUR_BUILD=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}' | grep -oE '\+[0-9]+$' | tr -d '+')
