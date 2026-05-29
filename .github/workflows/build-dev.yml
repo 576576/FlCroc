@@ -13,33 +13,18 @@ env:
   GO_VERSION: '1.25'
 
 jobs:
-  # ── Prebuild: version sync + submodule update + platform detection ──
+  # ── Prebuild: submodule update + platform detection ──
   prebuild:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     outputs:
       windows: ${{ steps.platform.outputs.windows }}
       linux: ${{ steps.platform.outputs.linux }}
       android: ${{ steps.platform.outputs.android }}
-      skip_build: ${{ steps.flags.outputs.skip_build }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-
-      - name: Check flags
-        id: flags
-        env:
-          MSG: ${{ github.event.head_commit.message || '' }}
-        run: |
-          IS_UPDATE=false; SKIP_BUILD=false
-          echo "$MSG" | grep -qi 'update-ver' && IS_UPDATE=true
-          echo "$MSG" | grep -qi 'skip-build' && SKIP_BUILD=true
-          echo "is_update=$IS_UPDATE" >> $GITHUB_OUTPUT
-          echo "skip_build=$SKIP_BUILD" >> $GITHUB_OUTPUT
 
       - name: Update submodule to latest croc
         run: |
@@ -58,24 +43,6 @@ jobs:
           cd ../..
           find lib/croc -name '*_test.go' -delete
 
-      - name: Version bump (update-ver only)
-        if: steps.flags.outputs.is_update == 'true'
-        run: |
-          FLCROC=$(grep '^flcroc=' version.properties | cut -d= -f2)
-          sed -i "s/^version: .*/version: $FLCROC/" pubspec.yaml
-
-      - name: Commit and push (update-ver only)
-        if: steps.flags.outputs.is_update == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          FLCROC=$(grep '^flcroc=' version.properties | cut -d= -f2)
-          CROC_VER=$(cd lib/croc && git describe --tags)
-          git add pubspec.yaml lib/croc
-          git diff --cached --quiet && exit 0
-          git commit -m "update-ver: FlCroc $FLCROC, croc $CROC_VER [skip ci]"
-          git push
-
       - name: Determine platforms
         id: platform
         env:
@@ -83,10 +50,10 @@ jobs:
         run: |
           W='false'; L='false'; A='false'
           case "$MSG" in
-            *linux*)  L='true' ;;
-            *mobile*) A='true' ;;
-            *build-all*) W='true'; L='true'; A='true' ;;
-            *)        W='true' ;;
+            *b-win*) W='true' ;;
+            *b-linux*)  L='true' ;;
+            *b-mobile*) A='true' ;;
+            *b-all*) W='true'; L='true'; A='true' ;;
           esac
           echo "windows=$W" >> $GITHUB_OUTPUT
           echo "linux=$L" >> $GITHUB_OUTPUT
@@ -95,9 +62,7 @@ jobs:
 
   test:
     needs: prebuild
-    if: |
-      always() && !failure() && !cancelled() &&
-      needs.prebuild.outputs.skip_build != 'true'
+    if: always() && !failure() && !cancelled()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -309,7 +274,6 @@ jobs:
     needs: [prebuild, build-windows, build-linux, build-android]
     if: |
       always() && !failure() && !cancelled() &&
-      needs.prebuild.outputs.skip_build != 'true' &&
       (needs.build-windows.result != 'skipped' ||
        needs.build-linux.result != 'skipped' ||
        needs.build-android.result != 'skipped')
@@ -341,11 +305,14 @@ jobs:
 
       - name: Build release body
         id: body
+        env:
+          MSG: ${{ github.event.head_commit.message || '' }}
         run: |
-          BODY="## 🌙 Nightly Build
+          BODY="## 🌙 ${{ steps.ver.outputs.version }}
 
           **Commit**: \`${{ steps.sha.outputs.sha }}\`
-          **Version**: \`${{ steps.ver.outputs.version }}\`
+
+          > $MSG
 
           > ⚠️ This is an automated dev-branch build. May be unstable.
 
@@ -379,7 +346,7 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: nightly
-          name: "Nightly ${{ steps.ver.outputs.version }}"
+          name: ${{ steps.ver.outputs.version }}
           body: ${{ steps.body.outputs.body }}
           files: |
             artifacts/FlCroc-*

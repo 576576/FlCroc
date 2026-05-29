@@ -16,31 +16,15 @@ env:
   GO_VERSION: '1.25'
 
 jobs:
-  # ── Prebuild: version sync + submodule update ──
+  # ── Prebuild: submodule update ──
   prebuild:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    outputs:
-      skip_build: ${{ steps.flags.outputs.skip_build }}
+    outputs: {}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-
-      - name: Check flags
-        id: flags
-        env:
-          MSG: ${{ github.event.head_commit.message || '' }}
-        run: |
-          IS_UPDATE=false; SKIP_BUILD=false
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then IS_UPDATE=true; fi
-          echo "$MSG" | grep -qi 'update-ver' && IS_UPDATE=true
-          echo "$MSG" | grep -qi 'skip-build' && SKIP_BUILD=true
-          echo "is_update=$IS_UPDATE" >> $GITHUB_OUTPUT
-          echo "skip_build=$SKIP_BUILD" >> $GITHUB_OUTPUT
 
       - name: Update submodule to latest croc
         run: |
@@ -59,30 +43,10 @@ jobs:
           cd ../..
           find lib/croc -name '*_test.go' -delete
 
-      - name: Version bump (update-ver only)
-        if: steps.flags.outputs.is_update == 'true'
-        run: |
-          FLCROC=$(grep '^flcroc=' version.properties | cut -d= -f2)
-          sed -i "s/^version: .*/version: $FLCROC/" pubspec.yaml
-
-      - name: Commit and push (update-ver only)
-        if: steps.flags.outputs.is_update == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          FLCROC=$(grep '^flcroc=' version.properties | cut -d= -f2)
-          CROC_VER=$(cd lib/croc && git describe --tags)
-          git add pubspec.yaml lib/croc
-          git diff --cached --quiet && exit 0
-          git commit -m "update-ver: FlCroc $FLCROC, croc $CROC_VER [skip ci]"
-          git push
-
   # ---- Test ----
   test:
     needs: prebuild
-    if: |
-      always() && !failure() && !cancelled() &&
-      needs.prebuild.outputs.skip_build != 'true'
+    if: always() && !failure() && !cancelled()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
