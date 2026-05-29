@@ -561,12 +561,16 @@ class _QRScannerPageState extends State<_QRScannerPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.appLocalizations;
-    return Scaffold(
-      appBar: AppBar(
+    return GscanKit(
+      controller: _controller,
+      onDetect: _onDetect,
+      setPortraitOrientation: false,
+      gscanOverlayConfig: const GscanOverlayConfig(),
+      appBar: (context, ctrl) => AppBar(
         title: Text(l10n.scanQRCode),
         actions: [
           GalleryButton(
-            controller: _controller,
+            controller: ctrl,
             isSuccess: ValueNotifier<bool?>(null),
             onDetect: _onDetect,
             text: '',
@@ -575,14 +579,9 @@ class _QRScannerPageState extends State<_QRScannerPage> {
           IconButton(
             icon: const Icon(Icons.flip_camera_android),
             tooltip: l10n.flipCamera,
-            onPressed: () => _controller.switchCamera(),
+            onPressed: () => ctrl.switchCamera(),
           ),
         ],
-      ),
-      body: GscanKit(
-        controller: _controller,
-        onDetect: _onDetect,
-        gscanOverlayConfig: const GscanOverlayConfig(),
       ),
     );
   }
