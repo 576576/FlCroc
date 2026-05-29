@@ -31,6 +31,9 @@ jobs:
       release_version: ${{ steps.ver.outputs.release_version }}
       release_tag: ${{ steps.ver.outputs.release_tag }}
       release_name: ${{ steps.ver.outputs.release_name }}
+      nightly_version: ${{ steps.ver.outputs.nightly_version }}
+      nightly_date: ${{ steps.ver.outputs.nightly_date }}
+      synced_version: ${{ steps.ver.outputs.synced_version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -84,6 +87,7 @@ jobs:
             echo "release_version=$NEW_VERSION" >> $GITHUB_OUTPUT
             echo "release_tag=$TAG" >> $GITHUB_OUTPUT
             echo "release_name=$REL_NAME" >> $GITHUB_OUTPUT
+            echo "synced_version=$NEW_VERSION" >> $GITHUB_OUTPUT
             sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -99,7 +103,11 @@ jobs:
             CUR_BUILD=${CUR_BUILD:-0}
             NEW_BUILD=$((CUR_BUILD + 1))
             NEW_VERSION="${BASE}+${NEW_BUILD}"
+            NIGHTLY_DATE=$(date +%Y%m%d)
             echo "Syncing dev version: $NEW_VERSION (build $CUR_BUILD → $NEW_BUILD)"
+            echo "nightly_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+            echo "nightly_date=$NIGHTLY_DATE" >> $GITHUB_OUTPUT
+            echo "synced_version=$NEW_VERSION" >> $GITHUB_OUTPUT
             sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -189,14 +197,13 @@ jobs:
       - name: Get version
         id: ver
         env:
-          SHA: ${{ steps.sha.outputs.sha }}
           IS_TAG: ${{ needs.prebuild.outputs.is_tag }}
+          SYNCED_VER: ${{ needs.prebuild.outputs.synced_version }}
         run: |
           if ($env:IS_TAG -eq 'true') {
             $v = (Get-Content pubspec.yaml | Where-Object { $_ -match '^version:' } | Select-Object -First 1) -replace '^version:\s+(\S+).*', '$1'
           } else {
-            $date = Get-Date -Format "MMdd"
-            $v = "nightly-$date-$env:SHA"
+            $v = $env:SYNCED_VER
           }
           echo "version=$v" >> $env:GITHUB_OUTPUT
 
@@ -273,13 +280,13 @@ jobs:
       - name: Get version
         id: ver
         env:
-          SHA: ${{ steps.sha.outputs.sha }}
           IS_TAG: ${{ needs.prebuild.outputs.is_tag }}
+          SYNCED_VER: ${{ needs.prebuild.outputs.synced_version }}
         run: |
           if [ "$IS_TAG" = "true" ]; then
             echo "version=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)" >> $GITHUB_OUTPUT
           else
-            echo "version=nightly-$(date +%m%d)-$SHA" >> $GITHUB_OUTPUT
+            echo "version=$SYNCED_VER" >> $GITHUB_OUTPUT
           fi
 
       - name: Setup Go
@@ -349,13 +356,13 @@ jobs:
       - name: Get version
         id: ver
         env:
-          SHA: ${{ steps.sha.outputs.sha }}
           IS_TAG: ${{ needs.prebuild.outputs.is_tag }}
+          SYNCED_VER: ${{ needs.prebuild.outputs.synced_version }}
         run: |
           if [ "$IS_TAG" = "true" ]; then
             echo "version=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)" >> $GITHUB_OUTPUT
           else
-            echo "version=nightly-$(date +%m%d)-$SHA" >> $GITHUB_OUTPUT
+            echo "version=$SYNCED_VER" >> $GITHUB_OUTPUT
           fi
 
       - name: Setup Java
@@ -421,8 +428,11 @@ jobs:
       - name: Get nightly version
         id: ver
         env:
-          SHA: ${{ steps.sha.outputs.sha }}
-        run: echo "version=nightly-$(date +%m%d)-$SHA" >> $GITHUB_OUTPUT
+          NIGHTLY_VER: ${{ needs.prebuild.outputs.nightly_version }}
+          NIGHTLY_DATE: ${{ needs.prebuild.outputs.nightly_date }}
+        run: |
+          echo "version=$NIGHTLY_VER" >> $GITHUB_OUTPUT
+          echo "title=Nightly $NIGHTLY_VER $NIGHTLY_DATE" >> $GITHUB_OUTPUT
 
       - uses: actions/download-artifact@v4
         with:
@@ -436,8 +446,9 @@ jobs:
         id: body
         env:
           MSG: ${{ github.event.head_commit.message || '' }}
+          TITLE: ${{ steps.ver.outputs.title }}
         run: |
-          BODY="## 🌙 ${{ steps.ver.outputs.version }}
+          BODY="## $TITLE
 
           **Commit**: \`${{ steps.sha.outputs.sha }}\`
 
@@ -474,7 +485,7 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: nightly
-          name: ${{ steps.ver.outputs.version }}
+          name: ${{ steps.ver.outputs.title }}
           body: ${{ steps.body.outputs.body }}
           files: |
             artifacts/FlCroc-*

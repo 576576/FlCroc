@@ -117,7 +117,6 @@ app.*.symbols
 !**/ios/**/default.perspectivev3
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 !/dev/ci/**/Gemfile.lock
-/.idea
 
 # Auto-generated launcher icons (regenerated from assets/images/icon.png)
 **/android/**/mipmap-*/ic_launcher.png
@@ -131,10 +130,10 @@ web/icons/
 .github/workflows/build-linux.yml
 .github/workflows/build-windows.yml
 lib/croc/.github
-/.idea
 /go_bridge/test_send
-flcroc-test-979183780.txt
 /ios/Runner
 /android/app/src/main/res
 go_bridge/flcroc_bridge.dll
+
 /.idea
+/.vscode
