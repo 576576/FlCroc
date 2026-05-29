@@ -293,18 +293,10 @@ void Win32Window::OnDestroy() {
 }
 
 void Win32Window::UpdateTheme(HWND const window) {
-  DWORD light_mode;
-  DWORD light_mode_size = sizeof(light_mode);
-  LSTATUS result = RegGetValue(HKEY_CURRENT_USER, kGetPreferredBrightnessRegKey,
-                               kGetPreferredBrightnessRegValue,
-                               RRF_RT_REG_DWORD, nullptr, &light_mode,
-                               &light_mode_size);
-
-  if (result == ERROR_SUCCESS) {
-    BOOL enable_dark_mode = light_mode == 0;
-    DwmSetWindowAttribute(window, DWMWA_USE_IMMERSIVE_DARK_MODE,
-                          &enable_dark_mode, sizeof(enable_dark_mode));
-  }
+  // DWM frame follows the app's native theme.
+  // Dark mode is handled by the Flutter title bar widget (TitleBarStyle.hidden).
+  // Do NOT set DWMWA_USE_IMMERSIVE_DARK_MODE here -- it reads the Windows
+  // system setting and would conflict with FlCroc's in-app theme toggle.
 
   // Windows 11 rounded corners
   int corner_pref = DWMWCP_ROUND;

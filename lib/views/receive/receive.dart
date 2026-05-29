@@ -216,10 +216,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                 endTime: DateTime.now(),
               ),
             );
-          case TransferProgressStatus.initializing:
-          case TransferProgressStatus.connecting:
-            break;
-        }
+          }
       },
       onError: (e) {
         if (!mounted) return;
@@ -427,10 +424,12 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                                 label: Text(l10n.savePathDefault, style: const TextStyle(fontSize: 12)),
                                 selected: !isCustom,
                                 onSelected: (v) {
-                                  if (v) setState(() {
+                                  if (v) {
+                                    setState(() {
                                     _receiveConfig = _receiveConfig.copyWith(outputPath: '');
                                     _saveReceivePrefs();
                                   });
+                                  }
                                 },
                               ),
                               const SizedBox(width: 8),
@@ -438,10 +437,12 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                                 label: Text(l10n.savePathCustom, style: const TextStyle(fontSize: 12)),
                                 selected: isCustom,
                                 onSelected: (v) {
-                                  if (v && _receiveConfig.outputPath.isEmpty) setState(() {
+                                  if (v && _receiveConfig.outputPath.isEmpty) {
+                                    setState(() {
                                     _receiveConfig = _receiveConfig.copyWith(outputPath: effectivePath);
                                     _saveReceivePrefs();
                                   });
+                                  }
                                 },
                               ),
                               if (isCustom) ...[

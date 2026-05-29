@@ -131,10 +131,13 @@ class HomePage extends StatelessWidget {
           ]);
         }
 
-        return Column(children: [
-          const WindowTitleBar(),
-          Expanded(child: body),
-        ]);
+        return Container(
+          color: context.colorScheme.surface,
+          child: Column(children: [
+            const WindowTitleBar(),
+            Expanded(child: body),
+          ]),
+        );
       },
     );
   }

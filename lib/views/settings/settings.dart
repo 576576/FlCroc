@@ -5,7 +5,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/core/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
-import 'package:fl_croc/l10n/l10n.dart';
 import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/state.dart';
 import 'package:fl_croc/widgets/widgets.dart';
@@ -612,7 +611,7 @@ class _HueSliderState extends ConsumerState<_HueSlider> {
   }
 
   void _commit() {
-    final seed = HSVColor.fromAHSV(1, _dragHue, 0.5, 1.0).toColor().value;
+    final seed = HSVColor.fromAHSV(1, _dragHue, 0.5, 1.0).toColor().toARGB32();
     ref.read(themeSettingProvider.notifier).update((s) => s.copyWith(primaryColor: seed));
   }
 
@@ -633,7 +632,7 @@ class _HueSliderState extends ConsumerState<_HueSlider> {
     }
 
     final seedColor = HSVColor.fromAHSV(1, _dragHue, 0.5, 1.0).toColor();
-    final hex = '#${seedColor.value.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
+    final hex = '#${seedColor.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
 
     // Only update hex field when not focused (user isn't typing)
     if (!_hexFocus.hasFocus) {

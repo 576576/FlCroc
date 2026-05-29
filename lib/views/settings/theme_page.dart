@@ -52,7 +52,7 @@ class ThemePage extends ConsumerWidget {
                   _ColorPaletteChip(
                     colors: palette,
                     isSelected: Color(themeProps.primaryColor) == palette[0],
-                    onTap: () => ref.read(themeSettingProvider.notifier).update((s) => s.copyWith(primaryColor: palette[0].value)),
+                    onTap: () => ref.read(themeSettingProvider.notifier).update((s) => s.copyWith(primaryColor: palette[0].toARGB32())),
                   ),
               ]),
             ),

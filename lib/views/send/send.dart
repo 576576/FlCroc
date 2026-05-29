@@ -529,11 +529,13 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   Widget _phraseChip(String label, PhraseMode mode) => ChoiceChip(
     label: Text(label), selected: _phraseMode == mode,
     onSelected: (v) {
-      if (v) setState(() {
+      if (v) {
+        setState(() {
         _phraseMode = mode;
         if (mode != PhraseMode.defaultMode) _codeController.clear();
         _saveSendPrefs();
       });
+      }
     },
   );
 

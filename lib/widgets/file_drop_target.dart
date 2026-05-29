@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// Cross-platform file drop target built on Flutter's native DragTarget.
 ///
 /// Works on desktop (Windows/macOS/Linux) where Flutter's engine
-/// forwards native OS file drops to DragTarget<String>.
+/// forwards native OS file drops to DragTarget`<String>`.
 /// On mobile, renders child directly (no drag support).
 class FileDropTarget extends StatefulWidget {
   final Widget child;
