@@ -391,65 +391,51 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
           context.showSnackBar(l10n.localizeCrocError(progress.error!));
         }
         if (progress.status == TransferProgressStatus.completed) {
-          final fileNames = progress.currentFile.isNotEmpty
-              ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
-              : <String>[];
-
-          // Try to detect text: single file that can be read as valid text
-          String textContent = '';
-          if (fileNames.length == 1) {
-            final filePath = '${AppPaths.savePathSync}${Platform.pathSeparator}${fileNames.first}';
-            try {
-              final file = File(filePath);
-              if (file.existsSync()) {
-                final content = file.readAsStringSync();
-                if (!content.contains('\x00')) textContent = content;
-              }
-            } catch (_) {}
-          }
-
-          if (textContent.isNotEmpty) {
+          if (progress.isText) {
             setState(() {
-              _receivedText = textContent;
+              _receivedText = progress.textContent;
               _receivedFiles.clear();
               _isTextMode = true;
             });
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
               _textCtrl
-                ..text = textContent
-                ..selection = TextSelection.collapsed(offset: textContent.length);
+                ..text = progress.textContent
+                ..selection = TextSelection.collapsed(offset: progress.textContent.length);
             });
             appController.updateTransferRecord(record.copyWith(
               status: TransferStatus.completed,
-              totalSize: textContent.length,
-              files: [FileItem(name: textContent, path: '', size: textContent.length)],
+              totalSize: progress.textContent.length,
+              files: [FileItem(name: progress.textContent, path: '', size: progress.textContent.length)],
               endTime: DateTime.now(),
             ));
           } else {
+            final fileNames = progress.currentFile.isNotEmpty
+                ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
+                : <String>[];
             setState(() {
               _receivedText = '';
-              _textCtrl.clear();
               _isTextMode = false;
               _receivedFiles.clear();
-              final fileItems = fileNames.map((n) => FileItem(
+              _receivedFiles.addAll(fileNames.map((n) => FileItem(
                 name: n,
                 path: '${AppPaths.savePathSync}${Platform.pathSeparator}$n',
                 size: 0,
-              )).toList();
-              _receivedFiles.addAll(fileItems);
-              appController.updateTransferRecord(record.copyWith(
-                status: TransferStatus.completed,
-                totalSize: progress.totalSize,
-                files: fileItems.isEmpty ? [const FileItem(name: 'file', path: '', size: 0)] : fileItems,
-                endTime: DateTime.now(),
-              ));
-              if (_receivedFiles.isNotEmpty && isAndroid) {
-                for (final f in _receivedFiles) {
-                  AppPaths.exportToDownloads(f.path);
-                }
-              }
+              )));
             });
+            appController.updateTransferRecord(record.copyWith(
+              status: TransferStatus.completed,
+              totalSize: progress.totalSize,
+              files: fileNames.isEmpty
+                  ? [const FileItem(name: 'file', path: '', size: 0)]
+                  : _receivedFiles.map((f) => f).toList(),
+              endTime: DateTime.now(),
+            ));
+            if (_receivedFiles.isNotEmpty && isAndroid) {
+              for (final f in _receivedFiles) {
+                AppPaths.exportToDownloads(f.path);
+              }
+            }
           }
           _setPhase(_QuickPhase.completed);
         } else if (progress.status == TransferProgressStatus.failed) {

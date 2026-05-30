@@ -192,23 +192,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
             if (mounted) setState(() {});
             break;
           case TransferProgressStatus.completed:
-            // Parse received file names
-            String textContent = '';
-            final fileNames = progress.currentFile.isNotEmpty
-                ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
-                : <String>[];
-            // Try to detect text: single file that can be read as valid text
-            if (fileNames.length == 1) {
-              final filePath = '$_effectiveOutputPath${Platform.pathSeparator}${fileNames.first}';
-              try {
-                final file = File(filePath);
-                if (file.existsSync()) {
-                  final content = file.readAsStringSync();
-                  if (!content.contains('\x00')) textContent = content;
-                }
-              } catch (_) {}
-            }
-            if (textContent.isNotEmpty) {
+            if (progress.isText) {
               setState(() {
                 _receivedFiles.clear();
                 _selectedTab = 1;
@@ -218,45 +202,40 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (!mounted) return;
                 _receivedTextController
-                  ..text = textContent
-                  ..selection = TextSelection.collapsed(offset: textContent.length);
+                  ..text = progress.textContent
+                  ..selection = TextSelection.collapsed(offset: progress.textContent.length);
               });
               appController.updateTransferRecord(
                 record.copyWith(
                   status: TransferStatus.completed,
-                  totalSize: textContent.length,
-                  files: [FileItem(name: textContent, path: '', size: textContent.length)],
+                  totalSize: progress.textContent.length,
+                  files: [FileItem(name: progress.textContent, path: '', size: progress.textContent.length)],
                   endTime: DateTime.now(),
                 ),
               );
             } else {
-              // File receive: strip .zip wrapper if croc auto-extracted
+              // File receive
+              final fileNames = progress.currentFile.isNotEmpty
+                  ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
+                  : <String>[];
               final cleanedNames = fileNames.map((n) {
-                if (fileNames.length == 1 && n.endsWith('.zip')) {
-                  return n.substring(0, n.length - 4);
-                }
+                if (fileNames.length == 1 && n.endsWith('.zip')) return n.substring(0, n.length - 4);
                 return n;
               }).toList();
-
-              List<FileItem> fileItems = _buildFileItems(cleanedNames, progress.totalSize);
-
+              final fileItems = _buildFileItems(cleanedNames, progress.totalSize);
               setState(() {
                 _receivedFiles.clear();
                 _receivedFiles.addAll(fileItems);
                 _receivedTextController.clear();
-                if (fileItems.isNotEmpty) {
-                  _selectedTab = 0;
-                }
+                _selectedTab = fileItems.isNotEmpty ? 0 : _selectedTab;
                 _isReceiving = false;
                 _phase = ReceivePhase.completed;
               });
-              // Android: export to Downloads via MediaStore (outside setState, async-safe)
               if (fileItems.isNotEmpty && isAndroid) {
                 for (final f in fileItems) {
                   AppPaths.exportToDownloads(f.path);
                 }
               }
-
               appController.updateTransferRecord(
                 record.copyWith(
                   status: TransferStatus.completed,

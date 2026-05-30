@@ -346,15 +346,28 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 	var isText bool
 	var textContent string
 
-	if c.Options.SendingText && len(c.FilesToTransfer) > 0 {
-		isText = true
+	// Detect text receive: try to read single file as text (croc text sends
+	// produce one temp file; `c.Options.SendingText` is sender-side only).
+	if len(c.FilesToTransfer) == 1 {
 		f := c.FilesToTransfer[0]
 		filePath := filepath.Join(f.FolderRemote, f.Name)
 		data, err := os.ReadFile(filePath)
-		if err == nil {
-			textContent = string(data)
+		if err == nil && len(data) > 0 {
+			// Heuristic: no null bytes = valid text
+			nullIdx := -1
+			for i, b := range data {
+				if b == 0 {
+					nullIdx = i
+					break
+				}
+			}
+			if nullIdx < 0 {
+				isText = true
+				textContent = string(data)
+			}
 		}
-	} else {
+	}
+	if !isText {
 		for _, f := range c.FilesToTransfer {
 			if f.Name != "" {
 				fileNames = append(fileNames, f.Name)
