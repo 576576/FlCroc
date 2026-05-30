@@ -106,6 +106,7 @@
   "startReceive": "Start Receive",
   "scanQRCode": "Scan QR Code",
   "generateQRCode": "Generate QR code",
+  "whiteBgQR": "White-background QR",
   "phraseEmpty": "Phrase is empty",
   "selectQRImage": "Select QR image",
   "flashlight": "Flashlight",
@@ -136,7 +137,7 @@
   "resetRelay": "Reset relay",
 
   "_comment_savePath": "── Save Path ──",
-  "downloadsFolder": "Downloads",
+  "downloadsFolder": "/storage/emulated/0/Download",
   "defaultSavePath": "Default save path",
   "selectFolder": "Select folder",
   "savePath": "Save path",

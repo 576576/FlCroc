@@ -90,7 +90,7 @@ class AppLocalizations {
     'enterPhraseWarning', 'enterTextWarning',
 
     // ── Receive ──
-    'startReceive', 'scanQRCode', 'generateQRCode', 'phraseEmpty',
+    'startReceive', 'scanQRCode', 'generateQRCode', 'whiteBgQR', 'phraseEmpty',
     'selectQRImage', 'flashlight', 'flipCamera', 'noQRFound', 'scanMobileOnly',
 
     // ── Settings: Transfer Options ──
@@ -237,6 +237,7 @@ class AppLocalizations {
   String get startReceive => _('startReceive');
   String get scanQRCode => _('scanQRCode');
   String get generateQRCode => _('generateQRCode');
+  String get whiteBgQR => _('whiteBgQR');
   String get phraseEmpty => _('phraseEmpty');
   String get selectQRImage => _('selectQRImage');
   String get flashlight => _('flashlight');

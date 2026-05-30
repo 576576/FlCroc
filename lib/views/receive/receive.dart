@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/controller.dart';
@@ -172,35 +174,50 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
               );
             } else {
               // Parse file names from the completed event
-              final fileNames = progress.currentFile.isNotEmpty
+              final raw = progress.currentFile.isNotEmpty
                   ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
                   : <String>[];
               
+              // Remove .zip wrapper if croc auto-extracted (strip trailing .zip from name)
+              final fileNames = raw.map((n) {
+                if (raw.length == 1 && n.endsWith('.zip')) {
+                  return n.substring(0, n.length - 4);
+                }
+                return n;
+              }).toList();
+
               List<FileItem> fileItems;
               if (fileNames.length > 1) {
-                // Detect common root directory: if all paths share a first component, it's a folder
-                final firstParts = fileNames[0].split('/');
-                final commonRoot = firstParts.length > 1 ? firstParts[0] : null;
-                final isFolder = commonRoot != null && fileNames.every((n) => n.startsWith('$commonRoot/'));
-                if (isFolder) {
-                  // Display as a single folder entry
-                  final folderPath = '$_effectiveOutputPath/$commonRoot';
+                // Detect common root directory
+                final separator = fileNames[0].contains('/') ? '/' : (fileNames[0].contains('\\') ? '\\' : null);
+                String? commonRoot;
+                if (separator != null) {
+                  final root = fileNames[0].split(separator)[0];
+                  if (fileNames.every((n) => n.startsWith('$root$separator'))) {
+                    commonRoot = root;
+                  }
+                }
+                if (commonRoot != null) {
+                  // Display as single folder
+                  final folderPath = '$_effectiveOutputPath${Platform.pathSeparator}$commonRoot';
                   fileItems = [FileItem(name: commonRoot, path: folderPath, size: progress.totalSize)];
                 } else {
                   fileItems = fileNames.map((n) => FileItem(
                     name: n,
-                    path: '$_effectiveOutputPath/$n',
-                    size: fileNames.length == 1 ? progress.totalSize : 0,
+                    path: '$_effectiveOutputPath${Platform.pathSeparator}${n.replaceAll('/', Platform.pathSeparator)}',
+                    size: progress.totalSize,
                   )).toList();
                 }
               } else if (fileNames.length == 1) {
-                fileItems = [FileItem(
-                  name: fileNames[0],
-                  path: '$_effectiveOutputPath/${fileNames[0]}',
-                  size: progress.totalSize,
-                )];
+                // Single file: detect if it's a folder (no extension) or a file
+                final name = fileNames[0];
+                final isFolder = !name.contains('.') || progress.totalSize == 0;
+                final path = isFolder
+                    ? '$_effectiveOutputPath${Platform.pathSeparator}$name'
+                    : '$_effectiveOutputPath${Platform.pathSeparator}$name';
+                fileItems = [FileItem(name: name, path: path, size: progress.totalSize)];
               } else {
-                fileItems = [];
+                fileItems = [FileItem(name: l10n.receiving, path: _effectiveOutputPath, size: 0)];
               }
 
               _receivedFiles.clear();

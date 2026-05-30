@@ -106,6 +106,7 @@
   "startReceive": "开始接收",
   "scanQRCode": "扫描二维码",
   "generateQRCode": "生成二维码",
+  "whiteBgQR": "白底二维码",
   "phraseEmpty": "短语为空",
   "selectQRImage": "选择二维码图片",
   "flashlight": "闪光灯",
