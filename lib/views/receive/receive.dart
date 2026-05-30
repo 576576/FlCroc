@@ -162,18 +162,23 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
           case TransferProgressStatus.completed:
             if (progress.isText) {
               setState(() {
-                _receivedTextController
-                  ..text = progress.textContent
-                  ..selection = TextSelection.collapsed(offset: progress.textContent.length);
                 _receivedFiles.clear();
                 _selectedTab = 1;
                 _isReceiving = false;
                 _phase = ReceivePhase.completed;
               });
+              // Defer text controller update to after the frame
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                _receivedTextController
+                  ..text = progress.textContent
+                  ..selection = TextSelection.collapsed(offset: progress.textContent.length);
+              });
               appController.updateTransferRecord(
                 record.copyWith(
                   status: TransferStatus.completed,
                   totalSize: progress.textContent.length,
+                  files: [FileItem(name: progress.textContent, path: '', size: progress.textContent.length)],
                   endTime: DateTime.now(),
                 ),
               );

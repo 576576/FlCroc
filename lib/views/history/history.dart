@@ -1,6 +1,7 @@
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
+import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/widgets/widgets.dart';
 import 'package:flutter/material.dart';
@@ -49,7 +50,7 @@ class HistoryView extends ConsumerWidget {
                     color: isSent ? Colors.blue : Colors.green,
                   ),
                   title: Text(
-                    transfer.files.map((f) => f.name).join(', '),
+                    _formatTransferTitle(transfer),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -61,6 +62,17 @@ class HistoryView extends ConsumerWidget {
               },
             ),
     );
+  }
+
+  /// Format transfer title: for text, show first 50 chars; for files, show file names.
+  String _formatTransferTitle(TransferRecord t) {
+    final names = t.files.map((f) => f.name);
+    final joined = names.join(', ');
+    // If it's a text transfer (single file with no extension and path empty), truncate
+    if (t.files.length == 1 && !t.files.first.name.contains('.') && t.files.first.path.isEmpty) {
+      return joined.length > 50 ? '${joined.substring(0, 50)}…' : joined;
+    }
+    return joined;
   }
 
   Widget _buildStatusChip(TransferStatus status, BuildContext context) {

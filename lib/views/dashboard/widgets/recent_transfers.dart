@@ -45,7 +45,7 @@ class RecentTransfersWidget extends ConsumerWidget {
                     dense: true,
                     leading: Icon(icon, size: 20),
                     title: Text(
-                      t.files.first.name,
+                      _truncate(t.files.first.name),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -71,6 +71,9 @@ class RecentTransfersWidget extends ConsumerWidget {
               ),
     );
   }
+
+  /// Truncate long text for display.
+  String _truncate(String text) => text.length > 40 ? '${text.substring(0, 40)}…' : text;
 
   String _statusLabel(TransferStatus status, AppLocalizations l10n) {
     switch (status) {

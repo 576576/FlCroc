@@ -391,21 +391,27 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
           context.showSnackBar(l10n.localizeCrocError(progress.error!));
         }
         if (progress.status == TransferProgressStatus.completed) {
-          setState(() {
-            if (progress.isText) {
+          if (progress.isText) {
+            setState(() {
               _receivedText = progress.textContent;
+              _receivedFiles.clear();
+              _isTextMode = true;
+            });
+            // Defer text controller update to after the frame so TextField exists
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
               _textCtrl
                 ..text = progress.textContent
                 ..selection = TextSelection.collapsed(offset: progress.textContent.length);
-              _isTextMode = true;
-              _receivedFiles.clear();
-              appController.updateTransferRecord(record.copyWith(
-                status: TransferStatus.completed,
-                totalSize: progress.textContent.length,
-                files: [FileItem(name: 'text', path: '', size: progress.textContent.length)],
-                endTime: DateTime.now(),
-              ));
-            } else {
+            });
+            appController.updateTransferRecord(record.copyWith(
+              status: TransferStatus.completed,
+              totalSize: progress.textContent.length,
+              files: [FileItem(name: progress.textContent, path: '', size: progress.textContent.length)],
+              endTime: DateTime.now(),
+            ));
+          } else {
+            setState(() {
               final fileNames = progress.currentFile.isNotEmpty
                   ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
                   : <String>[];
@@ -430,8 +436,8 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
                   AppPaths.exportToDownloads(f.path);
                 }
               }
-            }
-          });
+            });
+          }
           _setPhase(_QuickPhase.completed);
         } else if (progress.status == TransferProgressStatus.failed) {
           appController.updateTransferRecord(record.copyWith(status: TransferStatus.failed, endTime: DateTime.now()));

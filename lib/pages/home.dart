@@ -96,7 +96,13 @@ class HomePage extends StatelessWidget {
         }
 
         // ── Narrow: bottom NavigationBar ──
-        final navBar = NavigationBar(
+        final navBar = Theme(
+          data: Theme.of(context).copyWith(
+            navigationBarTheme: NavigationBarTheme.of(context).copyWith(
+              height: 64,
+            ),
+          ),
+          child: NavigationBar(
           destinations: navigationItems
               .map((e) => NavigationDestination(
                     icon: e.icon,
@@ -106,6 +112,7 @@ class HomePage extends StatelessWidget {
           onDestinationSelected: (index) =>
               appController.toPage(navigationItems[index].label),
           selectedIndex: safeIndex,
+          ),
         );
         if (isDesktop) {
           return Container(
