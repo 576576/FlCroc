@@ -14,8 +14,22 @@ class TransferStatsWidget extends ConsumerStatefulWidget {
   ConsumerState<TransferStatsWidget> createState() => _TransferStatsWidgetState();
 }
 
-class _TransferStatsWidgetState extends ConsumerState<TransferStatsWidget> {
+class _TransferStatsWidgetState extends ConsumerState<TransferStatsWidget>
+    with SingleTickerProviderStateMixin {
   int _cycleIndex = 0; // 0=speed, 1=total size, 2=count+time
+  late final _pressCtrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 100),
+  );
+  late final _pressAnim = Tween<double>(begin: 1, end: 0.96).animate(
+    CurvedAnimation(parent: _pressCtrl, curve: Curves.easeInOut),
+  );
+
+  @override
+  void dispose() {
+    _pressCtrl.dispose();
+    super.dispose();
+  }
 
   void _cycle() => setState(() => _cycleIndex = (_cycleIndex + 1) % 3);
 
@@ -60,9 +74,17 @@ class _TransferStatsWidgetState extends ConsumerState<TransferStatsWidget> {
     };
 
     return GestureDetector(
-      onTap: _cycle,
+      onTapDown: (_) => _pressCtrl.forward(),
+      onTapUp: (_) {
+        _pressCtrl.reverse();
+        _cycle();
+      },
+      onTapCancel: () => _pressCtrl.reverse(),
       behavior: HitTestBehavior.opaque,
-      child: CommonCard(
+      child: AnimatedBuilder(
+        animation: _pressAnim,
+        builder: (_, child) => Transform.scale(scale: _pressAnim.value, child: child),
+        child: CommonCard(
       info: Info(iconData: infoIcon, label: infoLabel),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -79,6 +101,7 @@ class _TransferStatsWidgetState extends ConsumerState<TransferStatsWidget> {
             ),
           ],
         ),
+      ),
       ),
     ),
     );

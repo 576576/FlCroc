@@ -91,7 +91,7 @@ void main() {
   });
 
   test('DashboardWidget enum values', () {
-    expect(DashboardWidget.values.length, 4);
+    expect(DashboardWidget.values.length, 3);
   });
 
   test('Num extension - fileSize', () {

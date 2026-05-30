@@ -3,6 +3,12 @@
 /// **Architecture** — translations stored in JSON bundles under `assets/bundles/`:
 ///   - `en.json` — English
 ///   - `zh.json` — Chinese
+///
+/// **Usage tracking** — to find which getters are used:
+///   ```bash
+///   dart run lib/l10n/usage_check.dart   # lists unused getters
+///   ```
+///   Or manually: search for `l10n.<getter>` or `.appLocalizations.<getter>` in `lib/`.
 library;
 
 import 'dart:convert';
@@ -35,82 +41,193 @@ class AppLocalizations {
   /// Look up a message by key. Falls back to the key itself.
   String _(String key) => _messages[key] ?? key;
 
-  // ── Typed getters ──
+  /// All registered translation keys (must match `assets/bundles/*.json`).
+  /// Add new keys here AND in both JSON bundles.
+  static const allKeys = <String>{
+    // ── Common: App ──
+    'appName',
 
+    // ── Common: Navigation ──
+    'dashboard', 'send', 'receive', 'history', 'settings',
+
+    // ── Common: File / Text ──
+    'file', 'text', 'selectFiles', 'selectTextFile', 'sentText',
+    'noFiles', 'noReceivedFiles',
+
+    // ── Common: Actions ──
+    'cancel', 'confirm', 'clear', 'delete', 'copy',
+    'paste', 'generate', 'edit', 'done', 'retry',
+    'open', 'openFolder',
+
+    // ── Common: Status ──
+    'loading', 'connecting', 'pending', 'sending', 'transferring',
+    'receiving', 'completed', 'failed', 'cancelled',
+    'default', 'custom',
+
+    // ── Common: Errors ──
+    'noCrocBackend', 'sendFailed', 'receiveFailed',
+    'errorRoomNotReady', 'errorRelayPassword', 'errorCouldNotConnect',
+    'errorCodeIncorrect',
+
+    // ── Common: Update ──
+    'checkUpdate', 'alreadyLatest', 'newVersionAvailable',
+    'latestVersion', 'currentVersion', 'update',
+
+    // ── Dashboard ──
+    'transferSpeed', 'transferStatsName', 'totalTransferred', 'quickTransfer',
+    'quickSettings', 'quickSameCode',
+    'quickSendCode', 'quickRecvCode', 'quickSRCode',
+    'quickEnterCode', 'quickEmptyRecvCode',
+    'quickEmptySendCode', 'recentTransfers',
+    'transfersUnit', 'noTransfersYet',
+    'noHistory', 'availableWidgets',
+
+    // ── Send ──
+    'codePhrase', 'enterCodePhrase', 'phraseHintCroc', 'phraseHintRandom',
+    'textHint', 'autoGeneratePhrase', 'phraseMode',
+    'phraseModeOn', 'autoCopyPhrase',
+    'enterPhraseWarning', 'enterTextWarning',
+
+    // ── Receive ──
+    'startReceive', 'scanQRCode', 'generateQRCode', 'phraseEmpty',
+    'selectQRImage', 'flashlight', 'flipCamera', 'noQRFound', 'scanMobileOnly',
+
+    // ── Settings: Transfer Options ──
+    'options', 'transferOptions', 'encryptionCurve', 'hashAlgorithm',
+    'enableCompression', 'overwrite', 'zipFolder',
+
+    // ── Settings: Relay ──
+    'relayType', 'relaySettings', 'relayAddress', 'relayPassword',
+    'defaultRelay', 'customRelay', 'noRelay', 'port', 'resetRelay',
+
+    // ── Settings: Save Path ──
+    'defaultSavePath', 'selectFolder', 'savePath',
+
+    // ── Settings: Theme ──
+    'theme', 'themeMode', 'light', 'dark', 'system',
+    'language', 'autoLanguage', 'pureBlackMode', 'colorPalette',
+
+    // ── Settings: Reset ──
+    'reset', 'resetAllSettings', 'resetAllConfirm', 'settingsReset',
+
+    // ── Settings: About ──
+    'about', 'application', 'appVersion', 'crocVersion',
+    'unavailable', 'description',
+
+    // ── Settings: Acknowledgments ──
+    'acknowledgments', 'openSourceProjects',
+    'flutterDesc', 'crocDesc', 'flClashDesc',
+  };
+
+  // ═══════════════════════════════════════════════════════════
+  // Typed getters (one per key in allKeys)
+  // ═══════════════════════════════════════════════════════════
+
+  // ── Common: App ──
   String get appName => _('appName');
 
+  // ── Common: Navigation ──
   String get dashboard => _('dashboard');
   String get send => _('send');
   String get receive => _('receive');
   String get history => _('history');
   String get settings => _('settings');
 
-  String get transferSpeed => _('transferSpeed');
-  String get totalTransferred => _('totalTransferred');
-  String get quickSend => _('quickSend');
-  String get quickReceive => _('quickReceive');
-  String get recentTransfers => _('recentTransfers');
-  String get crocStatus => _('crocStatus');
-
+  // ── Common: File / Text ──
+  String get file => _('file');
+  String get text => _('text');
   String get selectFiles => _('selectFiles');
+  String get selectTextFile => _('selectTextFile');
+  String get sentText => _('sentText');
+  String get noFiles => _('noFiles');
+  String get noReceivedFiles => _('noReceivedFiles');
+
+  // ── Common: Actions ──
+  String get cancel => _('cancel');
+  String get confirm => _('confirm');
+  String get clear => _('clear');
+  String get delete => _('delete');
+  String get copy => _('copy');
+  String get paste => _('paste');
+  String get generate => _('generate');
+  String get edit => _('edit');
+  String get done => _('done');
+  String get retry => _('retry');
+  String get open => _('open');
+  String get openFolder => _('openFolder');
+
+  // ── Common: Status ──
+  String get loading => _('loading');
+  String get connecting => _('connecting');
+  String get pending => _('pending');
+  String get sending => _('sending');
+  String get transferring => _('transferring');
+  String get receiving => _('receiving');
+  String get completed => _('completed');
+  String get failed => _('failed');
+  String get cancelled => _('cancelled');
+  String get codeCopied => _('codeCopied');
+  String get defaultLabel => _('default');
+  String get custom => _('custom');
+
+  // ── Common: Errors ──
+  String get noCrocBackend => _('noCrocBackend');
+  String get sendFailed => _('sendFailed');
+  String get receiveFailed => _('receiveFailed');
+  String get errorRoomNotReady => _('errorRoomNotReady');
+  String get errorRelayPassword => _('errorRelayPassword');
+  String get errorCouldNotConnect => _('errorCouldNotConnect');
+
+  /// 将 croc 原始错误信息映射为本地化文案。
+  String localizeCrocError(String error, {bool isSend = false}) {
+    final lower = error.toLowerCase();
+    if (lower.contains('room (secure channel) not ready')) return errorRoomNotReady;
+    if (lower.contains('bad password')) return errorRelayPassword;
+    if (lower.contains('i/o timeout')) return errorCouldNotConnect;
+    return isSend ? sendFailed : receiveFailed;
+  }
+
+  // ── Common: Update ──
+  String get checkUpdate => _('checkUpdate');
+  String get alreadyLatest => _('alreadyLatest');
+  String get newVersionAvailable => _('newVersionAvailable');
+  String get latestVersion => _('latestVersion');
+  String get currentVersion => _('currentVersion');
+  String get update => _('update');
+
+  // ── Dashboard ──
+  String get transferSpeed => _('transferSpeed');
+  String get transferStatsName => _('transferStatsName');
+  String get totalTransferred => _('totalTransferred');
+  String get quickTransfer => _('quickTransfer');
+  String get quickSettings => _('quickSettings');
+  String get quickSameCode => _('quickSameCode');
+  String get quickSendCode => _('quickSendCode');
+  String get quickRecvCode => _('quickRecvCode');
+  String get quickSRCode => _('quickSRCode');
+  String get quickEnterCode => _('quickEnterCode');
+  String get quickEmptyRecvCode => _('quickEmptyRecvCode');
+  String get quickEmptySendCode => _('quickEmptySendCode');
+  String get recentTransfers => _('recentTransfers');
+  String get transfersUnit => _('transfersUnit');
+  String get noTransfersYet => _('noTransfersYet');
+  String get noHistory => _('noHistory');
+  String get availableWidgets => _('availableWidgets');
+
+  // ── Send ──
   String get codePhrase => _('codePhrase');
   String get enterCodePhrase => _('enterCodePhrase');
   String get phraseHintCroc => _('phraseHintCroc');
   String get phraseHintRandom => _('phraseHintRandom');
   String get textHint => _('textHint');
-  String get generate => _('generate');
-  String get files => _('files');
-  String get fileMode => _('fileMode');
-  String get textMode => _('textMode');
-  String get clearFiles => _('clearFiles');
-  String get clearText => _('clearText');
-  String get uploadTextFile => _('uploadTextFile');
-  String get sentText => _('sentText');
   String get autoGeneratePhrase => _('autoGeneratePhrase');
   String get phraseMode => _('phraseMode');
-  String get phraseModeDefault => _('phraseModeDefault');
   String get phraseModeOn => _('phraseModeOn');
-  String get phraseModeNever => _('phraseModeNever');
   String get autoCopyPhrase => _('autoCopyPhrase');
-  String get paste => _('paste');
-  String get sending => _('sending');
-  String get pending => _('pending');
   String get enterPhraseWarning => _('enterPhraseWarning');
-  String get noCrocBackend => _('noCrocBackend');
-  String get receiveFailed => _('receiveFailed');
-  String get sendFailed => _('sendFailed');
-  String get errorRoomNotReady => _('errorRoomNotReady');
-  String get errorPeerDisconnected => _('errorPeerDisconnected');
-  String get errorCouldNotConnect => _('errorCouldNotConnect');
-  String get errorCodeIncorrect => _('errorCodeIncorrect');
-
-  /// 将 croc 原始错误信息映射为本地化文案。
-  /// 匹配已知错误关键词；无匹配时返回 [receiveFailed] 或 [sendFailed]。
-  String localizeCrocError(String error, {bool isSend = false}) {
-    final lower = error.toLowerCase();
-    if (lower.contains('room') && (lower.contains('not ready') || lower.contains('secure channel'))) {
-      return errorRoomNotReady;
-    }
-    if (lower.contains('peer') && lower.contains('disconnect')) {
-      return errorPeerDisconnected;
-    }
-    if (lower.contains('could not connect') || lower.contains('connection refused') || lower.contains('no such host')) {
-      return errorCouldNotConnect;
-    }
-    if (lower.contains('code') && (lower.contains('incorrect') || lower.contains('wrong') || lower.contains('invalid')) ||
-        lower.contains('phrase') && lower.contains('incorrect')) {
-      return errorCodeIncorrect;
-    }
-    return isSend ? sendFailed : receiveFailed;
-  }
   String get enterTextWarning => _('enterTextWarning');
-  String get resetRelay => _('resetRelay');
-  String get reset => _('reset');
-  String get resetAllSettings => _('resetAllSettings');
-  String get resetAllConfirm => _('resetAllConfirm');
-  String get settingsReset => _('settingsReset');
 
-  String get receiveFiles => _('receiveFiles');
+  // ── Receive ──
   String get startReceive => _('startReceive');
   String get scanQRCode => _('scanQRCode');
   String get generateQRCode => _('generateQRCode');
@@ -120,8 +237,17 @@ class AppLocalizations {
   String get flipCamera => _('flipCamera');
   String get noQRFound => _('noQRFound');
   String get scanMobileOnly => _('scanMobileOnly');
-  String get options => _('options');
 
+  // ── Settings: Transfer Options ──
+  String get options => _('options');
+  String get transferOptions => _('transferOptions');
+  String get encryptionCurve => _('encryptionCurve');
+  String get hashAlgorithm => _('hashAlgorithm');
+  String get enableCompression => _('enableCompression');
+  String get overwrite => _('overwrite');
+  String get zipFolder => _('zipFolder');
+
+  // ── Settings: Relay ──
   String get relayType => _('relayType');
   String get relaySettings => _('relaySettings');
   String get relayAddress => _('relayAddress');
@@ -130,7 +256,14 @@ class AppLocalizations {
   String get customRelay => _('customRelay');
   String get noRelay => _('noRelay');
   String get port => _('port');
+  String get resetRelay => _('resetRelay');
 
+  // ── Settings: Save Path ──
+  String get defaultSavePath => _('defaultSavePath');
+  String get selectFolder => _('selectFolder');
+  String get savePath => _('savePath');
+
+  // ── Settings: Theme ──
   String get theme => _('theme');
   String get themeMode => _('themeMode');
   String get light => _('light');
@@ -140,8 +273,14 @@ class AppLocalizations {
   String get autoLanguage => _('autoLanguage');
   String get pureBlackMode => _('pureBlackMode');
   String get colorPalette => _('colorPalette');
-  String get defaultLabel => _('defaultLabel');
 
+  // ── Settings: Reset ──
+  String get reset => _('reset');
+  String get resetAllSettings => _('resetAllSettings');
+  String get resetAllConfirm => _('resetAllConfirm');
+  String get settingsReset => _('settingsReset');
+
+  // ── Settings: About ──
   String get about => _('about');
   String get application => _('application');
   String get appVersion => _('appVersion');
@@ -149,57 +288,12 @@ class AppLocalizations {
   String get unavailable => _('unavailable');
   String get description => _('description');
 
-  String get transferOptions => _('transferOptions');
-  String get encryptionCurve => _('encryptionCurve');
-  String get hashAlgorithm => _('hashAlgorithm');
-  String get enableCompression => _('enableCompression');
-  String get overwrite => _('overwrite');
-  String get zipFolder => _('zipFolder');
-  String get localOnly => _('localOnly');
-
-  String get cancel => _('cancel');
-  String get confirm => _('confirm');
-  String get delete => _('delete');
-  String get clear => _('clear');
-  String get copyCode => _('copyCode');
-  String get codeCopied => _('codeCopied');
-  String get checkUpdate => _('checkUpdate');
-  String get alreadyLatest => _('alreadyLatest');
-  String get newVersionAvailable => _('newVersionAvailable');
-  String get latestVersion => _('latestVersion');
-  String get currentVersion => _('currentVersion');
-  String get update => _('update');
-
-  String get noFiles => _('noFiles');
-  String get noHistory => _('noHistory');
-  String get connecting => _('connecting');
-  String get transferring => _('transferring');
-  String get receiving => _('receiving');
-  String get noReceivedFiles => _('noReceivedFiles');
-  String get open => _('open');
-  String get openFolder => _('openFolder');
+  // ── Settings: Acknowledgments ──
   String get acknowledgments => _('acknowledgments');
   String get openSourceProjects => _('openSourceProjects');
-  String get defaultSavePath => _('defaultSavePath');
-  String get selectFolder => _('selectFolder');
-  String get savePath => _('savePath');
-  String get savePathDefault => _('savePathDefault');
-  String get savePathCustom => _('savePathCustom');
   String get flutterDesc => _('flutterDesc');
   String get crocDesc => _('crocDesc');
   String get flClashDesc => _('flClashDesc');
-  String get completed => _('completed');
-  String get failed => _('failed');
-  String get cancelled => _('cancelled');
-
-  String get loading => _('loading');
-  String get retry => _('retry');
-  String get edit => _('edit');
-  String get done => _('done');
-  String get availableWidgets => _('availableWidgets');
-  String get active => _('active');
-  String get transfersUnit => _('transfersUnit');
-  String get noTransfersYet => _('noTransfersYet');
 
   /// Map [PageLabel] to its localized display name.
   String pageLabel(Enum label) {
@@ -222,14 +316,14 @@ class AppLocalizations {
   /// Map [DashboardWidget] to its localized display name.
   String dashboardWidgetName(Enum widget) {
     switch (widget.name) {
+      case 'transferStats':
+        return transferStatsName;
       case 'transferSpeed':
         return transferSpeed;
       case 'totalTransferred':
         return totalTransferred;
-      case 'quickSend':
-        return quickSend;
-      case 'quickReceive':
-        return quickReceive;
+      case 'quickTransfer':
+        return quickTransfer;
       case 'recentTransfers':
         return recentTransfers;
       default:

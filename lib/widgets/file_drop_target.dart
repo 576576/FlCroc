@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-/// Cross-platform file drop target built on Flutter's native DragTarget.
+/// Cross-platform file drop target using Flutter's native DragTarget.
 ///
-/// Works on desktop (Windows/macOS/Linux) where Flutter's engine
-/// forwards native OS file drops to DragTarget`<String>`.
-/// On mobile, renders child directly (no drag support).
+/// On desktop (Windows/macOS/Linux), Flutter's engine forwards
+/// native OS file drops as [DragTarget]<String> events.
+/// Multiple files dropped simultaneously are collected and
+/// dispatched as a batch via [onFilesDropped].
+/// On mobile, renders [child] directly.
 class FileDropTarget extends StatefulWidget {
   final Widget child;
   final bool enabled;
@@ -27,21 +30,29 @@ class FileDropTarget extends StatefulWidget {
 
 class _FileDropTargetState extends State<FileDropTarget> {
   bool _isOver = false;
+  final List<File> _pendingFiles = [];
+  Timer? _batchTimer;
+
+  @override
+  void dispose() {
+    _batchTimer?.cancel();
+    _flushPendingFiles();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     if (!widget.enabled) return widget.child;
 
     return DragTarget<String>(
-      onWillAcceptWithDetails: (_) => true,
+      onWillAcceptWithDetails: (_) {
+        _setHover(true);
+        return true;
+      },
       onAcceptWithDetails: _handleDrop,
       onLeave: (_) => _setHover(false),
-      onMove: (_) => _setHover(true),
       builder: (context, candidate, rejected) {
         final hovering = candidate.isNotEmpty;
-        if (hovering != _isOver) {
-          WidgetsBinding.instance.addPostFrameCallback((_) => _setHover(hovering));
-        }
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -67,12 +78,23 @@ class _FileDropTargetState extends State<FileDropTarget> {
   }
 
   void _handleDrop(DragTargetDetails<String> details) {
-    _setHover(false);
     final path = details.data;
     final file = File(path);
     if (file.existsSync()) {
-      widget.onFilesDropped([file]);
+      _pendingFiles.add(file);
+      // Debounce: collect files for 100ms then dispatch batch
+      _batchTimer?.cancel();
+      _batchTimer = Timer(const Duration(milliseconds: 100), _flushPendingFiles);
     }
+  }
+
+  void _flushPendingFiles() {
+    if (_pendingFiles.isNotEmpty) {
+      final files = List<File>.from(_pendingFiles);
+      _pendingFiles.clear();
+      widget.onFilesDropped(files);
+    }
+    _setHover(false);
   }
 
   void _setHover(bool value) {

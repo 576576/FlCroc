@@ -186,6 +186,9 @@ jobs:
     needs: [test, prebuild]
     if: needs.prebuild.outputs.windows == 'true'
     runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
     defaults:
       run:
         shell: pwsh
@@ -227,7 +230,7 @@ jobs:
           go mod tidy
           $env:CGO_ENABLED = "1"
           $env:GOOS = "windows"
-          $env:GOARCH = "amd64"
+          $env:GOARCH = "${{ matrix.arch }}"
           $env:CC = "gcc"
           go build -buildmode=c-shared -ldflags="-s -w -H windowsgui" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
           Pop-Location
@@ -252,20 +255,44 @@ jobs:
         run: dart run flutter_launcher_icons
 
       - name: Build Windows
-        run: flutter build windows --release
+        run: |
+          if ("${{ matrix.arch }}" -eq "arm64") {
+            flutter build windows --release --target-platform windows-arm64
+          } else {
+            flutter build windows --release
+          }
 
       - name: Bundle bridge .dll into build output
         run: |
-          $outDir = "build\windows\x64\runner\Release"
+          $outDir = "build\windows\${{ matrix.arch == 'arm64' && 'arm64' || 'x64' }}\runner\Release"
           Copy-Item "windows\runner\libcroc_bridge.dll" "$outDir\libcroc_bridge.dll" -Force
 
       - name: Package zip
-        run: Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip
+        run: |
+          $srcDir = "build\windows\${{ matrix.arch == 'arm64' && 'arm64' || 'x64' }}\runner\Release"
+          Compress-Archive -Path "$srcDir\*" -DestinationPath FlCroc-${{ steps.ver.outputs.version }}-windows-${{ matrix.arch }}.zip
+
+      - name: Setup Inno Setup
+        if: matrix.arch == 'amd64'
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer (amd64 only)
+        if: matrix.arch == 'amd64'
+        run: |
+          iscc windows\installer\setup.iss /DAppVersion=${{ steps.ver.outputs.version }}
+          Move-Item "FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer.exe" -Destination . -Force
+          Get-Item "FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer.exe"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64
-          path: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip
+          name: FlCroc-${{ steps.ver.outputs.version }}-windows-${{ matrix.arch }}
+          path: FlCroc-${{ steps.ver.outputs.version }}-windows-${{ matrix.arch }}.zip
+
+      - uses: actions/upload-artifact@v4
+        if: matrix.arch == 'amd64'
+        with:
+          name: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer
+          path: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer.exe
 
   # ── Linux ──
   build-linux:
@@ -594,7 +621,9 @@ jobs:
             ### Downloads
             | Platform | File |
             |----------|------|
-            | 🪟 Windows | `FlCroc-${{ steps.version.outputs.version }}-windows-amd64.zip` |
+            | 🪟 Windows x64 | `FlCroc-${{ steps.version.outputs.version }}-windows-amd64.zip` |
+            | 🪟 Windows ARM64 | `FlCroc-${{ steps.version.outputs.version }}-windows-arm64.zip` |
+            | 💿 Windows Installer | `FlCroc-${{ steps.version.outputs.version }}-windows-amd64-installer.exe` |
             | 🐧 Linux | `FlCroc-${{ steps.version.outputs.version }}-linux-amd64.tar.gz` |
             | 🤖 Android | `FlCroc-${{ steps.version.outputs.version }}-android-arm64.apk` |
 
@@ -603,6 +632,8 @@ jobs:
           files: |
             artifacts/FlCroc-*-android-arm64.apk
             artifacts/FlCroc-*-windows-amd64.zip
+            artifacts/FlCroc-*-windows-arm64.zip
+            artifacts/FlCroc-*-windows-amd64-installer.exe
             artifacts/FlCroc-*-linux-amd64.tar.gz
           draft: false
           generate_release_notes: true

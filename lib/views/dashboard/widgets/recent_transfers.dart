@@ -16,11 +16,9 @@ class RecentTransfersWidget extends ConsumerWidget {
     final transfers = ref.watch(transfersProvider);
     final recent = transfers.take(3).toList();
 
-    return SizedBox(
-      height: 180,
-      child: CommonCard(
-        info: Info(iconData: Icons.history, label: l10n.recentTransfers),
-        child: recent.isEmpty
+    return CommonCard(
+      info: Info(iconData: Icons.history, label: l10n.recentTransfers),
+      child: recent.isEmpty
             ? Center(
                 child: Text(
                   l10n.noTransfersYet,
@@ -64,7 +62,6 @@ class RecentTransfersWidget extends ConsumerWidget {
                   );
                 }).toList(),
               ),
-      ),
     );
   }
 

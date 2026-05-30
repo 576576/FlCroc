@@ -31,7 +31,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   // Received content tracking
   final List<FileItem> _receivedFiles = [];
   int _selectedTab = 0; // 0=files, 1=text
-  String _receivedText = '';
+  final _receivedTextController = TextEditingController();
   String _effectiveOutputPath = '';
 
   @override
@@ -102,7 +102,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
       _isReceiving = true;
       _phase = ReceivePhase.pending;
       _receivedFiles.clear();
-      _receivedText = '';
+      _receivedTextController.clear();
       _selectedTab = 0;
     });
 
@@ -159,7 +159,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
             if (mounted) setState(() {});
           case TransferProgressStatus.completed:
             if (progress.isText) {
-              _receivedText = progress.textContent;
+              _receivedTextController.text = progress.textContent;
               _receivedFiles.clear();
               _selectedTab = 1;
               setState(() { _isReceiving = false; _phase = ReceivePhase.completed; });
@@ -183,7 +183,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
 
               _receivedFiles.clear();
               _receivedFiles.addAll(fileItems);
-              _receivedText = '';
+              _receivedTextController.clear();
               if (fileItems.isNotEmpty) {
                 _selectedTab = 0;
                 // Android: export to Downloads via MediaStore
@@ -249,6 +249,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   void dispose() {
     _saveReceivePrefs();
     _codeController.dispose();
+    _receivedTextController.dispose();
     _scrollCtrl.dispose();
     super.dispose();
   }
@@ -317,8 +318,8 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: SegmentedButton<int>(
                 segments: [
-                  ButtonSegment(value: 0, label: Text(l10n.files), icon: const Icon(Icons.insert_drive_file, size: 18)),
-                  ButtonSegment(value: 1, label: Text(l10n.textMode), icon: const Icon(Icons.text_snippet, size: 18)),
+                  ButtonSegment(value: 0, label: Text(l10n.file), icon: const Icon(Icons.insert_drive_file, size: 18)),
+                  ButtonSegment(value: 1, label: Text(l10n.text), icon: const Icon(Icons.text_snippet, size: 18)),
                 ],
                 selected: {_selectedTab},
                 onSelectionChanged: (v) => setState(() => _selectedTab = v.first),
@@ -327,7 +328,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
 
             // ── Received content (matches send page layout / behavior) ──
             if (_selectedTab == 0)
-              _buildSection(l10n.files, Icons.insert_drive_file, [
+              _buildSection(l10n.file, Icons.insert_drive_file, [
                 if (_receivedFiles.isEmpty)
                   NullStatusWidget(message: l10n.noReceivedFiles, icon: Icons.inbox_outlined)
                 else
@@ -363,17 +364,17 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                           ? () => setState(() => _receivedFiles.clear())
                           : null,
                       icon: const Icon(Icons.clear_all, size: 16),
-                      label: Text(l10n.clearFiles),
+                      label: Text(l10n.clear),
                     ),
                   ),
                 ),
               ])
             else
-              _buildSection(l10n.textMode, Icons.text_snippet, [
+              _buildSection(l10n.text, Icons.text_snippet, [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                   child: TextField(
-                    controller: TextEditingController(text: _receivedText),
+                    controller: _receivedTextController,
                     readOnly: true,
                     maxLines: 5,
                     decoration: InputDecoration(
@@ -381,24 +382,26 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                       border: InputBorder.none,
                       suffixIcon: IconButton(
                         icon: const Icon(Icons.copy, size: 20),
-                        onPressed: () {
-                          if (_receivedText.isNotEmpty) Clipboard.setData(ClipboardData(text: _receivedText));
-                        },
-                        tooltip: l10n.copyCode,
+                        onPressed: _receivedTextController.text.isNotEmpty
+                            ? () => Clipboard.setData(ClipboardData(text: _receivedTextController.text))
+                            : null,
+                        tooltip: l10n.copy,
                       ),
                     ),
                   ),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      onPressed: () => setState(() { _receivedText = ''; }),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                    const SizedBox(width: 1),
+                    TextButton.icon(
+                      onPressed: _receivedTextController.text.isNotEmpty
+                          ? () => setState(() => _receivedTextController.clear())
+                          : null,
                       icon: const Icon(Icons.clear_all, size: 16),
-                      label: Text(l10n.clearText),
+                      label: Text(l10n.clear),
                     ),
-                  ),
+                  ]),
                 ),
               ]),
 
@@ -437,7 +440,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                           Row(
                             children: [
                               ChoiceChip(
-                                label: Text(l10n.savePathDefault, style: const TextStyle(fontSize: 12)),
+                                label: Text(l10n.defaultLabel, style: const TextStyle(fontSize: 12)),
                                 selected: !isCustom,
                                 onSelected: (v) {
                                   if (v) {
@@ -450,7 +453,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                               ),
                               const SizedBox(width: 8),
                               ChoiceChip(
-                                label: Text(l10n.savePathCustom, style: const TextStyle(fontSize: 12)),
+                                label: Text(l10n.custom, style: const TextStyle(fontSize: 12)),
                                 selected: isCustom,
                                 onSelected: (v) {
                                   if (v && _receiveConfig.outputPath.isEmpty) {
@@ -493,7 +496,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   Widget _buildStatusChip(AppLocalizations l10n) {
     final (label, color) = switch (_phase) {
       ReceivePhase.pending => (l10n.pending, Colors.orange),
-      ReceivePhase.receiving => (l10n.receiveFiles, context.colorScheme.primary),
+      ReceivePhase.receiving => (l10n.receiving, context.colorScheme.primary),
       ReceivePhase.completed => (l10n.completed, Colors.green),
       ReceivePhase.failed => (l10n.failed, Colors.red),
       _ => ('', Colors.transparent),

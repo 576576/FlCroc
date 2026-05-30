@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -14,6 +15,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 enum PhraseMode { defaultMode, on, never }
@@ -35,6 +37,14 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   final _codeController = TextEditingController();
   SendConfig _sendConfig = const SendConfig();
   bool _autoCopyPhrase = false;
+  bool _whiteBgQR = false; // always use white background for QR code
+
+  // Text size limit: null=default(10000), 0=unlimited, >0=custom
+  int? _textByteLimit;
+  static const _defaultTextLimit = 10000;
+  final _limitCtrl = TextEditingController();
+
+  int get _effectiveTextLimit => _textByteLimit ?? _defaultTextLimit;
 
   // Send lifecycle
   StreamSubscription<TransferProgress>? _sendSubscription;
@@ -53,6 +63,34 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       CurvedAnimation(parent: _shakeCtrl, curve: Curves.elasticIn),
     );
     _loadSendPrefs();
+    _textController.addListener(_enforceTextLimit);
+  }
+
+  bool _limiting = false;
+
+  void _enforceTextLimit() {
+    if (_limiting) return;
+    final limit = _effectiveTextLimit;
+    if (limit <= 0) return; // unlimited
+    final bytes = utf8.encode(_textController.text);
+    if (bytes.length > limit) {
+      _limiting = true;
+      // Truncate to limit bytes
+      var truncated = '';
+      var byteCount = 0;
+      for (final char in _textController.text.characters) {
+        final charBytes = utf8.encode(char);
+        if (byteCount + charBytes.length > limit) break;
+        truncated += char;
+        byteCount += charBytes.length;
+      }
+      final oldSelection = _textController.selection;
+      _textController.text = truncated;
+      if (oldSelection.baseOffset <= truncated.length) {
+        _textController.selection = oldSelection;
+      }
+      _limiting = false;
+    }
   }
 
   @override
@@ -62,6 +100,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     _textController.dispose();
     _codeController.dispose();
     _shakeCtrl.dispose();
+    _limitCtrl.dispose();
     super.dispose();
   }
 
@@ -103,9 +142,27 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       final file = result.files.first;
       if (file.path != null) {
         final content = await File(file.path!).readAsString();
-        _textController.text = content;
+        final limited = _applyTextLimit(content);
+        _textController.text = limited;
       }
     }
+  }
+
+  /// Truncate text to the effective byte limit, respecting character boundaries.
+  String _applyTextLimit(String text) {
+    final limit = _effectiveTextLimit;
+    if (limit <= 0) return text;
+    final bytes = utf8.encode(text);
+    if (bytes.length <= limit) return text;
+    var result = '';
+    var count = 0;
+    for (final char in text.characters) {
+      final cb = utf8.encode(char);
+      if (count + cb.length > limit) break;
+      result += char;
+      count += cb.length;
+    }
+    return result;
   }
 
   // ── Code phrase ──
@@ -155,14 +212,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
             children: [
               SizedBox(
                 width: 200, height: 200,
-                child: QrImageView(
-                  data: code,
-                  version: QrVersions.auto,
-                  size: 200,
-                  foregroundColor: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : Colors.black,
-                ),
+                child: _buildQR(code, 200),
               ),
               const SizedBox(height: 12),
               Text(code, style: const TextStyle(fontFamily: 'monospace', fontSize: 14, fontWeight: FontWeight.w600)),
@@ -174,7 +224,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                 Clipboard.setData(ClipboardData(text: code));
                 if (mounted) context.showSnackBar(context.appLocalizations.codeCopied);
               },
-              child: Text(l10n.copyCode),
+              child: Text(l10n.copy),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -195,6 +245,8 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   static const _prefAutoCopy = 'send_autoCopy';
   static const _prefPhraseMode = 'send_phraseMode';
   static const _prefIsTextMode = 'send_isTextMode';
+  static const _prefTextByteLimit = 'send_textByteLimit';
+  static const _prefWhiteBgQR = 'send_whiteBgQR';
 
   void _loadSendPrefs() {
     final json = AppPrefs.getJson(_prefSendConfig);
@@ -207,6 +259,14 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       _phraseMode = PhraseMode.values[int.tryParse(pmIdx) ?? 0];
     }
     _isTextMode = AppPrefs.getBool(_prefIsTextMode);
+    _whiteBgQR = AppPrefs.getBool(_prefWhiteBgQR);
+    final limitStr = AppPrefs.getString(_prefTextByteLimit);
+    if (limitStr.isNotEmpty) {
+      _textByteLimit = int.tryParse(limitStr);
+      if (_textByteLimit != null && _textByteLimit! > 0) {
+        _limitCtrl.text = _textByteLimit.toString();
+      }
+    }
   }
 
   void _saveSendPrefs() {
@@ -214,6 +274,8 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     AppPrefs.setBool(_prefAutoCopy, _autoCopyPhrase);
     AppPrefs.setString(_prefPhraseMode, _phraseMode.index.toString());
     AppPrefs.setBool(_prefIsTextMode, _isTextMode);
+    AppPrefs.setBool(_prefWhiteBgQR, _whiteBgQR);
+    AppPrefs.setString(_prefTextByteLimit, _textByteLimit?.toString() ?? '');
   }
 
   // ── Send ──
@@ -296,8 +358,30 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     final useNoRelay = relayConfig.type == RelayType.noRelay;
     final useCustom = relayConfig.type == RelayType.customRelay;
 
+    // Resolve file paths for Go bridge (Android content URIs → temp files)
+    final resolvedPaths = <String>[];
+    if (!isText) {
+      for (final f in _selectedFiles) {
+        final p = f.path;
+        if (p == null || p.isEmpty) continue;
+        if (isAndroid && p.startsWith('content://')) {
+          try {
+            final bytes = await File(p).readAsBytes();
+            final tempDir = await getTemporaryDirectory();
+            final tempFile = File('${tempDir.path}${Platform.pathSeparator}${f.name}');
+            await tempFile.writeAsBytes(bytes);
+            resolvedPaths.add(tempFile.path);
+          } catch (_) {
+            // Skip inaccessible content URIs
+          }
+        } else {
+          resolvedPaths.add(p);
+        }
+      }
+    }
+
     final options = SendOptions(
-      filePaths: isText ? [] : _selectedFiles.map((f) => f.path ?? '').where((p) => p.isNotEmpty).toList(),
+      filePaths: isText ? [] : resolvedPaths,
       codePhrase: code.isEmpty ? null : code, sendingText: isText, textContent: isText ? textContent : '',
       curve: _sendConfig.curve, hashAlgorithm: _sendConfig.hashAlgorithm,
       noCompress: _sendConfig.noCompress, overwrite: _sendConfig.overwrite,
@@ -393,6 +477,26 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
   // ── Build ──
 
+  Widget _buildQR(String data, double size) {
+    final qr = QrImageView(
+      data: data,
+      version: QrVersions.auto,
+      size: size,
+      foregroundColor: _whiteBgQR
+          ? Colors.black
+          : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
+    );
+    if (!_whiteBgQR) return qr;
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: qr,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.appLocalizations;
@@ -416,7 +520,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.qr_code, size: 16), onPressed: _showQRCode, padding: EdgeInsets.zero, tooltip: l10n.generateQRCode)),
-                  SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.copy, size: 16), onPressed: _copyPhrase, padding: EdgeInsets.zero, tooltip: l10n.copyCode)),
+                  SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.copy, size: 16), onPressed: _copyPhrase, padding: EdgeInsets.zero, tooltip: l10n.copy)),
                   SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.paste, size: 16), onPressed: _pastePhrase, padding: EdgeInsets.zero, tooltip: l10n.paste)),
                 ],
               ),
@@ -443,15 +547,27 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
         ],
       ),
       body: FileDropTarget(
-        enabled: !_isTextMode && isDesktop,
+        enabled: isDesktop,
         onFilesDropped: (files) {
-          final newFiles = <PlatformFile>[];
-          for (final f in files) {
-            if (!_selectedFiles.any((s) => s.path == f.path)) {
-              newFiles.add(PlatformFile(name: f.path.split(Platform.pathSeparator).last, path: f.path, size: f.lengthSync()));
+          if (_isTextMode) {
+            // Text mode: load first dropped file content (with limit)
+            final first = files.firstOrNull;
+            if (first != null) {
+              try {
+                final content = first.readAsStringSync();
+                _textController.text = _applyTextLimit(content);
+              } catch (_) {}
             }
+          } else {
+            // File mode: add to selection
+            final newFiles = <PlatformFile>[];
+            for (final f in files) {
+              if (!_selectedFiles.any((s) => s.path == f.path)) {
+                newFiles.add(PlatformFile(name: f.path.split(Platform.pathSeparator).last, path: f.path, size: f.lengthSync()));
+              }
+            }
+            if (newFiles.isNotEmpty) setState(() => _selectedFiles.addAll(newFiles));
           }
-          if (newFiles.isNotEmpty) setState(() => _selectedFiles.addAll(newFiles));
         },
         child: ListView(
         children: [
@@ -460,8 +576,8 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: SegmentedButton<bool>(
               segments: [
-                ButtonSegment(value: false, label: Text(l10n.fileMode), icon: const Icon(Icons.insert_drive_file)),
-                ButtonSegment(value: true, label: Text(l10n.textMode), icon: const Icon(Icons.text_snippet)),
+                ButtonSegment(value: false, label: Text(l10n.file), icon: const Icon(Icons.insert_drive_file)),
+                ButtonSegment(value: true, label: Text(l10n.text), icon: const Icon(Icons.text_snippet)),
               ],
               selected: {_isTextMode},
               onSelectionChanged: (v) => setState(() { _isTextMode = v.first; _saveSendPrefs(); }),
@@ -469,7 +585,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
           ),
 
           if (_isTextMode) ...[
-            _shakeWrap(1, _buildSection(l10n.textMode, Icons.text_snippet, [
+            _shakeWrap(1, _buildSection(l10n.text, Icons.text_snippet, [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                 child: TextField(
@@ -491,18 +607,18 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                   TextButton.icon(
                     onPressed: _pickTextFile,
                     icon: const Icon(Icons.add, size: 16),
-                    label: Text(l10n.uploadTextFile),
+                    label: Text(l10n.selectTextFile),
                   ),
                   TextButton.icon(
                     onPressed: _clearText,
                     icon: const Icon(Icons.clear_all, size: 16),
-                    label: Text(l10n.clearText),
+                    label: Text(l10n.clear),
                   ),
                 ]),
               ),
             ])),
           ] else ...[
-            _shakeWrap(0, _buildSection(l10n.files, Icons.insert_drive_file, [
+            _shakeWrap(0, _buildSection(l10n.file, Icons.insert_drive_file, [
               if (_selectedFiles.isEmpty)
                 NullStatusWidget(message: l10n.noFiles, icon: Icons.cloud_upload_outlined)
               else
@@ -523,7 +639,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                   TextButton.icon(
                     onPressed: _selectedFiles.isNotEmpty ? _clearFiles : null,
                     icon: const Icon(Icons.clear_all, size: 16),
-                    label: Text(l10n.clearFiles),
+                    label: Text(l10n.clear),
                   ),
                 ]),
               ),
@@ -545,9 +661,9 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                 subtitle: Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Wrap(spacing: 8, runSpacing: 4, children: [
-                    _phraseChip(l10n.phraseModeDefault, PhraseMode.defaultMode),
+                    _phraseChip(l10n.defaultLabel, PhraseMode.defaultMode),
                     _phraseChip(l10n.phraseModeOn, PhraseMode.on),
-                    _phraseChip(l10n.phraseModeNever, PhraseMode.never),
+                    _phraseChip(l10n.custom, PhraseMode.never),
                     if (_phraseMode == PhraseMode.never)
                       SizedBox(
                         height: 32,
@@ -567,24 +683,96 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                 title: Text(l10n.autoCopyPhrase),
                 delegate: SwitchDelegate(value: _autoCopyPhrase, onChanged: (v) => setState(() { _autoCopyPhrase = v; _saveSendPrefs(); })),
               ),
+              ListItem.switchItem(
+                leading: const Icon(Icons.qr_code_2, size: 20),
+                title: const Text('始终使用白底二维码'),
+                delegate: SwitchDelegate(value: _whiteBgQR, onChanged: (v) => setState(() { _whiteBgQR = v; _saveSendPrefs(); })),
+              ),
               ListItem(leading: const Icon(Icons.show_chart), title: Text(l10n.encryptionCurve), subtitle: _buildCurveChips(l10n)),
               ListItem(leading: const Icon(Icons.tag), title: Text(l10n.hashAlgorithm), subtitle: _buildHashChips(l10n)),
               ListItem.switchItem(leading: const Icon(Icons.compress), title: Text(l10n.enableCompression), delegate: SwitchDelegate(value: !_sendConfig.noCompress, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(noCompress: !v); _saveSendPrefs(); }))),
               ListItem.switchItem(leading: const Icon(Icons.folder_zip), title: Text(l10n.zipFolder), delegate: SwitchDelegate(value: _sendConfig.zipFolder, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(zipFolder: v); _saveSendPrefs(); }))),
+              ListItem(
+                leading: const Icon(Icons.text_snippet),
+                title: const Text('文本大小限制'),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    children: [
+                      ChoiceChip(
+                        label: const Text('默认', style: TextStyle(fontSize: 12)),
+                        selected: _textByteLimit == null,
+                        onSelected: (v) {
+                          if (v) setState(() { _textByteLimit = null; _limitCtrl.clear(); _saveSendPrefs(); });
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: const Text('无限制', style: TextStyle(fontSize: 12)),
+                        selected: _textByteLimit == 0,
+                        onSelected: (v) {
+                          if (v) setState(() { _textByteLimit = 0; _limitCtrl.clear(); _saveSendPrefs(); });
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: const Text('自定义', style: TextStyle(fontSize: 12)),
+                        selected: _textByteLimit != null && _textByteLimit! > 0,
+                        onSelected: (v) {
+                          if (v) setState(() { _textByteLimit = _defaultTextLimit; _limitCtrl.text = '$_defaultTextLimit'; _saveSendPrefs(); });
+                        },
+                      ),
+                      if (_textByteLimit != null && _textByteLimit! > 0) ...[
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 72,
+                          child: TextField(
+                            controller: _limitCtrl,
+                            keyboardType: TextInputType.number,
+                            style: const TextStyle(fontSize: 13),
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                              border: OutlineInputBorder(),
+                            ),
+                            onChanged: (v) {
+                              final val = int.tryParse(v);
+                              if (val != null && val > 0) {
+                                _textByteLimit = val;
+                                _saveSendPrefs();
+                                _enforceTextLimit();
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Text('B', style: TextStyle(fontSize: 12)),
+                        IconButton(
+                          icon: const Icon(Icons.restart_alt, size: 16),
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                          tooltip: '重置',
+                          onPressed: () {
+                            setState(() {
+                              _textByteLimit = null;
+                              _limitCtrl.clear();
+                              _saveSendPrefs();
+                            });
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 12),
             ],
           ),
 
           // QR code — below transfer options
           if (_currentPhrase.isNotEmpty)
-            Padding(padding: const EdgeInsets.all(16), child: Center(child: QrImageView(
-              data: _currentPhrase,
-              version: QrVersions.auto,
-              size: 160,
-              foregroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white
-                  : Colors.black,
-            ))),
+            Padding(padding: const EdgeInsets.all(16), child: Center(child: _buildQR(_currentPhrase, 160))),
 
           const SizedBox(height: 32),
         ],
@@ -634,7 +822,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
         spacing: 8,
         children: [
           ChoiceChip(
-            label: Text(l10n.phraseModeDefault),
+            label: Text(l10n.defaultLabel),
             selected: _sendConfig.curve == defaultCurve,
             onSelected: (v) { if (v) setState(() { _sendConfig = _sendConfig.copyWith(curve: defaultCurve); _saveSendPrefs(); }); },
           ),
@@ -657,7 +845,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
         spacing: 8,
         children: [
           ChoiceChip(
-            label: Text(l10n.phraseModeDefault),
+            label: Text(l10n.defaultLabel),
             selected: _sendConfig.hashAlgorithm == defaultHashAlgo,
             onSelected: (v) { if (v) setState(() { _sendConfig = _sendConfig.copyWith(hashAlgorithm: defaultHashAlgo); _saveSendPrefs(); }); },
           ),

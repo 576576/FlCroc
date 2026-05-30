@@ -365,7 +365,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             separated: false,
             items: [
               ListItem(
-                leading: const Icon(Icons.info),
+                leading: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset('assets/images/icon.png', width: 24, height: 24),
+                ),
                 title: Text(l10n.appVersion),
                 subtitle: Text('${globalState.packageInfo.version}+${globalState.packageInfo.buildNumber}'),
                 trailing: IconButton(

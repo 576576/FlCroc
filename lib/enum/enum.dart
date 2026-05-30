@@ -34,8 +34,7 @@ enum FunctionTag {
 
 enum DashboardWidget {
   transferStats,
-  quickSend,
-  quickReceive,
+  quickTransfer,
   recentTransfers,
 }
 
