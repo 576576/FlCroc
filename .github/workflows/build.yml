@@ -72,8 +72,8 @@ jobs:
             VER=$(echo "$MSG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
             case "$PREFIX" in
               beta)
-                NEW_VERSION="${VER}b"
-                TAG="v${VER}b"
+                NEW_VERSION="$VER"
+                TAG="v$VER-beta"
                 REL_NAME="FlCroc Beta $VER"
                 ;;
               *)
@@ -106,7 +106,7 @@ jobs:
               exit 0
             fi
 
-            BASE=$(echo "$CUR_VER" | sed -E 's/(b?)\+.*//' | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+b?')
+            BASE=$(echo "$CUR_VER" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
             if [ -z "$BASE" ]; then BASE="$CUR_VER"; fi
             CUR_BUILD=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}' | grep -oE '\+[0-9]+$' | tr -d '+')
             CUR_BUILD=${CUR_BUILD:-0}
