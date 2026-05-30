@@ -181,15 +181,112 @@ jobs:
       - name: Run tests
         run: flutter test
 
-  # ── Windows ──
-  build-windows:
+  # ── Windows amd64 ──
+  build-windows-amd64:
     needs: [test, prebuild]
     if: needs.prebuild.outputs.windows == 'true'
     runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        arch: [amd64, arm64]
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+
+      - name: Pull latest (include version sync from prebuild)
+        if: needs.prebuild.outputs.is_tag != 'true'
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: Get short SHA
+        id: sha
+        run: echo "sha=$(git rev-parse --short HEAD)" >> $env:GITHUB_OUTPUT
+
+      - name: Get version
+        id: ver
+        env:
+          IS_TAG: ${{ needs.prebuild.outputs.is_tag }}
+          SYNCED_VER: ${{ needs.prebuild.outputs.synced_version }}
+        run: |
+          if ($env:IS_TAG -eq 'true') {
+            $v = (Get-Content pubspec.yaml | Where-Object { $_ -match '^version:' } | Select-Object -First 1) -replace '^version:\s+(\S+).*', '$1'
+          } else {
+            $v = $env:SYNCED_VER
+          }
+          echo "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Build Go bridge (.dll)
+        run: |
+          Push-Location go_bridge
+          go mod tidy
+          $env:CGO_ENABLED = "1"
+          $env:GOOS = "windows"
+          $env:GOARCH = "amd64"
+          $env:CC = "gcc"
+          go build -buildmode=c-shared -ldflags="-s -w -H windowsgui" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
+          Pop-Location
+
+      - name: Verify .dll
+        run: |
+          if (Test-Path windows\runner\libcroc_bridge.dll) {
+            Get-Item windows\runner\libcroc_bridge.dll | Select-Object Length, FullName
+          } else {
+            Write-Error "libcroc_bridge.dll not found!"
+          }
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
+
+      - name: Build Windows
+        run: flutter build windows --release
+
+      - name: Bundle bridge .dll into build output
+        run: Copy-Item "windows\runner\libcroc_bridge.dll" "build\windows\x64\runner\Release\libcroc_bridge.dll" -Force
+
+      - name: Package zip
+        run: Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip
+
+      - name: Setup Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Download Chinese language for installer
+        run: Invoke-WebRequest -Uri "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/ChineseSimplified.isl" -OutFile "windows\installer\ChineseSimplified.isl"
+
+      - name: Build installer
+        run: |
+          iscc windows\installer\setup.iss /DAppVersion=${{ steps.ver.outputs.version }}
+          Move-Item "FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer.exe" -Destination . -Force
+          Get-Item "FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer.exe"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64
+          path: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer
+          path: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer.exe
+
+  # ── Windows arm64 ──
+  build-windows-arm64:
+    needs: [test, prebuild]
+    if: needs.prebuild.outputs.windows == 'true'
+    runs-on: windows-latest
     defaults:
       run:
         shell: pwsh
@@ -226,7 +323,6 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Setup LLVM (for ARM64 cross-compile)
-        if: matrix.arch == 'arm64'
         run: choco install llvm --no-progress -y --version=18.1.8
 
       - name: Build Go bridge (.dll)
@@ -235,12 +331,8 @@ jobs:
           go mod tidy
           $env:CGO_ENABLED = "1"
           $env:GOOS = "windows"
-          $env:GOARCH = "${{ matrix.arch }}"
-          if ("${{ matrix.arch }}" -eq "arm64") {
-            $env:CC = "clang"
-          } else {
-            $env:CC = "gcc"
-          }
+          $env:GOARCH = "arm64"
+          $env:CC = "clang"
           go build -buildmode=c-shared -ldflags="-s -w -H windowsgui" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
           Pop-Location
 
@@ -260,52 +352,19 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
 
-      - name: Generate launcher icons
-        run: dart run flutter_launcher_icons
-
-      - name: Build Windows
-        run: |
-          if ("${{ matrix.arch }}" -eq "arm64") {
-            flutter build windows --release --target-platform windows-arm64
-          } else {
-            flutter build windows --release
-          }
+      - name: Build Windows (ARM64)
+        run: flutter build windows --release --target-platform windows-arm64
 
       - name: Bundle bridge .dll into build output
-        run: |
-          $outDir = "build\windows\${{ matrix.arch == 'arm64' && 'arm64' || 'x64' }}\runner\Release"
-          Copy-Item "windows\runner\libcroc_bridge.dll" "$outDir\libcroc_bridge.dll" -Force
+        run: Copy-Item "windows\runner\libcroc_bridge.dll" "build\windows\arm64\runner\Release\libcroc_bridge.dll" -Force
 
       - name: Package zip
-        run: |
-          $srcDir = "build\windows\${{ matrix.arch == 'arm64' && 'arm64' || 'x64' }}\runner\Release"
-          Compress-Archive -Path "$srcDir\*" -DestinationPath FlCroc-${{ steps.ver.outputs.version }}-windows-${{ matrix.arch }}.zip
-
-      - name: Setup Inno Setup
-        if: matrix.arch == 'amd64'
-        run: choco install innosetup --no-progress -y
-
-      - name: Download Chinese language for installer
-        if: matrix.arch == 'amd64'
-        run: Invoke-WebRequest -Uri "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/ChineseSimplified.isl" -OutFile "windows\installer\ChineseSimplified.isl"
-
-      - name: Build installer (amd64 only)
-        if: matrix.arch == 'amd64'
-        run: |
-          iscc windows\installer\setup.iss /DAppVersion=${{ steps.ver.outputs.version }}
-          Move-Item "FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer.exe" -Destination . -Force
-          Get-Item "FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer.exe"
+        run: Compress-Archive -Path "build\windows\arm64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.version }}-windows-arm64.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FlCroc-${{ steps.ver.outputs.version }}-windows-${{ matrix.arch }}
-          path: FlCroc-${{ steps.ver.outputs.version }}-windows-${{ matrix.arch }}.zip
-
-      - uses: actions/upload-artifact@v4
-        if: matrix.arch == 'amd64'
-        with:
-          name: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer
-          path: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer.exe
+          name: FlCroc-${{ steps.ver.outputs.version }}-windows-arm64
+          path: FlCroc-${{ steps.ver.outputs.version }}-windows-arm64.zip
 
   # ── Linux ──
   build-linux:
@@ -483,11 +542,12 @@ jobs:
 
   # ── Nightly release (dev branch) ──
   nightly:
-    needs: [prebuild, build-windows, build-linux, build-android]
+    needs: [prebuild, build-windows-amd64, build-windows-arm64, build-linux, build-android]
     if: |
       always() && !failure() && !cancelled() &&
       needs.prebuild.outputs.do_release == 'false' &&
-      (needs.build-windows.result != 'skipped' ||
+      (needs.build-windows-amd64.result != 'skipped' ||
+       needs.build-windows-arm64.result != 'skipped' ||
        needs.build-linux.result != 'skipped' ||
        needs.build-android.result != 'skipped')
     runs-on: ubuntu-latest
@@ -572,7 +632,7 @@ jobs:
 
   # ── Production release (manual tag push or auto from release/beta commit) ──
   release:
-    needs: [prebuild, build-android, build-windows, build-linux]
+    needs: [prebuild, build-android, build-windows-amd64, build-windows-arm64, build-linux]
     if: |
       always() && !cancelled() &&
       needs.prebuild.result != 'failure' &&

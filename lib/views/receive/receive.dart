@@ -543,21 +543,14 @@ class _QRScannerPage extends StatefulWidget {
 }
 
 class _QRScannerPageState extends State<_QRScannerPage> {
-  final _controller = MobileScannerController();
   bool _hasScanned = false;
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _onDetect(BarcodeCapture capture) {
+  void _onDetect(dynamic capture) {
     if (_hasScanned) return;
-    final barcode = capture.barcodes.firstOrNull;
-    if (barcode?.rawValue != null) {
+    final raw = capture?.barcodes?.firstOrNull?.rawValue;
+    if (raw != null && raw is String && raw.isNotEmpty) {
       _hasScanned = true;
-      Navigator.of(context).pop(barcode!.rawValue!);
+      Navigator.of(context).pop(raw);
     }
   }
 
@@ -565,7 +558,6 @@ class _QRScannerPageState extends State<_QRScannerPage> {
   Widget build(BuildContext context) {
     final l10n = context.appLocalizations;
     return GscanKit(
-      controller: _controller,
       onDetect: _onDetect,
       setPortraitOrientation: false,
       gscanOverlayConfig: const GscanOverlayConfig(),
