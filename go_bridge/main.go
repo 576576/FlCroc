@@ -372,10 +372,8 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 	var isText bool
 	var textContent string
 
-	// Detect text receive: `c.Options.SendingText` is set by the receiver
-	// from the sender's info. croc may print text to stdout and/or save
-	// a temp file depending on platform/config. Try captured stdout first,
-	// then fall back to reading the received file.
+	// Detect text receive: `c.Options.SendingText` is reliably set by the
+	// receiver from the sender's info (croc.go processMessageFileInfo L1305).
 	if c.Options.SendingText {
 		isText = true
 		textContent = capturedStdout
@@ -383,24 +381,6 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 			f := c.FilesToTransfer[0]
 			filePath := filepath.Join(f.FolderRemote, f.Name)
 			if data, err := os.ReadFile(filePath); err == nil {
-				textContent = string(data)
-			}
-		}
-	} else if len(c.FilesToTransfer) == 1 {
-		// Fallback heuristic: try to read single file as text
-		f := c.FilesToTransfer[0]
-		filePath := filepath.Join(f.FolderRemote, f.Name)
-		data, err := os.ReadFile(filePath)
-		if err == nil && len(data) > 0 {
-			nullIdx := -1
-			for i, b := range data {
-				if b == 0 {
-					nullIdx = i
-					break
-				}
-			}
-			if nullIdx < 0 {
-				isText = true
 				textContent = string(data)
 			}
 		}

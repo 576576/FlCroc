@@ -46,7 +46,7 @@ class HistoryView extends ConsumerWidget {
                 final isSent = transfer.direction == TransferDirection.sent;
                 return ListTile(
                   leading: Icon(
-                    isSent ? Icons.upload_file : Icons.download,
+                    isSent ? Icons.upload : Icons.download,
                     color: isSent ? Colors.blue : Colors.green,
                   ),
                   title: Text(

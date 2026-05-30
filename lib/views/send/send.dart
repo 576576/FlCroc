@@ -352,7 +352,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     _activeTransferId = transferId;
 
     final files = isText
-        ? [FileItem(name: l10n.sentText, path: '', size: textContent.length)]
+        ? [FileItem(name: textContent, path: '', size: textContent.length)]
         : _selectedFolder != null
             ? [FileItem(name: _selectedFolder!.split(Platform.pathSeparator).last, path: _selectedFolder!, size: 0)]
             : _selectedFiles.map((f) => FileItem(name: f.name, path: f.path ?? '', size: f.size)).toList();
