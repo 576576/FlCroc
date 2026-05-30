@@ -70,19 +70,22 @@ jobs:
             # ── Release / Beta ──
             PREFIX=$(echo "$MSG" | grep -oE '^(r|release|beta)' | head -1)
             VER=$(echo "$MSG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+            CUR_BUILD=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}' | grep -oE '\+[0-9]+$' | tr -d '+')
+            CUR_BUILD=${CUR_BUILD:-0}
+            NEW_BUILD=$((CUR_BUILD + 1))
+            NEW_VERSION_BASE="$VER"
+            NEW_VERSION="${NEW_VERSION_BASE}+${NEW_BUILD}"
             case "$PREFIX" in
               beta)
-                NEW_VERSION="$VER"
                 TAG="v$VER-beta"
                 REL_NAME="FlCroc Beta $VER"
                 ;;
               *)
-                NEW_VERSION="$VER"
                 TAG="v$VER"
                 REL_NAME="FlCroc $VER"
                 ;;
             esac
-            echo "Syncing release version: $NEW_VERSION"
+            echo "Syncing release version: $NEW_VERSION (build $CUR_BUILD → $NEW_BUILD)"
             echo "do_release=true" >> $GITHUB_OUTPUT
             echo "release_version=$NEW_VERSION" >> $GITHUB_OUTPUT
             echo "release_tag=$TAG" >> $GITHUB_OUTPUT
@@ -96,8 +99,7 @@ jobs:
             git commit -m "sync-ver: $NEW_VERSION [skip ci]"
             git push
           else
-            # ── Non-release: increment build number (only if a build job will run) ──
-            # Check if any platform build trigger is in the commit message
+            # ── Non-release: increment build number only if a build will run ──
             if ! echo "$MSG" | grep -qE '\b(b-win|b-linux|b-mobile|b-all)\b'; then
               echo "No build trigger in commit message, skip version sync"
               echo "nightly_version=${CUR_VER}" >> $GITHUB_OUTPUT
@@ -260,24 +262,10 @@ jobs:
       - name: Package zip
         run: Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip
 
-      - name: Setup Inno Setup
-        run: choco install innosetup --no-progress -y
-
-      - name: Build installer
-        run: |
-          iscc windows\installer\setup.iss /DAppVersion=${{ steps.ver.outputs.version }}
-          Move-Item "FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer.exe" -Destination . -Force
-          Get-Item "FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer.exe"
-
       - uses: actions/upload-artifact@v4
         with:
           name: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64
           path: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer
-          path: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer.exe
 
   # ── Windows arm64 ──
   build-windows-arm64:
