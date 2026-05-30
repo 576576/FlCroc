@@ -32,7 +32,25 @@ class _DashboardViewState extends ConsumerState<DashboardView>
   void initState() {
     super.initState();
     final settings = ref.read(appSettingProvider);
-    _currentWidgetsNotifier.value = List.from(settings.dashboardWidgets);
+    var widgets = List<DashboardWidget>.from(settings.dashboardWidgets);
+
+    // Dedup: keep only one quickTransfer; migrate legacy quickSend/quickReceive
+    final hasLegacySend = widgets.any((w) => w.name == 'quickSend');
+    final hasLegacyRecv = widgets.any((w) => w.name == 'quickReceive');
+    if (hasLegacySend || hasLegacyRecv) {
+      widgets.removeWhere((w) => w.name == 'quickSend' || w.name == 'quickReceive');
+    }
+    // Ensure quickTransfer is present and deduplicated
+    final qtIndex = widgets.indexWhere((w) => w == DashboardWidget.quickTransfer);
+    if (qtIndex >= 0) {
+      // Keep only the first, remove rest
+      final first = widgets[qtIndex];
+      widgets.removeWhere((w) => w == DashboardWidget.quickTransfer);
+      widgets.insert(0, first);
+    } else {
+      widgets.insert(0, DashboardWidget.quickTransfer);
+    }
+    _currentWidgetsNotifier.value = widgets;
 
     _shakeCtrl = AnimationController(
       vsync: this,
@@ -85,10 +103,8 @@ class _DashboardViewState extends ConsumerState<DashboardView>
 
   Map<DashboardWidget, Widget> _widgetBuilders() {
     return {
-      DashboardWidget.transferSpeed: const TransferSpeedWidget(),
-      DashboardWidget.totalTransferred: const TotalTransferredWidget(),
-      DashboardWidget.quickSend: const QuickSendWidget(),
-      DashboardWidget.quickReceive: const QuickReceiveWidget(),
+      DashboardWidget.transferStats: const TransferStatsWidget(),
+      DashboardWidget.quickTransfer: const QuickTransferWidget(),
       DashboardWidget.recentTransfers: const RecentTransfersWidget(),
     };
   }
@@ -101,6 +117,24 @@ class _DashboardViewState extends ConsumerState<DashboardView>
     return CommonScaffold(
       title: l10n.dashboard,
       actions: [
+        ValueListenableBuilder<(String, Color)?>(
+          valueListenable: QuickTransferWidget.statusNotifier,
+          builder: (_, status, __) {
+            if (status == null) return const SizedBox.shrink();
+            final (label, color) = status;
+            return Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+              ),
+            );
+          },
+        ),
         ValueListenableBuilder<bool>(
           valueListenable: _isEditNotifier,
           builder: (_, isEdit, _) => IconButton(

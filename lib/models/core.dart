@@ -23,7 +23,9 @@ abstract class SendOptions with _$SendOptions {
     @Default('') String throttleUpload,
     @Default(<String>[]) List<String> exclude,
     String? relayAddress,
+    String? relayAddress6,
     String? relayPassword,
+    String? relayPorts,
   }) = _SendOptions;
 
   factory SendOptions.fromJson(Map<String, Object?> json) =>
@@ -37,8 +39,11 @@ abstract class ReceiveOptions with _$ReceiveOptions {
     @Default(false) bool overwrite,
     @Default(false) bool onlyLocal,
     @Default('') String outputPath,
+    @Default('p256') String curve,
     String? relayAddress,
+    String? relayAddress6,
     String? relayPassword,
+    String? relayPorts,
   }) = _ReceiveOptions;
 
   factory ReceiveOptions.fromJson(Map<String, Object?> json) =>
@@ -59,6 +64,8 @@ abstract class TransferProgress with _$TransferProgress {
     @Default(0.0) double speed,
     String? codePhrase,
     String? error,
+    @Default(false) bool isText,
+    @Default('') String textContent,
   }) = _TransferProgress;
 
   factory TransferProgress.fromJson(Map<String, Object?> json) =>

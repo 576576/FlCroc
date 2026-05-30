@@ -12,7 +12,7 @@ import 'package:path/path.dart' as p;
 ///
 /// Binary search order:
 ///   1. `{appDir}/croc{exe}`       — alongside the Flutter executable (desktop)
-///   2. `{appDir}/lib/croc{exe}`    — bundled lib dir
+///   2. `{appDir}/lib/croc{exe}`    — bundled lib dir (legacy)
 ///   3. `{dataDir}/croc{exe}`       — extracted from assets (Android)
 ///   4. `croc` in system PATH       — development convenience
 class CoreService extends CoreInterface {
@@ -42,6 +42,7 @@ class CoreService extends CoreInterface {
       final result = await Process.run(
         _crocPath!,
         ['--version'],
+        runInShell: false,
         environment: {'CROC_SECRET': ''},
       );
       if (result.exitCode == 0) {
@@ -104,7 +105,7 @@ class CoreService extends CoreInterface {
   Future<String?> _getAppSupportDir() async {
     try {
       if (Platform.isAndroid) {
-        return '/data/data/com.flcroc.app/files';
+        return '/data/data/cn.sumitm.flcroc/files';
       }
       if (Platform.isIOS) {
         final home = Platform.environment['HOME'] ?? '';
@@ -129,7 +130,16 @@ class CoreService extends CoreInterface {
 
   @override
   Future<String> getVersion() async {
-    return CoreLib.builtinCrocVersion;
+    try {
+      if (_crocPath != null && _isAvailable) {
+        final result = await Process.run(_crocPath!, ['--version']);
+        if (result.exitCode == 0) {
+          final raw = result.stdout.toString().trim();
+          if (raw.isNotEmpty) return raw.replaceAll(RegExp(r'^croc\s*v?'), '');
+        }
+      }
+    } catch (_) {}
+    throw UnsupportedError('unavailable');
   }
 
   @override
@@ -193,7 +203,7 @@ class CoreService extends CoreInterface {
         codePhrase: code,
       );
 
-      final process = await Process.start(_crocPath!, args);
+      final process = await Process.start(_crocPath!, args, runInShell: false);
       _process = process;
 
       await for (final line in process.stdout
@@ -267,7 +277,7 @@ class CoreService extends CoreInterface {
         status: TransferProgressStatus.connecting,
       );
 
-      final process = await Process.start(_crocPath!, args);
+      final process = await Process.start(_crocPath!, args, runInShell: false);
       _process = process;
 
       await for (final line in process.stdout

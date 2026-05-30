@@ -3,7 +3,6 @@ import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/l10n/l10n.dart';
 import 'package:fl_croc/manager/theme_manager.dart';
-import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/pages/pages.dart';
 import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/state.dart';
@@ -35,8 +34,8 @@ class _ApplicationState extends ConsumerState<Application> {
         final locale = ref.watch(
           appSettingProvider.select((state) => state.locale),
         );
-        final themeProps = ref.watch(themeSettingProvider);
         final appSettings = ref.watch(appSettingProvider);
+        final themeProps = ref.watch(themeSettingProvider);
 
         return MaterialApp(
           debugShowCheckedModeBanner: false,
@@ -51,11 +50,11 @@ class _ApplicationState extends ConsumerState<Application> {
             return ThemeManager(child: child!);
           },
           title: appName,
-          locale: locale != null ? Locale(locale) : const Locale('zh', 'CN'),
+          locale: locale != null ? Locale(locale) : _resolveSystemLocale(),
           supportedLocales: AppLocalizations.supportedLocales,
           themeMode: _getThemeMode(appSettings.themeMode),
-          theme: _buildLightTheme(themeProps),
-          darkTheme: _buildDarkTheme(themeProps),
+          theme: _buildLightTheme(themeProps.primaryColor),
+          darkTheme: _buildDarkTheme(themeProps.primaryColor, appSettings.pureBlackMode),
           home: const HomePage(),
         );
       },
@@ -73,14 +72,31 @@ class _ApplicationState extends ConsumerState<Application> {
     }
   }
 
-  ThemeData _buildLightTheme(ThemeProps props) {
-    final seedColor = Color(props.primaryColor);
+  /// Resolve the system locale against supported locales. Defaults to English.
+  Locale _resolveSystemLocale() {
+    final system = WidgetsBinding.instance.platformDispatcher.locale;
+    final supported = AppLocalizations.supportedLocales;
+
+    // Exact match (language + country)
+    for (final loc in supported) {
+      if (loc.languageCode == system.languageCode &&
+          (loc.countryCode == null || loc.countryCode == system.countryCode)) {
+        return loc;
+      }
+    }
+    // Language-only match
+    for (final loc in supported) {
+      if (loc.languageCode == system.languageCode && loc.countryCode == null) {
+        return loc;
+      }
+    }
+    return const Locale('en');
+  }
+
+  ThemeData _buildLightTheme(int primaryColor) {
     return ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: seedColor,
-        brightness: Brightness.light,
-      ),
+      colorScheme: cachedColorScheme(primaryColor, Brightness.light),
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: CupertinoPageTransitionsBuilder(),
@@ -90,18 +106,19 @@ class _ApplicationState extends ConsumerState<Application> {
     );
   }
 
-  ThemeData _buildDarkTheme(ThemeProps props) {
-    final seedColor = Color(props.primaryColor);
-    final settings = ref.read(appSettingProvider);
+  ThemeData _buildDarkTheme(int primaryColor, bool isPureBlack) {
+    var scheme = cachedColorScheme(primaryColor, Brightness.dark);
+    if (isPureBlack) {
+      scheme = scheme.copyWith(
+        surface: const Color(0xFF0A0A0A),
+        surfaceContainer: const Color(0xFF111111),
+        surfaceContainerHighest: const Color(0xFF181818),
+      );
+    }
     return ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: seedColor,
-        brightness: Brightness.dark,
-      ),
-      scaffoldBackgroundColor: settings.pureBlackMode
-          ? Colors.black
-          : null,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: isPureBlack ? Colors.black : null,
     );
   }
 }

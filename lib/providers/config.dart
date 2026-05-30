@@ -12,8 +12,17 @@ final appSettingProvider =
 class AppSettingNotifier extends StateNotifier<AppSettingProps> {
   AppSettingNotifier() : super(const AppSettingProps());
 
+  Future<SharedPreferences?> _getPrefs() async {
+    try {
+      return await SharedPreferences.getInstance();
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> load() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
+    if (prefs == null) return;
     final json = prefs.getString('app_settings');
     if (json != null) {
       try {
@@ -27,8 +36,24 @@ class AppSettingNotifier extends StateNotifier<AppSettingProps> {
 
   Future<void> update(AppSettingProps Function(AppSettingProps) updater) async {
     state = updater(state);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('app_settings', jsonEncode(state.toJson()));
+    try {
+      final prefs = await _getPrefs();
+      if (prefs != null) {
+        await prefs.setString('app_settings', jsonEncode(state.toJson()));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> resetAll() async {
+    state = const AppSettingProps();
+    try {
+      final prefs = await _getPrefs();
+      if (prefs != null) {
+        await prefs.remove('app_settings');
+        await prefs.remove('send_config');
+        await prefs.remove('receive_config');
+      }
+    } catch (_) {}
   }
 }
 
@@ -40,8 +65,17 @@ final themeSettingProvider =
 class ThemeSettingNotifier extends StateNotifier<ThemeProps> {
   ThemeSettingNotifier() : super(ThemeProps());
 
+  Future<SharedPreferences?> _getPrefs() async {
+    try {
+      return await SharedPreferences.getInstance();
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> load() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
+    if (prefs == null) return;
     final json = prefs.getString('theme_settings');
     if (json != null) {
       try {
@@ -55,7 +89,21 @@ class ThemeSettingNotifier extends StateNotifier<ThemeProps> {
 
   Future<void> update(ThemeProps Function(ThemeProps) updater) async {
     state = updater(state);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('theme_settings', jsonEncode(state.toJson()));
+    try {
+      final prefs = await _getPrefs();
+      if (prefs != null) {
+        await prefs.setString('theme_settings', jsonEncode(state.toJson()));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> resetToDefault() async {
+    state = const ThemeProps();
+    try {
+      final prefs = await _getPrefs();
+      if (prefs != null) {
+        await prefs.remove('theme_settings');
+      }
+    } catch (_) {}
   }
 }

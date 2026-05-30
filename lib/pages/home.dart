@@ -1,6 +1,7 @@
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/providers/providers.dart';
+import 'package:fl_croc/widgets/window_title_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,103 +17,110 @@ class HomePage extends StatelessWidget {
         final currentIndex =
             navigationItems.indexWhere((item) => item.label == currentLabel);
         final safeIndex = currentIndex >= 0 ? currentIndex : 0;
-        final isMobile = MediaQuery.of(context).size.width < maxMobileWidth;
+        final isNarrow = MediaQuery.of(context).size.width < maxMobileWidth;
 
-        if (isMobile) {
-          return Column(
-            children: [
-              Flexible(
-                flex: 1,
-                child: IndexedStack(
-                  index: safeIndex,
-                  children:
-                      navigationItems.map((e) => e.builder(context)).toList(),
-                ),
-              ),
-              NavigationBar(
-                destinations: navigationItems
-                    .map((e) => NavigationDestination(
-                          icon: e.icon,
-                          label: context.appLocalizations.pageLabel(e.label),
-                        ))
-                    .toList(),
-                onDestinationSelected: (index) =>
-                    appController.toPage(navigationItems[index].label),
-                selectedIndex: safeIndex,
-              ),
-            ],
-          );
-        }
-
-        // Desktop sidebar
-        final labelStyle = context.textTheme.labelMedium?.copyWith(
-          overflow: TextOverflow.ellipsis,
+        // ── Shared body: page content area ──
+        Widget pageBody = IndexedStack(
+          index: safeIndex,
+          children: navigationItems.map((e) => e.builder(context)).toList(),
         );
-        return Row(
-          children: [
-            Material(
-              color: context.colorScheme.surfaceContainer,
-              child: SafeArea(
-                child: SizedBox(
-                  width: 88,
-                  child: Column(
-                    children: [
+
+        // ── Wide: NavigationRail sidebar ──
+        if (!isNarrow) {
+          final labelStyle = context.textTheme.labelMedium?.copyWith(
+            overflow: TextOverflow.ellipsis,
+          );
+          final screenHeight = MediaQuery.of(context).size.height;
+          final showLogo = screenHeight >= 500; // hide logo when height is tight (e.g. landscape)
+
+          final rail = Material(
+            color: context.colorScheme.surfaceContainer,
+            child: SafeArea(
+              child: SizedBox(
+                width: 88,
+                child: Column(
+                  children: [
+                    if (showLogo) ...[
                       const SizedBox(height: 10),
                       Padding(
                         padding: const EdgeInsets.all(12),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(12),
                           child: Image.asset(
                             'assets/images/icon.png',
-                            width: 64,
-                            height: 64,
-                            errorBuilder: (_, _, _) => Icon(Icons.upload_file,
-                                size: 40, color: context.colorScheme.primary),
+                            width: 40, height: 40,
+                            errorBuilder: (_, _, _) => Icon(Icons.upload_file, size: 40, color: context.colorScheme.primary),
                           ),
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Expanded(
-                        child: NavigationRail(
-                          backgroundColor: Colors.transparent,
-                          selectedLabelTextStyle: labelStyle?.copyWith(
-                            color: context.colorScheme.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          unselectedLabelTextStyle: labelStyle?.copyWith(
-                            color: context.colorScheme.onSurface,
-                          ),
-                          destinations: navigationItems
-                              .map((e) => NavigationRailDestination(
-                                    icon: e.icon,
-                                    label: Text(
-                                      context.appLocalizations.pageLabel(e.label),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ))
-                              .toList(),
-                          onDestinationSelected: (index) =>
-                              appController.toPage(
-                                  navigationItems[index].label),
-                          selectedIndex: safeIndex,
-                          labelType: NavigationRailLabelType.all,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
                     ],
-                  ),
+                    Expanded(
+                      child: NavigationRail(
+                        backgroundColor: Colors.transparent,
+                        selectedLabelTextStyle: labelStyle?.copyWith(
+                          color: context.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        unselectedLabelTextStyle: labelStyle?.copyWith(
+                          color: context.colorScheme.onSurface,
+                        ),
+                        destinations: navigationItems
+                            .map((e) => NavigationRailDestination(
+                                  icon: e.icon,
+                                  label: Text(context.appLocalizations.pageLabel(e.label), overflow: TextOverflow.ellipsis),
+                                ))
+                            .toList(),
+                        onDestinationSelected: (index) => appController.toPage(navigationItems[index].label),
+                        selectedIndex: safeIndex,
+                        labelType: NavigationRailLabelType.all,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                 ),
               ),
             ),
-            const VerticalDivider(width: 1),
-            Expanded(
-              child: IndexedStack(
-                index: safeIndex,
-                children:
-                    navigationItems.map((e) => e.builder(context)).toList(),
-              ),
-            ),
-          ],
+          );
+          final wideBody = Row(children: [rail, Expanded(child: pageBody)]);
+          if (isDesktop) {
+            return Container(
+              color: context.colorScheme.surface,
+              child: Column(children: [
+                const WindowTitleBar(),
+                Expanded(child: wideBody),
+              ]),
+            );
+          }
+          return wideBody;
+        }
+
+        // ── Narrow: bottom NavigationBar ──
+        final navBar = NavigationBar(
+          destinations: navigationItems
+              .map((e) => NavigationDestination(
+                    icon: e.icon,
+                    label: context.appLocalizations.pageLabel(e.label),
+                  ))
+              .toList(),
+          onDestinationSelected: (index) =>
+              appController.toPage(navigationItems[index].label),
+          selectedIndex: safeIndex,
+        );
+        if (isDesktop) {
+          return Container(
+            color: context.colorScheme.surface,
+            child: Column(children: [
+              const WindowTitleBar(),
+              Expanded(child: pageBody),
+              SafeArea(child: navBar),
+            ]),
+          );
+        }
+        // Mobile: use Scaffold so keyboard / system bars are handled correctly
+        return Scaffold(
+          body: pageBody,
+          bottomNavigationBar: navBar,
         );
       },
     );

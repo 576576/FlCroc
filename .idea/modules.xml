@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="ProjectModuleManager">
-    <modules>
-      <module fileurl="file://$PROJECT_DIR$/fl_croc.iml" filepath="$PROJECT_DIR$/fl_croc.iml" />
-      <module fileurl="file://$PROJECT_DIR$/android/fl_croc_android.iml" filepath="$PROJECT_DIR$/android/fl_croc_android.iml" />
-    </modules>
-  </component>
-</project>

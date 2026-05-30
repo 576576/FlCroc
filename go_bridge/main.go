@@ -18,10 +18,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"unsafe"
 
 	"github.com/schollz/croc/v10/src/croc"
+	"github.com/schollz/croc/v10/src/models"
 	"github.com/schollz/croc/v10/src/utils"
 )
 
@@ -42,6 +45,8 @@ type progressEvent struct {
 	Speed           float64 `json:"speed"`
 	CodePhrase      string  `json:"code_phrase"`
 	Error           string  `json:"error"`
+	IsText          bool    `json:"is_text"`
+	TextContent     string  `json:"text_content"`
 }
 
 // ── Exported C API ──────────────────────────────────────────
@@ -106,8 +111,10 @@ func CrocPollProgress() *C.char {
 	select {
 	case ev, ok := <-progressChan:
 		if !ok {
+			// Channel closed — return completed sentinel.
 			progressChan = nil
-			return marshalEvent(nil)
+			closedEvent := progressEvent{Type: 2, TransferID: "closed"}
+			return marshalEvent(&closedEvent)
 		}
 		return marshalEvent(&ev)
 	default:
@@ -120,8 +127,7 @@ func CrocCancelTransfer(transferID *C.char) C.int {
 	mu.Lock()
 	defer mu.Unlock()
 	if activeClient != nil {
-		// croc.Client does not support cancellation natively;
-		// we rely on process kill from the Dart side
+		activeClient.Cancel()
 		return 1
 	}
 	return 0
@@ -157,9 +163,11 @@ func marshalEvent(ev *progressEvent) *C.char {
 }
 
 func doSend(paths []string, code string, opts sendOptions, transferID string) {
-	// Handle text mode: write text content to a temp file
-	if opts.SendingText && opts.TextContent != "" {
-		tmpFile, err := os.CreateTemp("", "flcroc-text-*.txt")
+	// Handle text mode: write text content to a temp file.
+	// croc recognises the "croc-stdin-" prefix as stdin/text content.
+	sendingText := opts.SendingText && opts.TextContent != ""
+	if sendingText {
+		tmpFile, err := os.CreateTemp("", "croc-stdin-*.txt")
 		if err != nil {
 			progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: fmt.Sprintf("temp file: %s", err)}
 			return
@@ -178,21 +186,52 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: "no files to send"}
 		return
 	}
+
+	// Use croc public relay defaults when no explicit address is configured.
+	// The vendored croc has been patched so the public-relay goroutine
+	// returns silently (instead of sending a spurious error) when both
+	// addresses are empty — so local relay and public relay coexist properly.
+	relayAddr := opts.RelayAddress
+	if relayAddr == "" {
+		relayAddr = models.DEFAULT_RELAY
+	}
+	relayAddr6 := opts.RelayAddress6
+	if relayAddr6 == "" {
+		relayAddr6 = models.DEFAULT_RELAY6
+	}
+	relayPass := opts.RelayPassword
+	if relayPass == "" {
+		relayPass = models.DEFAULT_PASSPHRASE
+	}
+	curve := opts.Curve
+	if curve == "" {
+		curve = defaultCurve
+	}
+	hashAlgo := opts.HashAlgorithm
+	if hashAlgo == "" {
+		hashAlgo = defaultHashAlgo
+	}
+
+	relayPorts := parseRelayPorts(opts.RelayPorts)
+
 	crocOpts := croc.Options{
 		IsSender:      true,
 		SharedSecret:  code,
 		Debug:         false,
-		RelayAddress:  opts.RelayAddress,
-		RelayPassword: opts.RelayPassword,
+		RelayAddress:  relayAddr,
+		RelayAddress6: relayAddr6,
+		RelayPorts:    relayPorts,
+		RelayPassword: relayPass,
 		NoPrompt:      true,
 		DisableLocal:  opts.DisableLocal,
 		OnlyLocal:     opts.OnlyLocal,
-		Curve:         opts.Curve,
-		HashAlgorithm: opts.HashAlgorithm,
+		Curve:         curve,
+		HashAlgorithm: hashAlgo,
 		NoCompress:    opts.NoCompress,
 		Overwrite:     opts.Overwrite,
 		ZipFolder:     opts.ZipFolder,
 		GitIgnore:     opts.GitIgnore,
+		SendingText:   sendingText,
 		Quiet:         true,
 	}
 
@@ -244,14 +283,38 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 }
 
 func doReceive(code string, opts receiveOptions, transferID string) {
+	relayAddr := opts.RelayAddress
+	if relayAddr == "" {
+		relayAddr = models.DEFAULT_RELAY
+	}
+	relayPass := opts.RelayPassword
+	if relayPass == "" {
+		relayPass = models.DEFAULT_PASSPHRASE
+	}
+	relayPorts := parseRelayPorts(opts.RelayPorts)
+
+	curve := opts.Curve
+	if curve == "" {
+		curve = defaultCurve
+	}
+
+	hashAlgo := opts.HashAlgorithm
+	if hashAlgo == "" {
+		hashAlgo = defaultHashAlgo
+	}
+
 	crocOpts := croc.Options{
 		IsSender:      false,
 		SharedSecret:  code,
 		Debug:         false,
-		RelayAddress:  opts.RelayAddress,
-		RelayPassword: opts.RelayPassword,
+		RelayAddress:  relayAddr,
+		RelayAddress6: models.DEFAULT_RELAY6,
+		RelayPorts:    relayPorts,
+		RelayPassword: relayPass,
 		NoPrompt:      true,
 		OnlyLocal:     opts.OnlyLocal,
+		Curve:         curve,
+		HashAlgorithm: hashAlgo,
 		Overwrite:     opts.Overwrite,
 		Quiet:         true,
 	}
@@ -277,7 +340,38 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		return
 	}
 
-	progressChan <- progressEvent{Type: 2, TransferID: transferID}
+	// Collect received file info
+	var totalSize int64
+	var fileNames []string
+	var isText bool
+	var textContent string
+
+	if c.Options.SendingText && len(c.FilesToTransfer) > 0 {
+		isText = true
+		f := c.FilesToTransfer[0]
+		filePath := filepath.Join(f.FolderRemote, f.Name)
+		data, err := os.ReadFile(filePath)
+		if err == nil {
+			textContent = string(data)
+		}
+	} else {
+		for _, f := range c.FilesToTransfer {
+			if f.Name != "" {
+				fileNames = append(fileNames, f.Name)
+				totalSize += f.Size
+			}
+		}
+	}
+
+	progressChan <- progressEvent{
+		Type:        2,
+		TransferID:  transferID,
+		TotalFiles:  len(fileNames),
+		TotalSize:   totalSize,
+		CurrentFile: strings.Join(fileNames, "\n"),
+		IsText:      isText,
+		TextContent: textContent,
+	}
 }
 
 // ── Option types (mirror Dart models) ────────────────────────
@@ -293,18 +387,58 @@ type sendOptions struct {
 	OnlyLocal     bool     `json:"only_local"`
 	DisableLocal  bool     `json:"disable_local"`
 	RelayAddress  string   `json:"relay_address"`
+	RelayAddress6 string   `json:"relay_address6"`
 	RelayPassword string   `json:"relay_password"`
+	RelayPorts    string   `json:"relay_ports"`
 	Exclude       []string `json:"exclude"`
 	SendingText   bool     `json:"sending_text"`
 	TextContent   string   `json:"text_content"`
 }
 
 type receiveOptions struct {
+	Curve         string `json:"curve"`
+	HashAlgorithm string `json:"hash_algorithm"`
 	Overwrite     bool   `json:"overwrite"`
 	OnlyLocal     bool   `json:"only_local"`
 	OutputPath    string `json:"output_path"`
 	RelayAddress  string `json:"relay_address"`
+	RelayAddress6 string `json:"relay_address6"`
 	RelayPassword string `json:"relay_password"`
+	RelayPorts    string `json:"relay_ports"`
 }
+
+// parseRelayPorts parses comma-separated port string into []string.
+// Falls back to default port range if empty or invalid.
+func parseRelayPorts(raw string) []string {
+	if raw == "" {
+		return defaultRelayPorts()
+	}
+	parts := strings.Split(raw, ",")
+	var ports []string
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			ports = append(ports, p)
+		}
+	}
+	if len(ports) == 0 {
+		return defaultRelayPorts()
+	}
+	return ports
+}
+
+// defaultRelayPorts returns the default relay port range matching croc CLI defaults.
+func defaultRelayPorts() []string {
+	const startPort = 9009
+	const numPorts = 5 // transfers (4) + 1
+	ports := make([]string, numPorts)
+	for i := 0; i < numPorts; i++ {
+		ports[i] = fmt.Sprintf("%d", startPort+i)
+	}
+	return ports
+}
+
+const defaultCurve = "p256"
+const defaultHashAlgo = "xxhash"
 
 func main() {} // required for c-shared builds

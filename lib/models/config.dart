@@ -7,10 +7,8 @@ part 'config.freezed.dart';
 part 'config.g.dart';
 
 const List<DashboardWidget> defaultDashboardWidgets = [
-  DashboardWidget.transferSpeed,
-  DashboardWidget.totalTransferred,
-  DashboardWidget.quickSend,
-  DashboardWidget.quickReceive,
+  DashboardWidget.quickTransfer,
+  DashboardWidget.transferStats,
   DashboardWidget.recentTransfers,
 ];
 
@@ -31,6 +29,7 @@ abstract class AppSettingProps with _$AppSettingProps {
     @Default(false) bool developerMode,
     @Default(false) bool autoCheckUpdate,
     @Default(RelayConfig()) RelayConfig relayConfig,
+    @Default('') String defaultSavePath,
   }) = _AppSettingProps;
 
   factory AppSettingProps.fromJson(Map<String, Object?> json) =>

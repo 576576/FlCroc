@@ -33,11 +33,9 @@ enum FunctionTag {
 }
 
 enum DashboardWidget {
-  transferSpeed,
-  totalTransferred,
-  quickSend,
-  quickReceive,
+  transferStats,
+  quickTransfer,
   recentTransfers,
 }
 
-enum RelayType { defaultRelay, customRelay }
+enum RelayType { defaultRelay, customRelay, noRelay }

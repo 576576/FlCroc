@@ -1,8 +1,8 @@
-name: Build All Platforms
+name: Build
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, dev]
     tags: ['v*']
   pull_request:
     branches: [main, master]
@@ -16,97 +16,208 @@ env:
   GO_VERSION: '1.25'
 
 jobs:
-  # ---- Test ----
+  # ── Prebuild: submodule update + platform detection + branch detection ──
+  prebuild:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      windows: ${{ steps.platform.outputs.windows }}
+      linux: ${{ steps.platform.outputs.linux }}
+      android: ${{ steps.platform.outputs.android }}
+      is_main: ${{ steps.branch.outputs.is_main }}
+      is_tag: ${{ steps.branch.outputs.is_tag }}
+      do_release: ${{ steps.ver.outputs.do_release }}
+      release_version: ${{ steps.ver.outputs.release_version }}
+      release_tag: ${{ steps.ver.outputs.release_tag }}
+      release_name: ${{ steps.ver.outputs.release_name }}
+      nightly_version: ${{ steps.ver.outputs.nightly_version }}
+      nightly_date: ${{ steps.ver.outputs.nightly_date }}
+      synced_version: ${{ steps.ver.outputs.synced_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Determine branch
+        id: branch
+        run: |
+          REF="${{ github.ref }}"
+          if [[ "$REF" == refs/tags/* ]]; then
+            echo "is_main=true" >> $GITHUB_OUTPUT
+            echo "is_tag=true" >> $GITHUB_OUTPUT
+          elif [[ "$REF" == refs/heads/main ]] || [[ "$REF" == refs/heads/master ]]; then
+            echo "is_main=true" >> $GITHUB_OUTPUT
+            echo "is_tag=false" >> $GITHUB_OUTPUT
+          else
+            echo "is_main=false" >> $GITHUB_OUTPUT
+            echo "is_tag=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Sync version & detect release
+        id: ver
+        if: steps.branch.outputs.is_tag == 'false'
+        env:
+          MSG: ${{ github.event.head_commit.message || '' }}
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          CUR_VER=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
+          echo "do_release=false" >> $GITHUB_OUTPUT
+
+          if echo "$MSG" | grep -qE '^(r|release|beta)-[0-9]+\.[0-9]+\.[0-9]+'; then
+            # ── Release / Beta ──
+            PREFIX=$(echo "$MSG" | grep -oE '^(r|release|beta)' | head -1)
+            VER=$(echo "$MSG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+            case "$PREFIX" in
+              beta)
+                NEW_VERSION="${VER}b"
+                TAG="v${VER}b"
+                REL_NAME="FlCroc Beta $VER"
+                ;;
+              *)
+                NEW_VERSION="$VER"
+                TAG="v$VER"
+                REL_NAME="FlCroc $VER"
+                ;;
+            esac
+            echo "Syncing release version: $NEW_VERSION"
+            echo "do_release=true" >> $GITHUB_OUTPUT
+            echo "release_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+            echo "release_tag=$TAG" >> $GITHUB_OUTPUT
+            echo "release_name=$REL_NAME" >> $GITHUB_OUTPUT
+            echo "synced_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+            sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add pubspec.yaml
+            git diff --cached --quiet && exit 0
+            git commit -m "sync-ver: $NEW_VERSION [skip ci]"
+            git push
+          else
+            # ── Non-release: increment build number (only if a build job will run) ──
+            # Check if any platform build trigger is in the commit message
+            if ! echo "$MSG" | grep -qE '\b(b-win|b-linux|b-mobile|b-all)\b'; then
+              echo "No build trigger in commit message, skip version sync"
+              echo "nightly_version=${CUR_VER}" >> $GITHUB_OUTPUT
+              echo "nightly_date=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
+              echo "synced_version=${CUR_VER}" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            BASE=$(echo "$CUR_VER" | sed -E 's/(b?)\+.*//' | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+b?')
+            if [ -z "$BASE" ]; then BASE="$CUR_VER"; fi
+            CUR_BUILD=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}' | grep -oE '\+[0-9]+$' | tr -d '+')
+            CUR_BUILD=${CUR_BUILD:-0}
+            NEW_BUILD=$((CUR_BUILD + 1))
+            NEW_VERSION="${BASE}+${NEW_BUILD}"
+            NIGHTLY_DATE=$(date +%Y%m%d)
+            echo "Syncing dev version: $NEW_VERSION (build $CUR_BUILD → $NEW_BUILD)"
+            echo "nightly_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+            echo "nightly_date=$NIGHTLY_DATE" >> $GITHUB_OUTPUT
+            echo "synced_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+            sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add pubspec.yaml
+            git diff --cached --quiet && exit 0
+            git commit -m "sync-ver: $NEW_VERSION [skip ci]"
+            git push
+          fi
+
+      - name: Update submodule to latest croc
+        run: |
+          cd submodules/croc
+          for i in 1 2 3; do
+            echo "Attempt $i..."
+            git fetch --tags --depth 1 && break
+            sleep $((i * 5))
+          done || echo "⚠️ Fetch failed — using existing submodule ref"
+          latest=$(git tag -l 'v*' --sort=-v:refname | head -1)
+          if [ -n "$latest" ]; then
+            git checkout "$latest" 2>/dev/null || echo "⚠️ Checkout failed — using existing ref"
+          fi
+          cd ../..
+          find submodules/croc -name '*_test.go' -delete
+
+      - name: Determine platforms
+        id: platform
+        env:
+          MSG: ${{ github.event.head_commit.message || '' }}
+          IS_TAG: ${{ steps.branch.outputs.is_tag }}
+        run: |
+          W='false'; L='false'; A='false'
+          if [ "$IS_TAG" = "true" ]; then
+            W='true'; L='true'; A='true'
+          else
+            case "$MSG" in
+              *b-win*)    W='true' ;;
+              *b-linux*)  L='true' ;;
+              *b-mobile*) A='true' ;;
+              *b-all*)    W='true'; L='true'; A='true' ;;
+            esac
+          fi
+          echo "windows=$W" >> $GITHUB_OUTPUT
+          echo "linux=$L" >> $GITHUB_OUTPUT
+          echo "android=$A" >> $GITHUB_OUTPUT
+          echo "Platforms → windows:$W linux:$L android:$A"
+
+  # ── Test ──
   test:
+    needs: prebuild
+    if: always() && !failure() && !cancelled()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          submodules: 'recursive'
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
-
       - name: Install dependencies
         run: flutter pub get
-
       - name: Run tests
         run: flutter test
 
-  # ---- Android ARM64-v8a APK ----
-  build-android:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-
-      - name: Setup Android NDK
-        uses: nttld/setup-ndk@v1
-        with:
-          ndk-version: r27c
-          add-to-path: false
-
-      - name: Build croc bridge (.so) for Android ARM64
-        run: |
-          cd go_bridge
-          go mod tidy
-          export ANDROID_NDK_HOME="${ANDROID_NDK_ROOT:-$ANDROID_NDK}"
-          export TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
-          export CC="$TOOLCHAIN/bin/aarch64-linux-android21-clang"
-          export CGO_ENABLED=1
-          export GOOS=android
-          export GOARCH=arm64
-          mkdir -p ../android/app/src/main/jniLibs/arm64-v8a
-          go build -buildmode=c-shared \
-            -o ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so \
-            -ldflags="-s -w" .
-
-      - name: Verify .so
-        run: ls -lh android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so
-
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
-      - name: Install Flutter dependencies
-        run: flutter pub get
-
-      - name: Get version
-        id: ver
-        run: echo "version=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)" >> $GITHUB_OUTPUT
-
-      - name: Build APK
-        run: flutter build apk --release --target-platform android-arm64
-
-      - name: Rename artifact
-        run: mv build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.version }}-android-arm64.apk
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: FlCroc-${{ steps.ver.outputs.version }}-android-arm64
-          path: FlCroc-${{ steps.ver.outputs.version }}-android-arm64.apk
-
-  # ---- Windows AMD64 ----
+  # ── Windows ──
   build-windows:
-    needs: test
+    needs: [test, prebuild]
+    if: needs.prebuild.outputs.windows == 'true'
     runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
     defaults:
       run:
         shell: pwsh
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+
+      - name: Pull latest (include version sync from prebuild)
+        if: needs.prebuild.outputs.is_tag != 'true'
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: Get short SHA
+        id: sha
+        run: echo "sha=$(git rev-parse --short HEAD)" >> $env:GITHUB_OUTPUT
+
+      - name: Get version
+        id: ver
+        env:
+          IS_TAG: ${{ needs.prebuild.outputs.is_tag }}
+          SYNCED_VER: ${{ needs.prebuild.outputs.synced_version }}
+        run: |
+          if ($env:IS_TAG -eq 'true') {
+            $v = (Get-Content pubspec.yaml | Where-Object { $_ -match '^version:' } | Select-Object -First 1) -replace '^version:\s+(\S+).*', '$1'
+          } else {
+            $v = $env:SYNCED_VER
+          }
+          echo "version=$v" >> $env:GITHUB_OUTPUT
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -119,9 +230,9 @@ jobs:
           go mod tidy
           $env:CGO_ENABLED = "1"
           $env:GOOS = "windows"
-          $env:GOARCH = "amd64"
+          $env:GOARCH = "${{ matrix.arch }}"
           $env:CC = "gcc"
-          go build -buildmode=c-shared -ldflags="-s -w" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
+          go build -buildmode=c-shared -ldflags="-s -w -H windowsgui" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
           Pop-Location
 
       - name: Verify .dll
@@ -140,58 +251,97 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
 
-      - name: Get version
-        id: ver
-        run: echo "version=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)" >> $env:GITHUB_OUTPUT
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
 
       - name: Build Windows
-        run: flutter build windows --release
+        run: |
+          if ("${{ matrix.arch }}" -eq "arm64") {
+            flutter build windows --release --target-platform windows-arm64
+          } else {
+            flutter build windows --release
+          }
 
       - name: Bundle bridge .dll into build output
         run: |
-          $outDir = "build\windows\x64\runner\Release"
+          $outDir = "build\windows\${{ matrix.arch == 'arm64' && 'arm64' || 'x64' }}\runner\Release"
           Copy-Item "windows\runner\libcroc_bridge.dll" "$outDir\libcroc_bridge.dll" -Force
-          Write-Host "Bundled bridge .dll into $outDir"
 
       - name: Package zip
-        run: Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip
+        run: |
+          $srcDir = "build\windows\${{ matrix.arch == 'arm64' && 'arm64' || 'x64' }}\runner\Release"
+          Compress-Archive -Path "$srcDir\*" -DestinationPath FlCroc-${{ steps.ver.outputs.version }}-windows-${{ matrix.arch }}.zip
+
+      - name: Setup Inno Setup
+        if: matrix.arch == 'amd64'
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer (amd64 only)
+        if: matrix.arch == 'amd64'
+        run: |
+          iscc windows\installer\setup.iss /DAppVersion=${{ steps.ver.outputs.version }}
+          Move-Item "FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer.exe" -Destination . -Force
+          Get-Item "FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer.exe"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64
-          path: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip
+          name: FlCroc-${{ steps.ver.outputs.version }}-windows-${{ matrix.arch }}
+          path: FlCroc-${{ steps.ver.outputs.version }}-windows-${{ matrix.arch }}.zip
 
-  # ---- Linux AMD64 ----
+      - uses: actions/upload-artifact@v4
+        if: matrix.arch == 'amd64'
+        with:
+          name: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer
+          path: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer.exe
+
+  # ── Linux ──
   build-linux:
-    needs: test
+    needs: [test, prebuild]
+    if: needs.prebuild.outputs.linux == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+
+      - name: Pull latest (include version sync from prebuild)
+        if: needs.prebuild.outputs.is_tag != 'true'
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: Get short SHA
+        id: sha
+        run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Get version
+        id: ver
+        env:
+          IS_TAG: ${{ needs.prebuild.outputs.is_tag }}
+          SYNCED_VER: ${{ needs.prebuild.outputs.synced_version }}
+        run: |
+          if [ "$IS_TAG" = "true" ]; then
+            echo "version=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)" >> $GITHUB_OUTPUT
+          else
+            echo "version=$SYNCED_VER" >> $GITHUB_OUTPUT
+          fi
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
 
+      - name: Install Linux deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
       - name: Build Go bridge (.so)
         run: |
           cd go_bridge
           go mod tidy
           CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
-            go build -buildmode=c-shared -ldflags="-s -w" -o /tmp/libcroc_bridge.so .
-          mkdir -p "$GITHUB_WORKSPACE/linux/flutter/ephemeral"
-          cp /tmp/libcroc_bridge.so "$GITHUB_WORKSPACE/linux/flutter/ephemeral/libcroc_bridge.so"
-
-      - name: Verify .so
-        run: |
-          ls -lh linux/flutter/ephemeral/libcroc_bridge.so
-          file linux/flutter/ephemeral/libcroc_bridge.so
-
-      - name: Install Linux build deps
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq clang cmake ninja-build pkg-config \
-            libgtk-3-dev liblzma-dev
+            go build -buildmode=c-shared -ldflags="-s -w" -o ../linux/flutter/ephemeral/libcroc_bridge.so .
+          cd ..
 
       - uses: subosito/flutter-action@v2
         with:
@@ -201,9 +351,8 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
 
-      - name: Get version
-        id: ver
-        run: echo "version=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)" >> $GITHUB_OUTPUT
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
 
       - name: Build Linux
         run: flutter build linux --release
@@ -211,79 +360,245 @@ jobs:
       - name: Bundle bridge .so into build output
         run: |
           mkdir -p build/linux/x64/release/bundle/lib
-          cp linux/flutter/ephemeral/libcroc_bridge.so build/linux/x64/release/bundle/lib/libcroc_bridge.so
+          cp linux/flutter/ephemeral/libcroc_bridge.so build/linux/x64/release/bundle/lib/
 
-      - name: Create .deb package
-        run: |
-          APPNAME=flcroc
-          VERSION=${{ steps.ver.outputs.version }}
-          DEB_NAME="FlCroc-${VERSION}-linux-amd64.deb"
-          PKG_DIR="build/linux_deb/${APPNAME}_${VERSION}_amd64"
-          mkdir -p "${PKG_DIR}/DEBIAN" "${PKG_DIR}/opt/${APPNAME}" "${PKG_DIR}/usr/share/applications" "${PKG_DIR}/usr/local/bin"
-          cp -r build/linux/x64/release/bundle/* "${PKG_DIR}/opt/${APPNAME}/"
-          chmod +x "${PKG_DIR}/opt/${APPNAME}/fl_croc"
-          cat > "${PKG_DIR}/DEBIAN/control" << EOF
-          Package: flcroc
-          Version: ${VERSION}
-          Section: utils
-          Priority: optional
-          Architecture: amd64
-          Maintainer: FlCroc Team
-          Description: FlCroc - GUI client for croc file transfer
-           A cross-platform Flutter GUI for croc, enabling easy and secure
-           file transfers between computers with Material 3 design.
-          EOF
-          cat > "${PKG_DIR}/usr/share/applications/flcroc.desktop" << 'DESKTOP'
-          [Desktop Entry]
-          Name=FlCroc
-          Comment=Secure file transfer GUI
-          Exec=/opt/flcroc/fl_croc
-          Icon=flcroc
-          Terminal=false
-          Type=Application
-          Categories=Utility;Network;
-          DESKTOP
-          ln -s "/opt/${APPNAME}/fl_croc" "${PKG_DIR}/usr/local/bin/flcroc"
-          dpkg-deb --build "${PKG_DIR}"
-          mv "${PKG_DIR}.deb" "${DEB_NAME}"
+      - name: Package tar
+        run: tar -czf FlCroc-${{ steps.ver.outputs.version }}-linux-amd64.tar.gz -C build/linux/x64/release/bundle .
 
       - uses: actions/upload-artifact@v4
         with:
           name: FlCroc-${{ steps.ver.outputs.version }}-linux-amd64
-          path: FlCroc-${{ steps.ver.outputs.version }}-linux-amd64.deb
+          path: FlCroc-${{ steps.ver.outputs.version }}-linux-amd64.tar.gz
 
-  # ---- Release (on tag push) ----
-  release:
-    needs: [build-android, build-windows, build-linux]
-    if: startsWith(github.ref, 'refs/tags/v')
+  # ── Android ──
+  build-android:
+    needs: [test, prebuild]
+    if: needs.prebuild.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+
+      - name: Pull latest (include version sync from prebuild)
+        if: needs.prebuild.outputs.is_tag != 'true'
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: Get short SHA
+        id: sha
+        run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Get version
+        id: ver
+        env:
+          IS_TAG: ${{ needs.prebuild.outputs.is_tag }}
+          SYNCED_VER: ${{ needs.prebuild.outputs.synced_version }}
+        run: |
+          if [ "$IS_TAG" = "true" ]; then
+            echo "version=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)" >> $GITHUB_OUTPUT
+          else
+            echo "version=$SYNCED_VER" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Setup Android NDK
+        id: ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r27c
+          add-to-path: false
+
+      - name: Build Go bridge for Android (.so)
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: |
+          mkdir -p android/app/src/main/jniLibs/arm64-v8a
+          cd go_bridge
+          go mod tidy
+          export HOST_TAG=linux-x86_64
+          export CC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/${HOST_TAG}/bin/aarch64-linux-android21-clang"
+          CGO_ENABLED=1 GOOS=android GOARCH=arm64 \
+            go build -buildmode=c-shared -ldflags="-s -w" \
+            -o ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so .
+          cd ..
+          echo "✓ Go bridge built for Android ARM64"
+          file android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
+
+      - name: Patch Android plugin registrant (catch Error too)
+        run: |
+          FILE=android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+          sed -i 's/catch (Exception e)/catch (Throwable e)/g' "$FILE"
+          rm -rf android/app/src/main/kotlin/com
+
+      - name: Build Android
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: flutter build apk --release --target-platform android-arm64
+
+      - name: Rename artifact
+        run: mv build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.version }}-android-arm64.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FlCroc-${{ steps.ver.outputs.version }}-android-arm64
+          path: FlCroc-${{ steps.ver.outputs.version }}-android-arm64.apk
+
+  # ── Nightly release (dev branch) ──
+  nightly:
+    needs: [prebuild, build-windows, build-linux, build-android]
+    if: |
+      always() && !failure() && !cancelled() &&
+      needs.prebuild.outputs.do_release == 'false' &&
+      (needs.build-windows.result != 'skipped' ||
+       needs.build-linux.result != 'skipped' ||
+       needs.build-android.result != 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
 
-      - name: Determine version
+      - name: Get short SHA
+        id: sha
+        run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Get nightly version
+        id: ver
+        env:
+          NIGHTLY_VER: ${{ needs.prebuild.outputs.nightly_version }}
+          NIGHTLY_DATE: ${{ needs.prebuild.outputs.nightly_date }}
+        run: |
+          echo "version=$NIGHTLY_VER" >> $GITHUB_OUTPUT
+          echo "title=Nightly $NIGHTLY_VER $NIGHTLY_DATE" >> $GITHUB_OUTPUT
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: find artifacts -type f -ls
+
+      - name: Build release body
+        id: body
+        env:
+          MSG: ${{ github.event.head_commit.message || '' }}
+          TITLE: ${{ steps.ver.outputs.title }}
+        run: |
+          BODY="## $TITLE
+
+          **Commit**: \`${{ steps.sha.outputs.sha }}\`
+
+          > $MSG
+
+          > ⚠️ This is an automated dev-branch build. May be unstable.
+
+          ### Downloads"
+          for f in artifacts/FlCroc-*; do
+            fname=$(basename "$f")
+            case "$fname" in
+              *windows*) icon="🪟 Windows" ;;
+              *linux*)   icon="🐧 Linux" ;;
+              *android*) icon="🤖 Android" ;;
+              *)         icon="📦" ;;
+            esac
+            BODY="$BODY"$'\n'"- $icon | \`$fname\`"
+          done
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Delete existing nightly release
+        run: |
+          if gh release view "nightly" &>/dev/null; then
+            echo "Deleting existing nightly release"
+            gh release delete "nightly" --yes --cleanup-tag
+          else
+            echo "No existing nightly release"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: ${{ steps.ver.outputs.title }}
+          body: ${{ steps.body.outputs.body }}
+          files: |
+            artifacts/FlCroc-*
+          draft: false
+          prerelease: true
+          make_latest: false
+
+  # ── Production release (manual tag push or auto from release/beta commit) ──
+  release:
+    needs: [prebuild, build-android, build-windows, build-linux]
+    if: |
+      always() && !failure() && !cancelled() &&
+      (startsWith(github.ref, 'refs/tags/v') ||
+       needs.prebuild.outputs.do_release == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Resolve version info
         id: version
         run: |
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          echo "Commit message: $COMMIT_MSG"
-
-          if echo "$COMMIT_MSG" | grep -qE '^release-[0-9]+\.[0-9]+\.[0-9]+'; then
-            VERSION=$(echo "$COMMIT_MSG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "tag=v$VERSION" >> $GITHUB_OUTPUT
-            echo "release_name=FlCroc $VERSION" >> $GITHUB_OUTPUT
-          elif echo "$COMMIT_MSG" | grep -qE '^beta-[0-9]+\.[0-9]+\.[0-9]+'; then
-            VERSION=$(echo "$COMMIT_MSG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "tag=v$VERSION-beta" >> $GITHUB_OUTPUT
-            echo "release_name=FlCroc Beta $VERSION" >> $GITHUB_OUTPUT
+          # Prefer prebuild outputs (from release/beta commit)
+          if [ "${{ needs.prebuild.outputs.do_release }}" = "true" ]; then
+            echo "version=${{ needs.prebuild.outputs.release_version }}" >> $GITHUB_OUTPUT
+            echo "tag=${{ needs.prebuild.outputs.release_tag }}" >> $GITHUB_OUTPUT
+            echo "release_name=${{ needs.prebuild.outputs.release_name }}" >> $GITHUB_OUTPUT
           else
-            VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            TAG_NAME="${{ github.ref_name }}"
-            echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
-            echo "release_name=FlCroc $VERSION" >> $GITHUB_OUTPUT
+            # Manual tag push: parse from commit or pubspec
+            COMMIT_MSG=$(git log -1 --pretty=%B)
+            if echo "$COMMIT_MSG" | grep -qE '^r-[0-9]+\.[0-9]+\.[0-9]+'; then
+              VERSION=$(echo "$COMMIT_MSG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+              echo "version=$VERSION" >> $GITHUB_OUTPUT
+              echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+              echo "release_name=FlCroc $VERSION" >> $GITHUB_OUTPUT
+            elif echo "$COMMIT_MSG" | grep -qE '^beta-[0-9]+\.[0-9]+\.[0-9]+'; then
+              VERSION=$(echo "$COMMIT_MSG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+              echo "version=$VERSION" >> $GITHUB_OUTPUT
+              echo "tag=v$VERSION-beta" >> $GITHUB_OUTPUT
+              echo "release_name=FlCroc Beta $VERSION" >> $GITHUB_OUTPUT
+            else
+              VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
+              echo "version=$VERSION" >> $GITHUB_OUTPUT
+              echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+              echo "release_name=FlCroc $VERSION" >> $GITHUB_OUTPUT
+            fi
           fi
 
       - uses: actions/download-artifact@v4
@@ -306,8 +621,10 @@ jobs:
             ### Downloads
             | Platform | File |
             |----------|------|
-            | 🪟 Windows | `FlCroc-${{ steps.version.outputs.version }}-windows-amd64.zip` |
-            | 🐧 Linux | `FlCroc-${{ steps.version.outputs.version }}-linux-amd64.deb` |
+            | 🪟 Windows x64 | `FlCroc-${{ steps.version.outputs.version }}-windows-amd64.zip` |
+            | 🪟 Windows ARM64 | `FlCroc-${{ steps.version.outputs.version }}-windows-arm64.zip` |
+            | 💿 Windows Installer | `FlCroc-${{ steps.version.outputs.version }}-windows-amd64-installer.exe` |
+            | 🐧 Linux | `FlCroc-${{ steps.version.outputs.version }}-linux-amd64.tar.gz` |
             | 🤖 Android | `FlCroc-${{ steps.version.outputs.version }}-android-arm64.apk` |
 
             ### What's Changed
@@ -315,7 +632,9 @@ jobs:
           files: |
             artifacts/FlCroc-*-android-arm64.apk
             artifacts/FlCroc-*-windows-amd64.zip
-            artifacts/FlCroc-*-linux-amd64.deb
+            artifacts/FlCroc-*-windows-arm64.zip
+            artifacts/FlCroc-*-windows-amd64-installer.exe
+            artifacts/FlCroc-*-linux-amd64.tar.gz
           draft: false
           generate_release_notes: true
           make_latest: true

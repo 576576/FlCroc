@@ -1,12 +1,17 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/core/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
+import 'package:fl_croc/l10n/l10n.dart';
 import 'package:fl_croc/models/models.dart';
+import 'package:fl_croc/providers/providers.dart';
+import 'package:fl_croc/state.dart';
 import 'package:fl_croc/widgets/widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:gscankit/gscankit.dart';
 
 class ReceiveView extends ConsumerStatefulWidget {
   const ReceiveView({super.key});
@@ -17,10 +22,44 @@ class ReceiveView extends ConsumerStatefulWidget {
 
 class _ReceiveViewState extends ConsumerState<ReceiveView> {
   final _codeController = TextEditingController();
+  final _scrollCtrl = ScrollController();
   bool _isReceiving = false;
   ReceiveConfig _receiveConfig = const ReceiveConfig();
 
+  ReceivePhase _phase = ReceivePhase.idle;
+
+  // Received content tracking
+  final List<FileItem> _receivedFiles = [];
+  int _selectedTab = 0; // 0=files, 1=text
+  final _receivedTextController = TextEditingController();
+  String _effectiveOutputPath = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReceivePrefs();
+  }
+
+  // ── Persistence ──
+
+  static const _prefReceiveConfig = 'receive_config';
+
+  void _loadReceivePrefs() {
+    final json = AppPrefs.getJson(_prefReceiveConfig);
+    if (json.isNotEmpty) {
+      _receiveConfig = ReceiveConfig.fromJson(json);
+    }
+  }
+
+  void _saveReceivePrefs() {
+    AppPrefs.setJson(_prefReceiveConfig, _receiveConfig.toJson());
+  }
+
   void _openScanner() async {
+    if (isDesktop) {
+      if (mounted) context.showSnackBar(context.appLocalizations.scanMobileOnly);
+      return;
+    }
     final result = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (_) => const _QRScannerPage(),
@@ -30,17 +69,48 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
       _codeController.text = result;
     }
   }
+
+  void _pastePhrase() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (data?.text != null && data!.text!.isNotEmpty) {
+      _codeController.text = data.text!;
+    }
+  }
+
+  String _defaultDownloadDir() => AppPaths.savePathSync;
+
+  Future<void> _pickReceivePath() async {
+    final result = await FilePicker.platform.getDirectoryPath();
+    if (result != null && mounted) {
+      setState(() {
+        _receiveConfig = _receiveConfig.copyWith(outputPath: result);
+        _saveReceivePrefs();
+      });
+    }
+  }
   void _startReceive() {
     final code = _codeController.text.trim();
     if (code.isEmpty) return;
+    final l10n = context.appLocalizations;
 
-    setState(() => _isReceiving = true);
+    if (!coreController.isAvailable) {
+      context.showSnackBar(l10n.noCrocBackend);
+      return;
+    }
+
+    setState(() {
+      _isReceiving = true;
+      _phase = ReceivePhase.pending;
+      _receivedFiles.clear();
+      _receivedTextController.clear();
+      _selectedTab = 0;
+    });
 
     final record = TransferRecord(
       id: appController.generateId(),
       direction: TransferDirection.received,
       status: TransferStatus.transferring,
-      files: [const FileItem(name: 'Receiving...', path: '', size: 0)],
+      files: [FileItem(name: l10n.receiving, path: '', size: 0)],
       totalSize: 0,
       startTime: DateTime.now(),
       codePhrase: code,
@@ -48,35 +118,95 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
 
     appController.addTransferRecord(record);
 
+    final relayConfig = ref.read(appSettingProvider).relayConfig;
+    final useNoRelay = relayConfig.type == RelayType.noRelay;
+    final useCustom = relayConfig.type == RelayType.customRelay;
+
+    // Resolve effective output path
+    final effectivePath = _receiveConfig.outputPath.isNotEmpty
+        ? _receiveConfig.outputPath
+        : (ref.read(appSettingProvider).defaultSavePath.isNotEmpty
+            ? ref.read(appSettingProvider).defaultSavePath
+            : _defaultDownloadDir());
+    _effectiveOutputPath = effectivePath;
+
     final options = ReceiveOptions(
       codePhrase: code,
       overwrite: _receiveConfig.overwrite,
-      onlyLocal: _receiveConfig.onlyLocal,
-      outputPath: _receiveConfig.outputPath,
+      onlyLocal: useNoRelay,
+      outputPath: effectivePath,
+      relayAddress: useCustom ? relayConfig.address : null,
+      relayPassword: useCustom ? relayConfig.password : null,
+      relayPorts: useCustom ? relayConfig.port : null,
     );
 
     coreController.receiveFiles(options).listen(
       (progress) {
         if (!mounted) return;
         switch (progress.status) {
+          case TransferProgressStatus.initializing:
+          case TransferProgressStatus.connecting:
+            if (mounted) setState(() { _phase = ReceivePhase.receiving; });
+            break;
           case TransferProgressStatus.transferring:
+            if (_phase == ReceivePhase.pending) setState(() { _phase = ReceivePhase.receiving; });
             appController.updateTransferRecord(
               record.copyWith(
                 status: TransferStatus.transferring,
                 transferredSize: progress.transferredSize,
               ),
             );
+            if (mounted) setState(() {});
           case TransferProgressStatus.completed:
-            setState(() => _isReceiving = false);
-            appController.updateTransferRecord(
-              record.copyWith(
-                status: TransferStatus.completed,
-                transferredSize: progress.totalSize,
-                endTime: DateTime.now(),
-              ),
-            );
+            if (progress.isText) {
+              _receivedTextController.text = progress.textContent;
+              _receivedFiles.clear();
+              _selectedTab = 1;
+              setState(() { _isReceiving = false; _phase = ReceivePhase.completed; });
+              appController.updateTransferRecord(
+                record.copyWith(
+                  status: TransferStatus.completed,
+                  totalSize: progress.textContent.length,
+                  endTime: DateTime.now(),
+                ),
+              );
+            } else {
+              // Parse file names from the completed event
+              final fileNames = progress.currentFile.isNotEmpty
+                  ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
+                  : <String>[];
+              final fileItems = fileNames.map((n) => FileItem(
+                name: n,
+                path: '$_effectiveOutputPath/$n',
+                size: fileNames.length == 1 ? progress.totalSize : 0,
+              )).toList();
+
+              _receivedFiles.clear();
+              _receivedFiles.addAll(fileItems);
+              _receivedTextController.clear();
+              if (fileItems.isNotEmpty) {
+                _selectedTab = 0;
+                // Android: export to Downloads via MediaStore
+                if (isAndroid) {
+                  for (final f in fileItems) {
+                    AppPaths.exportToDownloads(f.path);
+                  }
+                }
+              }
+              setState(() { _isReceiving = false; _phase = ReceivePhase.completed; });
+
+              appController.updateTransferRecord(
+                record.copyWith(
+                  status: TransferStatus.completed,
+                  transferredSize: progress.totalSize,
+                  totalSize: progress.totalSize,
+                  files: fileItems.isEmpty ? [const FileItem(name: 'file', path: '', size: 0)] : fileItems,
+                  endTime: DateTime.now(),
+                ),
+              );
+            }
           case TransferProgressStatus.failed:
-            setState(() => _isReceiving = false);
+            setState(() { _isReceiving = false; _phase = ReceivePhase.failed; });
             appController.updateTransferRecord(
               record.copyWith(
                 status: TransferStatus.failed,
@@ -84,7 +214,10 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
               ),
             );
             if (progress.error != null && mounted) {
-              context.showSnackBar(progress.error!);
+              final errMsg = progress.error == CoreController.noBackendError
+                  ? l10n.noCrocBackend
+                  : l10n.localizeCrocError(progress.error!);
+              context.showSnackBar(errMsg);
             }
           case TransferProgressStatus.cancelled:
             setState(() => _isReceiving = false);
@@ -94,15 +227,17 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                 endTime: DateTime.now(),
               ),
             );
-          case TransferProgressStatus.initializing:
-          case TransferProgressStatus.connecting:
-            break;
-        }
+          }
       },
       onError: (e) {
         if (!mounted) return;
         setState(() => _isReceiving = false);
-        context.showSnackBar('Receive failed: $e');
+        final l10n = context.appLocalizations;
+        final errMsg = e.toString() == 'UnsupportedError: unavailable'
+            ? l10n.noCrocBackend
+            : l10n.localizeCrocError(e.toString());
+        context.showSnackBar(errMsg);
+        commonPrint('Receive error: $e');
       },
       onDone: () {
         if (mounted) setState(() => _isReceiving = false);
@@ -112,7 +247,10 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
 
   @override
   void dispose() {
+    _saveReceivePrefs();
     _codeController.dispose();
+    _receivedTextController.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
   }
 
@@ -120,107 +258,254 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   Widget build(BuildContext context) {
     final l10n = context.appLocalizations;
     return CommonScaffold(
-      title: l10n.receiveFiles,
-      body: ListView(
-        children: [
-          const SizedBox(height: 32),
-
-          // Code Phrase Input
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.download,
-                      size: 48,
-                      color: context.colorScheme.primary,
+      appBar: AppBar(
+        titleSpacing: 12,
+        title: SizedBox(
+          height: 36,
+          child: TextField(
+            controller: _codeController,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 14, letterSpacing: 1),
+            decoration: InputDecoration(
+              hintText: l10n.enterCodePhrase,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+              isDense: true,
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 28, height: 28,
+                    child: IconButton(
+                      icon: const Icon(Icons.qr_code_scanner, size: 16),
+                      onPressed: _openScanner,
+                      padding: EdgeInsets.zero,
+                      tooltip: l10n.scanQRCode,
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      l10n.enterCodePhrase,
-                      style: context.textTheme.titleLarge,
+                  ),
+                  SizedBox(
+                    width: 28, height: 28,
+                    child: IconButton(
+                      icon: const Icon(Icons.paste, size: 16),
+                      onPressed: _pastePhrase,
+                      padding: EdgeInsets.zero,
+                      tooltip: l10n.paste,
                     ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _codeController,
-                      decoration: const InputDecoration(
-                        hintText: 'e.g., happy-tiger-run',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.vpn_key),
-                      ),
-                      textAlign: TextAlign.center,
-                      style: context.textTheme.headlineSmall?.copyWith(
-                        letterSpacing: 2,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _isReceiving ? null : _startReceive,
-                        icon: const Icon(Icons.download),
-                        label: Text(l10n.startReceive),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
-
-          const SizedBox(height: 32),
-
-          // Options
-          _buildSection(
-            l10n.options,
-            Icons.tune,
-            [
-              ListItem.switchItem(
-                leading: const Icon(Icons.file_copy),
-                title: Text(l10n.overwrite),
-                delegate: SwitchDelegate(
-                  value: _receiveConfig.overwrite,
-                  onChanged: (v) {
-                    setState(() {
-                      _receiveConfig = _receiveConfig.copyWith(overwrite: v);
-                    });
-                  },
-                ),
-              ),
-              const Divider(height: 0, indent: 56),
-              ListItem.switchItem(
-                leading: const Icon(Icons.wifi_off),
-                title: Text(l10n.localOnly),
-                delegate: SwitchDelegate(
-                  value: _receiveConfig.onlyLocal,
-                  onChanged: (v) {
-                    setState(() {
-                      _receiveConfig = _receiveConfig.copyWith(onlyLocal: v);
-                    });
-                  },
-                ),
-              ),
-            ],
+        ),
+        actions: [
+          if (_phase != ReceivePhase.idle) _buildStatusChip(l10n),
+          const SizedBox(width: 8),
+          FilledButtonWidget(
+            onPressed: _isReceiving ? null : _startReceive,
+            text: l10n.receive,
+            icon: Icons.download,
           ),
-
-          const SizedBox(height: 16),
-
-          // Scan QR Code
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: OutlinedButton.icon(
-              onPressed: () {
-                _openScanner();
-              },
-              icon: const Icon(Icons.qr_code_scanner),
-              label: Text(l10n.scanQRCode),
-            ),
-          ),
+          const SizedBox(width: 8),
         ],
       ),
+      body: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        child: ListView(
+          controller: _scrollCtrl,
+          children: [
+            // ── File / Text toggle (always visible, matches send page) ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: SegmentedButton<int>(
+                segments: [
+                  ButtonSegment(value: 0, label: Text(l10n.file), icon: const Icon(Icons.insert_drive_file, size: 18)),
+                  ButtonSegment(value: 1, label: Text(l10n.text), icon: const Icon(Icons.text_snippet, size: 18)),
+                ],
+                selected: {_selectedTab},
+                onSelectionChanged: (v) => setState(() => _selectedTab = v.first),
+              ),
+            ),
+
+            // ── Received content (matches send page layout / behavior) ──
+            if (_selectedTab == 0)
+              _buildSection(l10n.file, Icons.insert_drive_file, [
+                if (_receivedFiles.isEmpty)
+                  NullStatusWidget(message: l10n.noReceivedFiles, icon: Icons.inbox_outlined)
+                else
+                  ..._receivedFiles.map((f) => ListTile(
+                    leading: const Icon(Icons.insert_drive_file),
+                    title: Text(f.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: f.size > 0 ? Text(f.size.fileSize, style: context.textTheme.bodySmall) : null,
+                    dense: true,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.folder_open, size: 18),
+                          onPressed: () => globalState.openFolder(f.path),
+                          tooltip: l10n.openFolder,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.open_in_new, size: 18),
+                          onPressed: () => globalState.openFile(f.path),
+                          tooltip: l10n.open,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ),
+                  )),
+                Padding(
+                  padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: _receivedFiles.isNotEmpty
+                          ? () => setState(() => _receivedFiles.clear())
+                          : null,
+                      icon: const Icon(Icons.clear_all, size: 16),
+                      label: Text(l10n.clear),
+                    ),
+                  ),
+                ),
+              ])
+            else
+              _buildSection(l10n.text, Icons.text_snippet, [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: TextField(
+                    controller: _receivedTextController,
+                    readOnly: true,
+                    maxLines: 5,
+                    decoration: InputDecoration(
+                      hintText: l10n.textHint,
+                      border: InputBorder.none,
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.copy, size: 20),
+                        onPressed: _receivedTextController.text.isNotEmpty
+                            ? () => Clipboard.setData(ClipboardData(text: _receivedTextController.text))
+                            : null,
+                        tooltip: l10n.copy,
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                    const SizedBox(width: 1),
+                    TextButton.icon(
+                      onPressed: _receivedTextController.text.isNotEmpty
+                          ? () => setState(() => _receivedTextController.clear())
+                          : null,
+                      icon: const Icon(Icons.clear_all, size: 16),
+                      label: Text(l10n.clear),
+                    ),
+                  ]),
+                ),
+              ]),
+
+            // ── Options ──
+            ExpansionTile(
+              shape: const Border(),
+              title: Text(l10n.transferOptions),
+              leading: const Icon(Icons.tune),
+              initiallyExpanded: _phase == ReceivePhase.idle,
+              onExpansionChanged: (_) => setState(() {}),
+              children: [
+                ListItem.switchItem(
+                  leading: const Icon(Icons.file_copy),
+                  title: Text(l10n.overwrite),
+                  delegate: SwitchDelegate(
+                    value: _receiveConfig.overwrite,
+                    onChanged: (v) {
+                      setState(() {
+                        _receiveConfig = _receiveConfig.copyWith(overwrite: v);
+                        _saveReceivePrefs();
+                      });
+                    },
+                  ),
+                ),
+                Consumer(
+                  builder: (_, ref, c) {
+                    final isCustom = _receiveConfig.outputPath.isNotEmpty;
+                    final globalPath = ref.watch(appSettingProvider.select((s) => s.defaultSavePath));
+                    final effectivePath = isCustom ? _receiveConfig.outputPath : (globalPath.isNotEmpty ? globalPath : _defaultDownloadDir());
+                    return ListItem(
+                      leading: const Icon(Icons.folder),
+                      title: Text(l10n.savePath),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              ChoiceChip(
+                                label: Text(l10n.defaultLabel, style: const TextStyle(fontSize: 12)),
+                                selected: !isCustom,
+                                onSelected: (v) {
+                                  if (v) {
+                                    setState(() {
+                                    _receiveConfig = _receiveConfig.copyWith(outputPath: '');
+                                    _saveReceivePrefs();
+                                  });
+                                  }
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              ChoiceChip(
+                                label: Text(l10n.custom, style: const TextStyle(fontSize: 12)),
+                                selected: isCustom,
+                                onSelected: (v) {
+                                  if (v && _receiveConfig.outputPath.isEmpty) {
+                                    setState(() {
+                                    _receiveConfig = _receiveConfig.copyWith(outputPath: effectivePath);
+                                    _saveReceivePrefs();
+                                  });
+                                  }
+                                },
+                              ),
+                              if (isCustom) ...[
+                                const SizedBox(width: 4),
+                                IconButton(
+                                  icon: const Icon(Icons.folder_open, size: 18),
+                                  visualDensity: VisualDensity.compact,
+                                  tooltip: l10n.selectFolder,
+                                  onPressed: _pickReceivePath,
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(effectivePath, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textTheme.bodySmall),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+
+          const SizedBox(height: 32),
+        ],
+      ),
+      ),  // ScrollConfiguration
+    );    // CommonScaffold
+  }
+
+  Widget _buildStatusChip(AppLocalizations l10n) {
+    final (label, color) = switch (_phase) {
+      ReceivePhase.pending => (l10n.pending, Colors.orange),
+      ReceivePhase.receiving => (l10n.receiving, context.colorScheme.primary),
+      ReceivePhase.completed => (l10n.completed, Colors.green),
+      ReceivePhase.failed => (l10n.failed, Colors.red),
+      _ => ('', Colors.transparent),
+    };
+    if (label.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+      child: Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
     );
   }
 
@@ -249,8 +534,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   }
 }
 
-/// Full-screen QR code scanner page.
-/// Returns the scanned code phrase as a String via Navigator.pop.
+/// QR scanner page powered by gscankit.
 class _QRScannerPage extends StatefulWidget {
   const _QRScannerPage();
 
@@ -259,12 +543,12 @@ class _QRScannerPage extends StatefulWidget {
 }
 
 class _QRScannerPageState extends State<_QRScannerPage> {
-  final MobileScannerController _scannerController = MobileScannerController();
+  final _controller = MobileScannerController();
   bool _hasScanned = false;
 
   @override
   void dispose() {
-    _scannerController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -279,26 +563,31 @@ class _QRScannerPageState extends State<_QRScannerPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Scan QR Code'),
+    final l10n = context.appLocalizations;
+    return GscanKit(
+      controller: _controller,
+      onDetect: _onDetect,
+      setPortraitOrientation: false,
+      gscanOverlayConfig: const GscanOverlayConfig(),
+      appBar: (context, ctrl) => AppBar(
+        title: Text(l10n.scanQRCode),
         actions: [
-          IconButton(
-            icon: Icon(
-              _scannerController.torchEnabled ? Icons.flash_on : Icons.flash_off,
-            ),
-            onPressed: () => _scannerController.toggleTorch(),
+          GalleryButton(
+            controller: ctrl,
+            isSuccess: ValueNotifier<bool?>(null),
+            onDetect: _onDetect,
+            text: '',
+            icon: const Icon(Icons.image, color: Colors.white, size: 22),
           ),
           IconButton(
             icon: const Icon(Icons.flip_camera_android),
-            onPressed: () => _scannerController.switchCamera(),
+            tooltip: l10n.flipCamera,
+            onPressed: () => ctrl.switchCamera(),
           ),
         ],
-      ),
-      body: MobileScanner(
-        controller: _scannerController,
-        onDetect: _onDetect,
       ),
     );
   }
 }
+
+enum ReceivePhase { idle, pending, receiving, completed, failed }

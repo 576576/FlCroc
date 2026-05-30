@@ -15,6 +15,10 @@ class CoreController {
   static CoreController? _instance;
   CoreInterface? _interface;
 
+  /// Hardcoded error sentinel used when no backend is loaded.
+  /// UI code matches against this to show the proper localized message.
+  static const noBackendError = 'No croc backend available';
+
   CoreController._internal();
 
   factory CoreController() {
@@ -50,7 +54,7 @@ class CoreController {
   }
 
   Future<String> getVersion() async {
-    if (_interface == null) return 'unavailable';
+    if (_interface == null) throw UnsupportedError('unavailable');
     return _interface!.getVersion();
   }
 
@@ -72,7 +76,7 @@ class CoreController {
     if (_interface == null) {
       return Stream.value(const TransferProgress(
         status: TransferProgressStatus.failed,
-        error: 'No croc backend available',
+        error: CoreController.noBackendError,
       ));
     }
     return _interface!.sendFiles(options);
@@ -82,7 +86,7 @@ class CoreController {
     if (_interface == null) {
       return Stream.value(const TransferProgress(
         status: TransferProgressStatus.failed,
-        error: 'No croc backend available',
+        error: CoreController.noBackendError,
       ));
     }
     return _interface!.receiveFiles(options);

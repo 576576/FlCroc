@@ -1,6 +1,7 @@
 export 'button.dart';
 export 'card.dart';
 export 'dialog.dart';
+export 'file_drop_target.dart';
 export 'input.dart';
 export 'list.dart';
 export 'loading.dart';

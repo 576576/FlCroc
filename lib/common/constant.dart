@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 
 const appName = 'FlCroc';
 const coreName = 'croc';
-const packageName = 'com.flcroc.app';
-const repository = 'your-org/FlCroc';
+const packageName = 'cn.sumitm.flcroc';
+const repository = '576576/FlCroc';
 
 const defaultRelay = 'croc.schollz.com';
-const defaultPort = '9009';
+const defaultPort = '9009,9010,9011,9012,9013';
 const defaultPassphrase = 'pass123';
 
 const defaultCurve = 'p256';
@@ -30,6 +30,7 @@ final commonDuration = const Duration(milliseconds: 200);
 
 const availableCurves = ['p256', 'p521', 'siec', 'ed25519'];
 const availableHashAlgos = ['xxhash', 'imohash', 'md5'];
+const defaultHashAlgo = defaultHashAlgorithm;
 
 const defaultPrimaryColor = 0xFF6750A4;
 

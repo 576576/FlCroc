@@ -35,15 +35,19 @@ class CommonScaffoldState extends State<CommonScaffold> {
     return AppBar(
       title: widget.title != null ? Text(widget.title!) : null,
       actions: widget.actions,
-      scrolledUnderElevation: 1,
+      backgroundColor: context.colorScheme.surface,
       surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final appBar = widget.appBar ?? _buildDefaultAppBar();
+
     return Scaffold(
-      appBar: widget.appBar ?? _buildDefaultAppBar(),
+      appBar: appBar,
       body: NotificationListener<UserScrollNotification>(
         child: widget.body,
         onNotification: (notification) {

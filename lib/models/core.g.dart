@@ -31,7 +31,9 @@ _$SendOptionsImpl _$$SendOptionsImplFromJson(Map<String, dynamic> json) =>
               .toList() ??
           const <String>[],
       relayAddress: json['relayAddress'] as String?,
+      relayAddress6: json['relayAddress6'] as String?,
       relayPassword: json['relayPassword'] as String?,
+      relayPorts: json['relayPorts'] as String?,
     );
 
 Map<String, dynamic> _$$SendOptionsImplToJson(_$SendOptionsImpl instance) =>
@@ -53,7 +55,9 @@ Map<String, dynamic> _$$SendOptionsImplToJson(_$SendOptionsImpl instance) =>
       'throttleUpload': instance.throttleUpload,
       'exclude': instance.exclude,
       'relayAddress': instance.relayAddress,
+      'relayAddress6': instance.relayAddress6,
       'relayPassword': instance.relayPassword,
+      'relayPorts': instance.relayPorts,
     };
 
 _$ReceiveOptionsImpl _$$ReceiveOptionsImplFromJson(Map<String, dynamic> json) =>
@@ -62,8 +66,11 @@ _$ReceiveOptionsImpl _$$ReceiveOptionsImplFromJson(Map<String, dynamic> json) =>
       overwrite: json['overwrite'] as bool? ?? false,
       onlyLocal: json['onlyLocal'] as bool? ?? false,
       outputPath: json['outputPath'] as String? ?? '',
+      curve: json['curve'] as String? ?? 'p256',
       relayAddress: json['relayAddress'] as String?,
+      relayAddress6: json['relayAddress6'] as String?,
       relayPassword: json['relayPassword'] as String?,
+      relayPorts: json['relayPorts'] as String?,
     );
 
 Map<String, dynamic> _$$ReceiveOptionsImplToJson(
@@ -73,8 +80,11 @@ Map<String, dynamic> _$$ReceiveOptionsImplToJson(
   'overwrite': instance.overwrite,
   'onlyLocal': instance.onlyLocal,
   'outputPath': instance.outputPath,
+  'curve': instance.curve,
   'relayAddress': instance.relayAddress,
+  'relayAddress6': instance.relayAddress6,
   'relayPassword': instance.relayPassword,
+  'relayPorts': instance.relayPorts,
 };
 
 _$TransferProgressImpl _$$TransferProgressImplFromJson(
@@ -92,6 +102,8 @@ _$TransferProgressImpl _$$TransferProgressImplFromJson(
   speed: (json['speed'] as num?)?.toDouble() ?? 0.0,
   codePhrase: json['codePhrase'] as String?,
   error: json['error'] as String?,
+  isText: json['isText'] as bool? ?? false,
+  textContent: json['textContent'] as String? ?? '',
 );
 
 Map<String, dynamic> _$$TransferProgressImplToJson(
@@ -107,6 +119,8 @@ Map<String, dynamic> _$$TransferProgressImplToJson(
   'speed': instance.speed,
   'codePhrase': instance.codePhrase,
   'error': instance.error,
+  'isText': instance.isText,
+  'textContent': instance.textContent,
 };
 
 const _$TransferProgressStatusEnumMap = {
