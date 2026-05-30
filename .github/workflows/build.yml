@@ -263,9 +263,6 @@ jobs:
       - name: Setup Inno Setup
         run: choco install innosetup --no-progress -y
 
-      - name: Get Chinese language for installer
-        run: Copy-Item "${env:ProgramFiles(x86)}\Inno Setup 6\Languages\ChineseSimplified.isl" "windows\installer\ChineseSimplified.isl" -ErrorAction Stop
-
       - name: Build installer
         run: |
           iscc windows\installer\setup.iss /DAppVersion=${{ steps.ver.outputs.version }}
@@ -324,20 +321,27 @@ jobs:
 
       - name: Setup LLVM (for ARM64 cross-compile)
         run: |
-          if (!(Get-Command clang -ErrorAction SilentlyContinue)) {
-            choco install llvm --no-progress -y
+          if (Get-Command clang -ErrorAction SilentlyContinue) {
+            Write-Host "clang found on PATH"
+          } elseif (Test-Path "${env:ProgramFiles}\LLVM\bin\clang.exe") {
+            $env:PATH = "${env:ProgramFiles}\LLVM\bin;$env:PATH"
+            Write-Host "clang added from ${env:ProgramFiles}\LLVM\bin"
           } else {
-            Write-Host "clang already available: $(clang --version | Select-Object -First 1)"
+            choco install llvm --no-progress -y
+            $env:PATH = "${env:ProgramFiles}\LLVM\bin;$env:PATH"
           }
+          clang --version
 
       - name: Build Go bridge (.dll)
         run: |
           Push-Location go_bridge
           go mod tidy
+          go env -w CC=clang CXX=clang++
           $env:CGO_ENABLED = "1"
           $env:GOOS = "windows"
           $env:GOARCH = "arm64"
-          $env:CC = "clang"
+          Write-Host "CC: $(go env CC)"
+          Write-Host "clang: $(clang --version | Select-Object -First 1)"
           go build -buildmode=c-shared -ldflags="-s -w -H windowsgui" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
           Pop-Location
 
