@@ -187,6 +187,7 @@ jobs:
     if: needs.prebuild.outputs.windows == 'true'
     runs-on: windows-latest
     strategy:
+      fail-fast: false
       matrix:
         arch: [amd64, arm64]
     defaults:
@@ -224,6 +225,10 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
+      - name: Setup LLVM (for ARM64 cross-compile)
+        if: matrix.arch == 'arm64'
+        run: choco install llvm --no-progress -y --version=18.1.8
+
       - name: Build Go bridge (.dll)
         run: |
           Push-Location go_bridge
@@ -231,7 +236,11 @@ jobs:
           $env:CGO_ENABLED = "1"
           $env:GOOS = "windows"
           $env:GOARCH = "${{ matrix.arch }}"
-          $env:CC = "gcc"
+          if ("${{ matrix.arch }}" -eq "arm64") {
+            $env:CC = "clang"
+          } else {
+            $env:CC = "gcc"
+          }
           go build -buildmode=c-shared -ldflags="-s -w -H windowsgui" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
           Pop-Location
 
