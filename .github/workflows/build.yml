@@ -186,10 +186,10 @@ jobs:
       - name: Run tests
         run: flutter test
 
-  # ── Windows amd64 ──
-  build-windows-amd64:
+  # ── Windows (AMD64 + optional ARM64 via Zig cross-compile) ──
+  build-windows:
     needs: [test, prebuild]
-    if: needs.prebuild.outputs.windows == 'true'
+    if: needs.prebuild.outputs.windows == 'true' || needs.prebuild.outputs.windows_arm64 == 'true'
     runs-on: windows-latest
     defaults:
       run:
@@ -222,29 +222,12 @@ jobs:
           echo "version=$v" >> $env:GITHUB_OUTPUT
           echo "display_version=$($v -replace '\+.*$','')" >> $env:GITHUB_OUTPUT
 
+      # ── Shared: Go + Flutter setup ──
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-
-      - name: Build Go bridge (.dll)
-        run: |
-          Push-Location go_bridge
-          go mod tidy
-          $env:CGO_ENABLED = "1"
-          $env:GOOS = "windows"
-          $env:GOARCH = "amd64"
-          $env:CC = "gcc"
-          go build -buildmode=c-shared -ldflags="-s -w -H windowsgui" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
-          Pop-Location
-
-      - name: Verify .dll
-        run: |
-          if (Test-Path windows\runner\libcroc_bridge.dll) {
-            Get-Item windows\runner\libcroc_bridge.dll | Select-Object Length, FullName
-          } else {
-            Write-Error "libcroc_bridge.dll not found!"
-          }
 
       - uses: subosito/flutter-action@v2
         with:
@@ -257,69 +240,63 @@ jobs:
       - name: Generate launcher icons
         run: dart run flutter_launcher_icons
 
-      - name: Build Windows
+      # ════════════════════════════════════════════════════════════
+      # ── AMD64: native Go build + Flutter Windows ──
+      # ════════════════════════════════════════════════════════════
+
+      - name: "[AMD64] Build Go bridge (.dll)"
+        if: needs.prebuild.outputs.windows == 'true'
+        run: |
+          Push-Location go_bridge
+          go mod tidy
+          $env:CGO_ENABLED = "1"
+          $env:GOOS = "windows"
+          $env:GOARCH = "amd64"
+          $env:CC = "gcc"
+          go build -buildmode=c-shared -ldflags="-s -w -H windowsgui" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
+          Pop-Location
+
+      - name: "[AMD64] Verify .dll"
+        if: needs.prebuild.outputs.windows == 'true'
+        run: |
+          if (Test-Path windows\runner\libcroc_bridge.dll) {
+            Get-Item windows\runner\libcroc_bridge.dll | Select-Object Length, FullName
+          } else {
+            Write-Error "libcroc_bridge.dll not found!"
+          }
+
+      - name: "[AMD64] Build Flutter Windows"
+        if: needs.prebuild.outputs.windows == 'true'
         run: flutter build windows --release
 
-      - name: Bundle bridge .dll into build output
+      - name: "[AMD64] Bundle bridge .dll into build output"
+        if: needs.prebuild.outputs.windows == 'true'
         run: Copy-Item "windows\runner\libcroc_bridge.dll" "build\windows\x64\runner\Release\libcroc_bridge.dll" -Force
 
-      - name: Package zip
+      - name: "[AMD64] Package zip"
+        if: needs.prebuild.outputs.windows == 'true'
         run: Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.zip
 
       - uses: actions/upload-artifact@v4
+        if: needs.prebuild.outputs.windows == 'true'
         with:
           name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64
           path: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.zip
 
-  # ── Windows arm64 ──
-  build-windows-arm64:
-    needs: [test, prebuild, build-windows-amd64]
-    if: needs.prebuild.outputs.windows_arm64 == 'true'
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: pwsh
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
-          fetch-depth: 0
+      # ════════════════════════════════════════════════════════════
+      # ── ARM64: Zig cross-compile Go bridge → repack AMD64 artifact ──
+      # ════════════════════════════════════════════════════════════
 
-      - name: Pull latest (include version sync from prebuild)
-        if: needs.prebuild.outputs.is_tag != 'true'
-        run: git pull origin ${{ github.ref_name }}
-
-      - name: Get short SHA
-        id: sha
-        run: echo "sha=$(git rev-parse --short HEAD)" >> $env:GITHUB_OUTPUT
-
-      - name: Get version
-        id: ver
-        env:
-          IS_TAG: ${{ needs.prebuild.outputs.is_tag }}
-          SYNCED_VER: ${{ needs.prebuild.outputs.synced_version }}
-        run: |
-          if ($env:IS_TAG -eq 'true') {
-            $v = (Get-Content pubspec.yaml | Where-Object { $_ -match '^version:' } | Select-Object -First 1) -replace '^version:\s+(\S+).*', '$1'
-          } else {
-            $v = $env:SYNCED_VER
-          }
-          echo "version=$v" >> $env:GITHUB_OUTPUT
-          echo "display_version=$($v -replace '\+.*$','')" >> $env:GITHUB_OUTPUT
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-
-      - name: Setup Zig (cross-compiler for ARM64)
+      - name: "[ARM64] Setup Zig (cross-compiler)"
+        if: needs.prebuild.outputs.windows_arm64 == 'true'
         run: |
           if (!(Get-Command zig -ErrorAction SilentlyContinue)) {
             choco install zig --no-progress -y
           }
           zig version
 
-      - name: Build Go bridge (.dll)
+      - name: "[ARM64] Build Go bridge (.dll)"
+        if: needs.prebuild.outputs.windows_arm64 == 'true'
         run: |
           Push-Location go_bridge
           go mod tidy
@@ -328,31 +305,35 @@ jobs:
           $env:GOARCH = "arm64"
           $env:CC = "zig cc -target aarch64-windows-gnu"
           $env:CXX = "zig c++ -target aarch64-windows-gnu"
-          go build -buildmode=c-shared -ldflags="-s -w -H windowsgui" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
+          go build -buildmode=c-shared -ldflags="-s -w -H windowsgui" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge_arm64.dll" .
           Pop-Location
 
-      - name: Verify .dll
+      - name: "[ARM64] Verify .dll"
+        if: needs.prebuild.outputs.windows_arm64 == 'true'
         run: |
-          if (Test-Path windows\runner\libcroc_bridge.dll) {
-            Get-Item windows\runner\libcroc_bridge.dll | Select-Object Length, FullName
+          if (Test-Path windows\runner\libcroc_bridge_arm64.dll) {
+            Get-Item windows\runner\libcroc_bridge_arm64.dll | Select-Object Length, FullName
           } else {
-            Write-Error "libcroc_bridge.dll not found!"
+            Write-Error "libcroc_bridge_arm64.dll not found!"
           }
 
-      - name: Download AMD64 artifact
+      - name: "[ARM64] Download AMD64 artifact"
+        if: needs.prebuild.outputs.windows_arm64 == 'true'
         uses: actions/download-artifact@v4
         with:
           name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64
           path: amd64-pkg
 
-      - name: Repack with ARM64 .dll
+      - name: "[ARM64] Repack with ARM64 .dll"
+        if: needs.prebuild.outputs.windows_arm64 == 'true'
         run: |
           Expand-Archive "amd64-pkg\FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.zip" -DestinationPath arm64-repack
-          Copy-Item "windows\runner\libcroc_bridge.dll" "arm64-repack\libcroc_bridge.dll" -Force
-          Copy-Item "windows\runner\libcroc_bridge.dll" "arm64-repack\data\flutter_assets\libcroc_bridge.dll" -Force -ErrorAction SilentlyContinue
+          Copy-Item "windows\runner\libcroc_bridge_arm64.dll" "arm64-repack\libcroc_bridge.dll" -Force
+          Copy-Item "windows\runner\libcroc_bridge_arm64.dll" "arm64-repack\data\flutter_assets\libcroc_bridge.dll" -Force -ErrorAction SilentlyContinue
           Compress-Archive -Path "arm64-repack\*" -DestinationPath FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64.zip
 
       - uses: actions/upload-artifact@v4
+        if: needs.prebuild.outputs.windows_arm64 == 'true'
         with:
           name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64
           path: FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64.zip
@@ -539,12 +520,11 @@ jobs:
 
   # ── Nightly release (dev branch) ──
   nightly:
-    needs: [prebuild, build-windows-amd64, build-windows-arm64, build-linux, build-android]
+    needs: [prebuild, build-windows, build-linux, build-android]
     if: |
       always() && !failure() && !cancelled() &&
       needs.prebuild.outputs.do_release == 'false' &&
-      (needs.build-windows-amd64.result != 'skipped' ||
-       needs.build-windows-arm64.result != 'skipped' ||
+      (needs.build-windows.result != 'skipped' ||
        needs.build-linux.result != 'skipped' ||
        needs.build-android.result != 'skipped')
     runs-on: ubuntu-latest
@@ -629,7 +609,7 @@ jobs:
 
   # ── Production release (manual tag push or auto from release/beta commit) ──
   release:
-    needs: [prebuild, build-android, build-windows-amd64, build-windows-arm64, build-linux]
+    needs: [prebuild, build-android, build-windows, build-linux]
     if: |
       always() && !cancelled() &&
       needs.prebuild.result != 'failure' &&
