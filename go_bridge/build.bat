@@ -88,9 +88,14 @@ if "%ARCH%"=="amd64" set "GOARCH=amd64"
 
 REM --- Build ---
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
+if "%PLATFORM%"=="windows" (
+    set "LDFLAGS=-s -w -H windowsgui"
+) else (
+    set "LDFLAGS=-s -w"
+)
 go build -buildmode=c-shared ^
     -o "%OUTPUT_DIR%\libcroc_bridge%EXT%" ^
-    -ldflags="-s -w" .
+    -ldflags="%LDFLAGS%" .
 
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Build failed

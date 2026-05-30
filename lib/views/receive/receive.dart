@@ -162,7 +162,9 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
           case TransferProgressStatus.completed:
             if (progress.isText) {
               setState(() {
-                _receivedTextController.text = progress.textContent;
+                _receivedTextController
+                  ..text = progress.textContent
+                  ..selection = TextSelection.collapsed(offset: progress.textContent.length);
                 _receivedFiles.clear();
                 _selectedTab = 1;
                 _isReceiving = false;

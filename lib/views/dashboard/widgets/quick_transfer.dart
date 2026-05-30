@@ -391,13 +391,20 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
           context.showSnackBar(l10n.localizeCrocError(progress.error!));
         }
         if (progress.status == TransferProgressStatus.completed) {
-          appController.updateTransferRecord(record.copyWith(status: TransferStatus.completed, totalSize: progress.totalSize, endTime: DateTime.now()));
           setState(() {
             if (progress.isText) {
               _receivedText = progress.textContent;
-              _textCtrl.text = progress.textContent;
+              _textCtrl
+                ..text = progress.textContent
+                ..selection = TextSelection.collapsed(offset: progress.textContent.length);
               _isTextMode = true;
               _receivedFiles.clear();
+              appController.updateTransferRecord(record.copyWith(
+                status: TransferStatus.completed,
+                totalSize: progress.textContent.length,
+                files: [FileItem(name: 'text', path: '', size: progress.textContent.length)],
+                endTime: DateTime.now(),
+              ));
             } else {
               final fileNames = progress.currentFile.isNotEmpty
                   ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
@@ -406,11 +413,18 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
               _textCtrl.clear();
               _isTextMode = false;
               _receivedFiles.clear();
-              _receivedFiles.addAll(fileNames.map((n) => FileItem(
+              final fileItems = fileNames.map((n) => FileItem(
                 name: n,
                 path: '${AppPaths.savePathSync}${Platform.pathSeparator}$n',
                 size: 0,
-              )));
+              )).toList();
+              _receivedFiles.addAll(fileItems);
+              appController.updateTransferRecord(record.copyWith(
+                status: TransferStatus.completed,
+                totalSize: progress.totalSize,
+                files: fileItems.isEmpty ? [const FileItem(name: 'file', path: '', size: 0)] : fileItems,
+                endTime: DateTime.now(),
+              ));
               if (_receivedFiles.isNotEmpty && isAndroid) {
                 for (final f in _receivedFiles) {
                   AppPaths.exportToDownloads(f.path);

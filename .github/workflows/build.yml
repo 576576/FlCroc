@@ -380,9 +380,12 @@ jobs:
           SYNCED_VER: ${{ needs.prebuild.outputs.synced_version }}
         run: |
           if [ "$IS_TAG" = "true" ]; then
-            echo "version=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)" >> $GITHUB_OUTPUT
+            V=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
+            echo "version=$V" >> $GITHUB_OUTPUT
+            echo "display_version=$V" >> $GITHUB_OUTPUT
           else
             echo "version=$SYNCED_VER" >> $GITHUB_OUTPUT
+            echo "display_version=$(echo $SYNCED_VER | cut -d+ -f1)" >> $GITHUB_OUTPUT
           fi
 
       - name: Setup Go
@@ -423,12 +426,12 @@ jobs:
           cp linux/flutter/ephemeral/libcroc_bridge.so build/linux/x64/release/bundle/lib/
 
       - name: Package tar
-        run: tar -czf FlCroc-${{ steps.ver.outputs.version }}-linux-amd64.tar.gz -C build/linux/x64/release/bundle .
+        run: tar -czf FlCroc-${{ steps.ver.outputs.display_version }}-linux-amd64.tar.gz -C build/linux/x64/release/bundle .
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FlCroc-${{ steps.ver.outputs.version }}-linux-amd64
-          path: FlCroc-${{ steps.ver.outputs.version }}-linux-amd64.tar.gz
+          name: FlCroc-${{ steps.ver.outputs.display_version }}-linux-amd64
+          path: FlCroc-${{ steps.ver.outputs.display_version }}-linux-amd64.tar.gz
 
   # ── Android ──
   build-android:
@@ -456,9 +459,12 @@ jobs:
           SYNCED_VER: ${{ needs.prebuild.outputs.synced_version }}
         run: |
           if [ "$IS_TAG" = "true" ]; then
-            echo "version=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)" >> $GITHUB_OUTPUT
+            V=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
+            echo "version=$V" >> $GITHUB_OUTPUT
+            echo "display_version=$V" >> $GITHUB_OUTPUT
           else
             echo "version=$SYNCED_VER" >> $GITHUB_OUTPUT
+            echo "display_version=$(echo $SYNCED_VER | cut -d+ -f1)" >> $GITHUB_OUTPUT
           fi
 
       - name: Setup Java
@@ -521,12 +527,12 @@ jobs:
         run: flutter build apk --release --target-platform android-arm64
 
       - name: Rename artifact
-        run: mv build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.version }}-android-arm64.apk
+        run: mv build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.display_version }}-android-arm64.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FlCroc-${{ steps.ver.outputs.version }}-android-arm64
-          path: FlCroc-${{ steps.ver.outputs.version }}-android-arm64.apk
+          name: FlCroc-${{ steps.ver.outputs.display_version }}-android-arm64
+          path: FlCroc-${{ steps.ver.outputs.display_version }}-android-arm64.apk
 
   # ── Nightly release (dev branch) ──
   nightly:
