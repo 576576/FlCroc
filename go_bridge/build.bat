@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 REM ============================================================
 REM  FlCroc Go Bridge Build Script (Windows)
-REM  Clones croc source, then builds the shared library.
+REM  Uses local submodule croc source, builds the shared library.
 REM
 REM  Usage: build.bat [platform] [arch]
 REM    platform: windows (default), android
@@ -16,8 +16,6 @@ if "%ARCH%"=="" set "ARCH=amd64"
 
 set "SCRIPT_DIR=%~dp0"
 set "OUTPUT_DIR=%SCRIPT_DIR%..\build\%PLATFORM%"
-set "CROC_TAG=v10.4.4"
-set "CROC_SRC=%TEMP%\croc_src"
 
 echo ========================================
 echo  FlCroc Go Bridge Builder
@@ -33,22 +31,20 @@ if %ERRORLEVEL% neq 0 (
 echo [OK] Go found:
 go version
 
-REM --- Clone croc source ---
+REM --- Use submodule croc source (skip clone) ---
 echo.
-echo [STEP 1/4] Cloning croc source (tag %CROC_TAG%)...
-if exist "%CROC_SRC%" rmdir /s /q "%CROC_SRC%"
-git clone --depth 1 --branch %CROC_TAG% https://github.com/schollz/croc.git "%CROC_SRC%"
-if %ERRORLEVEL% neq 0 (
-    echo [ERROR] Failed to clone croc
+echo [STEP 1/4] Using submodule croc at ..\submodules\croc...
+set "CROC_SRC=%SCRIPT_DIR%..\submodules\croc"
+if not exist "%CROC_SRC%\go.mod" (
+    echo [ERROR] Submodule not found. Run: git submodule update --init
     exit /b 1
 )
-echo [OK] croc source cloned
+echo [OK] croc submodule found
 
-REM --- Set up Go module with replace ---
+REM --- Verify go.mod replace directive ---
 echo.
-echo [STEP 2/4] Setting up Go module...
+echo [STEP 2/4] Verifying Go module...
 cd /d "%SCRIPT_DIR%"
-go mod edit -replace github.com/schollz/croc/v10=%CROC_SRC%
 go mod tidy
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] go mod tidy failed
