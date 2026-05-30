@@ -285,6 +285,10 @@ jobs:
         if: matrix.arch == 'amd64'
         run: choco install innosetup --no-progress -y
 
+      - name: Download Chinese language for installer
+        if: matrix.arch == 'amd64'
+        run: Invoke-WebRequest -Uri "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/ChineseSimplified.isl" -OutFile "windows\installer\ChineseSimplified.isl"
+
       - name: Build installer (amd64 only)
         if: matrix.arch == 'amd64'
         run: |
@@ -570,7 +574,10 @@ jobs:
   release:
     needs: [prebuild, build-android, build-windows, build-linux]
     if: |
-      always() && !failure() && !cancelled() &&
+      always() && !cancelled() &&
+      needs.prebuild.result != 'failure' &&
+      needs.build-android.result != 'failure' &&
+      needs.build-linux.result != 'failure' &&
       (startsWith(github.ref, 'refs/tags/v') ||
        needs.prebuild.outputs.do_release == 'true')
     runs-on: ubuntu-latest
