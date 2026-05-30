@@ -263,8 +263,8 @@ jobs:
       - name: Setup Inno Setup
         run: choco install innosetup --no-progress -y
 
-      - name: Download Chinese language for installer
-        run: Invoke-WebRequest -Uri "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/ChineseSimplified.isl" -OutFile "windows\installer\ChineseSimplified.isl"
+      - name: Get Chinese language for installer
+        run: Copy-Item "${env:ProgramFiles(x86)}\Inno Setup 6\Languages\ChineseSimplified.isl" "windows\installer\ChineseSimplified.isl" -ErrorAction Stop
 
       - name: Build installer
         run: |
@@ -323,7 +323,12 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Setup LLVM (for ARM64 cross-compile)
-        run: choco install llvm --no-progress -y --version=18.1.8
+        run: |
+          if (!(Get-Command clang -ErrorAction SilentlyContinue)) {
+            choco install llvm --no-progress -y
+          } else {
+            Write-Host "clang already available: $(clang --version | Select-Object -First 1)"
+          }
 
       - name: Build Go bridge (.dll)
         run: |
