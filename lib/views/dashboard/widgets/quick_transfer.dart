@@ -395,19 +395,20 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
               ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
               : <String>[];
 
-          // Detect text receive: croc text transfers produce 0 totalFiles with a single temp file
-          final isTextReceive = progress.totalFiles == 0 && fileNames.isNotEmpty;
-
-          if (isTextReceive) {
-            final fileName = fileNames.first;
-            final filePath = '${AppPaths.savePathSync}${Platform.pathSeparator}$fileName';
-            String textContent = '';
+          // Try to detect text: single file that can be read as valid text
+          String textContent = '';
+          if (fileNames.length == 1) {
+            final filePath = '${AppPaths.savePathSync}${Platform.pathSeparator}${fileNames.first}';
             try {
               final file = File(filePath);
               if (file.existsSync()) {
-                textContent = file.readAsStringSync();
+                final content = file.readAsStringSync();
+                if (!content.contains('\x00')) textContent = content;
               }
             } catch (_) {}
+          }
+
+          if (textContent.isNotEmpty) {
             setState(() {
               _receivedText = textContent;
               _receivedFiles.clear();

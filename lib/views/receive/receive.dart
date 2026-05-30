@@ -190,26 +190,25 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
               ),
             );
             if (mounted) setState(() {});
+            break;
           case TransferProgressStatus.completed:
             // Parse received file names
+            String textContent = '';
             final fileNames = progress.currentFile.isNotEmpty
                 ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
                 : <String>[];
-
-            // Detect text receive: single file, likely text (croc text transfers produce temp .txt files)
-            final isTextReceive = progress.totalFiles == 0 && fileNames.isNotEmpty;
-
-            if (isTextReceive) {
-              final fileName = fileNames.first;
-              final filePath = '$_effectiveOutputPath${Platform.pathSeparator}$fileName';
-              String textContent = '';
+            // Try to detect text: single file that can be read as valid text
+            if (fileNames.length == 1) {
+              final filePath = '$_effectiveOutputPath${Platform.pathSeparator}${fileNames.first}';
               try {
                 final file = File(filePath);
                 if (file.existsSync()) {
-                  textContent = file.readAsStringSync();
+                  final content = file.readAsStringSync();
+                  if (!content.contains('\x00')) textContent = content;
                 }
               } catch (_) {}
-
+            }
+            if (textContent.isNotEmpty) {
               setState(() {
                 _receivedFiles.clear();
                 _selectedTab = 1;
