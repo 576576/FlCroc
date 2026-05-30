@@ -45,9 +45,11 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   String? _selectedFolder; // folder path when picking a directory
 
   // Quick codes
-  String _quickSendCode = '';
-  String _quickReceiveCode = '';
-  bool _useSameCode = false;
+  String _quickSendCode = 'shimo-kita-1145';
+  String _quickReceiveCode = 'shimo-kita-1145';
+  bool _useSameCode = true;
+
+  static const _defaultCode = 'shimo-kita-1145';
 
   // Results
   final List<FileItem> _receivedFiles = [];
@@ -62,9 +64,12 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   @override
   void initState() {
     super.initState();
-    _quickSendCode = AppPrefs.getString(_prefQuickSendCode);
-    _quickReceiveCode = AppPrefs.getString(_prefQuickReceiveCode);
-    _useSameCode = AppPrefs.getBool(_prefUseSameCode);
+    // Load saved values; keep defaults if never configured
+    final savedSend = AppPrefs.getString(_prefQuickSendCode);
+    final savedRecv = AppPrefs.getString(_prefQuickReceiveCode);
+    _quickSendCode = savedSend.isNotEmpty ? savedSend : _defaultCode;
+    _quickReceiveCode = savedRecv.isNotEmpty ? savedRecv : _defaultCode;
+    _useSameCode = AppPrefs.getBool(_prefUseSameCode, true);
   }
 
   @override
@@ -208,14 +213,10 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
     setState(() => _phase = phase);
     if (phase == _QuickPhase.idle) {
       _activeTransferId = null;
-      _lastAction = _LastAction.none;
-      _selectedFolder = null;
-      _receivedFiles.clear();
-      _receivedText = '';
-      _sentText = '';
-      _sentFileNames.clear();
       _selectedFiles.clear();
       _textCtrl.clear();
+      _selectedFolder = null;
+      // Keep _lastAction and results — cleared by user via [clear] button
     }
     if (label != null && color != null) {
       QuickTransferWidget.statusNotifier.value = (label, color);
@@ -319,14 +320,12 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
           appController.updateTransferRecord(record.copyWith(status: TransferStatus.completed, totalSize: progress.totalSize, endTime: DateTime.now()));
           setState(() {
             _lastAction = _LastAction.sent;
+            _sentFileNames.clear();
             if (_isTextMode) {
               _sentText = _textCtrl.text.trim();
-              _sentFileNames.clear();
             } else if (_selectedFolder != null) {
-              _sentFileNames.clear();
               _sentFileNames.add(_selectedFolder!.split(Platform.pathSeparator).last);
             } else {
-              _sentFileNames.clear();
               _sentFileNames.addAll(_selectedFiles.map((f) => f.name));
             }
           });
@@ -454,23 +453,32 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ── Result display (after send/receive completes) ──
+            // ── Result banner (shown above input when completed) ──
             if (_lastAction != _LastAction.none) ...[
               _buildResultView(l10n),
               const SizedBox(height: 8),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Text(
-                  _lastAction == _LastAction.sent ? l10n.completed : l10n.completed,
+                  l10n.completed,
                   style: TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w600),
                 ),
                 TextButton(
-                  onPressed: () => _setPhase(_QuickPhase.idle),
+                  onPressed: () => setState(() {
+                    _lastAction = _LastAction.none;
+                    _phase = _QuickPhase.idle;
+                    _receivedFiles.clear();
+                    _receivedText = '';
+                    _sentText = '';
+                    _sentFileNames.clear();
+                    QuickTransferWidget.statusNotifier.value = null;
+                  }),
                   child: Text(l10n.clear, style: const TextStyle(fontSize: 12)),
                 ),
               ]),
-            ] else ...[
-              // ── Input mode ──
-              SizedBox(
+              const Divider(height: 16),
+            ],
+            // ── Input area (always visible) ──
+            SizedBox(
               width: double.infinity,
               child: SegmentedButton<bool>(
                 segments: [
@@ -595,7 +603,6 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
                   ),
                 ],
               ),
-            ], // else block children
           ], // Column children
         ),
       ),
@@ -603,6 +610,7 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   }
 
   Widget _buildResultView(AppLocalizations l10n) {
+    // ── Sent text ──
     if (_lastAction == _LastAction.sent && _isTextMode && _sentText.isNotEmpty) {
       return Container(
         width: double.infinity,
@@ -614,16 +622,18 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
         child: Text(_sentText, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
       );
     }
+    // ── Sent files ──
     if (_lastAction == _LastAction.sent && _sentFileNames.isNotEmpty) {
       return Column(
         children: _sentFileNames.map((name) => ListTile(
           dense: true,
-          leading: const Icon(Icons.check_circle, size: 16, color: Colors.green),
-          title: Text(name, style: const TextStyle(fontSize: 12)),
+          leading: Icon(_isFolderName(name) ? Icons.folder : Icons.insert_drive_file, size: 18, color: _isFolderName(name) ? Colors.amber : null),
+          title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
           contentPadding: EdgeInsets.zero,
         )).toList(),
       );
     }
+    // ── Received text ──
     if (_lastAction == _LastAction.received && _receivedText.isNotEmpty) {
       return Container(
         width: double.infinity,
@@ -635,31 +645,39 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
         child: Text(_receivedText, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
       );
     }
-    if (_lastAction == _LastAction.received && _receivedFiles.isNotEmpty) {
+    // ── Received files ──
+    if (_lastAction == _LastAction.received) {
+      if (_receivedFiles.isEmpty) {
+        return Text(l10n.noReceivedFiles, style: TextStyle(fontSize: 12, color: context.colorScheme.onSurfaceVariant));
+      }
       return Column(
-        children: _receivedFiles.map((f) => ListTile(
-          dense: true,
-          leading: const Icon(Icons.check_circle, size: 16, color: Colors.green),
-          title: Text(f.name, style: const TextStyle(fontSize: 12)),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.folder_open, size: 16),
-                tooltip: l10n.openFolder,
-                visualDensity: VisualDensity.compact,
-                onPressed: () => globalState.openFolder(f.path),
-              ),
-              IconButton(
-                icon: const Icon(Icons.open_in_new, size: 16),
-                tooltip: l10n.open,
-                visualDensity: VisualDensity.compact,
-                onPressed: () => globalState.openFile(f.path),
-              ),
-            ],
-          ),
-          contentPadding: EdgeInsets.zero,
-        )).toList(),
+        children: _receivedFiles.map((f) {
+          final showAsFolder = _isFolderName(f.name);
+          return ListTile(
+            dense: true,
+            leading: Icon(showAsFolder ? Icons.folder : Icons.insert_drive_file, size: 18, color: showAsFolder ? Colors.amber : null),
+            title: Text(f.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
+            subtitle: f.size > 0 ? Text(f.size.fileSize, style: TextStyle(fontSize: 11, color: context.colorScheme.onSurfaceVariant)) : null,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.folder_open, size: 16),
+                  tooltip: l10n.openFolder,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => globalState.openFolder(f.path),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.open_in_new, size: 16),
+                  tooltip: l10n.open,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => showAsFolder ? globalState.openFolder(f.path) : globalState.openFile(f.path),
+                ),
+              ],
+            ),
+            contentPadding: EdgeInsets.zero,
+          );
+        }).toList(),
       );
     }
     return Text(l10n.completed, style: TextStyle(fontSize: 12, color: Colors.green));
@@ -675,5 +693,11 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       ),
     );
+  }
+
+  /// Detect if a file name represents a folder (no extension, or contains path separators).
+  bool _isFolderName(String name) {
+    if (name.contains('/') || name.contains('\\')) return true;
+    return !name.contains('.');
   }
 }

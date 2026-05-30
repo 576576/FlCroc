@@ -161,10 +161,13 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
             if (mounted) setState(() {});
           case TransferProgressStatus.completed:
             if (progress.isText) {
-              _receivedTextController.text = progress.textContent;
-              _receivedFiles.clear();
-              _selectedTab = 1;
-              setState(() { _isReceiving = false; _phase = ReceivePhase.completed; });
+              setState(() {
+                _receivedTextController.text = progress.textContent;
+                _receivedFiles.clear();
+                _selectedTab = 1;
+                _isReceiving = false;
+                _phase = ReceivePhase.completed;
+              });
               appController.updateTransferRecord(
                 record.copyWith(
                   status: TransferStatus.completed,
@@ -220,19 +223,22 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                 fileItems = [FileItem(name: l10n.receiving, path: _effectiveOutputPath, size: 0)];
               }
 
-              _receivedFiles.clear();
-              _receivedFiles.addAll(fileItems);
-              _receivedTextController.clear();
-              if (fileItems.isNotEmpty) {
-                _selectedTab = 0;
-                // Android: export to Downloads via MediaStore
-                if (isAndroid) {
-                  for (final f in fileItems) {
-                    AppPaths.exportToDownloads(f.path);
-                  }
+              setState(() {
+                _receivedFiles.clear();
+                _receivedFiles.addAll(fileItems);
+                _receivedTextController.clear();
+                if (fileItems.isNotEmpty) {
+                  _selectedTab = 0;
+                }
+                _isReceiving = false;
+                _phase = ReceivePhase.completed;
+              });
+              // Android: export to Downloads via MediaStore (outside setState, async-safe)
+              if (fileItems.isNotEmpty && isAndroid) {
+                for (final f in fileItems) {
+                  AppPaths.exportToDownloads(f.path);
                 }
               }
-              setState(() { _isReceiving = false; _phase = ReceivePhase.completed; });
 
               appController.updateTransferRecord(
                 record.copyWith(
