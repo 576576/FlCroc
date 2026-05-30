@@ -36,6 +36,11 @@
   "openFolder": "Show in folder",
 
   "_comment_status": "── Status ──",
+  "justNow": "Just now",
+  "minAgo": " min ago",
+  "hoursAgo": " hours ago",
+  "daysAgo": " days ago",
+  "monthsAgo": " months ago",
   "loading": "Loading",
   "connecting": "Connecting",
   "pending": "Pending",
@@ -131,6 +136,7 @@
   "resetRelay": "Reset relay",
 
   "_comment_savePath": "── Save Path ──",
+  "downloadsFolder": "Downloads",
   "defaultSavePath": "Default save path",
   "selectFolder": "Select folder",
   "savePath": "Save path",

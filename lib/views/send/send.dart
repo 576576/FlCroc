@@ -115,6 +115,8 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
   // ── File management ──
 
+  String? _selectedFolder;
+
   Future<void> _pickFiles() async {
     final result = await FilePicker.platform.pickFiles(allowMultiple: true);
     if (result != null && result.files.isNotEmpty) {
@@ -122,8 +124,18 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     }
   }
 
+  Future<void> _pickFolder() async {
+    final path = await FilePicker.platform.getDirectoryPath();
+    if (path != null) {
+      setState(() {
+        _selectedFolder = path;
+        _selectedFiles.clear();
+      });
+    }
+  }
+
   void _removeFile(int index) => setState(() => _selectedFiles.removeAt(index));
-  void _clearFiles() => setState(() => _selectedFiles.clear());
+  void _clearFiles() => setState(() { _selectedFiles.clear(); _selectedFolder = null; });
   void _clearText() => _textController.clear();
 
   void _pasteText() async {
@@ -306,7 +318,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     final textContent = _textController.text.trim();
 
     // Validate content
-    if (!isText && _selectedFiles.isEmpty) {
+    if (!isText && _selectedFiles.isEmpty && _selectedFolder == null) {
       _showWarning(l10n.noFiles);
       _shake(0); // shake file section
       return;
@@ -341,8 +353,12 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
     final files = isText
         ? [FileItem(name: l10n.sentText, path: '', size: textContent.length)]
-        : _selectedFiles.map((f) => FileItem(name: f.name, path: f.path ?? '', size: f.size)).toList();
-    final totalSize = isText ? textContent.length : files.fold<int>(0, (a, f) => a + f.size);
+        : _selectedFolder != null
+            ? [FileItem(name: _selectedFolder!.split(Platform.pathSeparator).last, path: _selectedFolder!, size: 0)]
+            : _selectedFiles.map((f) => FileItem(name: f.name, path: f.path ?? '', size: f.size)).toList();
+    final totalSize = isText
+        ? textContent.length
+        : files.fold<int>(0, (a, f) => a + f.size);
 
     final record = TransferRecord(
       id: transferId,
@@ -361,21 +377,25 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     // Resolve file paths for Go bridge (Android content URIs → temp files)
     final resolvedPaths = <String>[];
     if (!isText) {
-      for (final f in _selectedFiles) {
-        final p = f.path;
-        if (p == null || p.isEmpty) continue;
-        if (isAndroid && p.startsWith('content://')) {
-          try {
-            final bytes = await File(p).readAsBytes();
-            final tempDir = await getTemporaryDirectory();
-            final tempFile = File('${tempDir.path}${Platform.pathSeparator}${f.name}');
-            await tempFile.writeAsBytes(bytes);
-            resolvedPaths.add(tempFile.path);
-          } catch (_) {
-            // Skip inaccessible content URIs
+      if (_selectedFolder != null) {
+        resolvedPaths.add(_selectedFolder!);
+      } else {
+        for (final f in _selectedFiles) {
+          final p = f.path;
+          if (p == null || p.isEmpty) continue;
+          if (isAndroid && p.startsWith('content://')) {
+            try {
+              final bytes = await File(p).readAsBytes();
+              final tempDir = await getTemporaryDirectory();
+              final tempFile = File('${tempDir.path}${Platform.pathSeparator}${f.name}');
+              await tempFile.writeAsBytes(bytes);
+              resolvedPaths.add(tempFile.path);
+            } catch (_) {
+              // Skip inaccessible content URIs
+            }
+          } else {
+            resolvedPaths.add(p);
           }
-        } else {
-          resolvedPaths.add(p);
         }
       }
     }
@@ -619,7 +639,18 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
             ])),
           ] else ...[
             _shakeWrap(0, _buildSection(l10n.file, Icons.insert_drive_file, [
-              if (_selectedFiles.isEmpty)
+              if (_selectedFolder != null)
+                ListTile(
+                  leading: const Icon(Icons.folder, color: Colors.amber),
+                  title: Text(_selectedFolder!.split(Platform.pathSeparator).last),
+                  subtitle: Text(_selectedFolder!, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textTheme.bodySmall),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: () => setState(() => _selectedFolder = null),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                )
+              else if (_selectedFiles.isEmpty)
                 NullStatusWidget(message: l10n.noFiles, icon: Icons.cloud_upload_outlined)
               else
                 ...List.generate(_selectedFiles.length, (i) {
@@ -635,9 +666,13 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
               Padding(
                 padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  TextButton.icon(onPressed: _pickFiles, icon: const Icon(Icons.add, size: 16), label: Text(l10n.selectFiles)),
+                  Row(mainAxisSize: MainAxisSize.min, children: [
+                    TextButton.icon(onPressed: _pickFiles, icon: const Icon(Icons.add, size: 16), label: Text(l10n.selectFiles)),
+                    const SizedBox(width: 8),
+                    TextButton.icon(onPressed: _pickFolder, icon: const Icon(Icons.create_new_folder, size: 16), label: Text(l10n.selectFolder)),
+                  ]),
                   TextButton.icon(
-                    onPressed: _selectedFiles.isNotEmpty ? _clearFiles : null,
+                    onPressed: _selectedFiles.isNotEmpty || _selectedFolder != null ? _clearFiles : null,
                     icon: const Icon(Icons.clear_all, size: 16),
                     label: Text(l10n.clear),
                   ),

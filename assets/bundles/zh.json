@@ -36,6 +36,11 @@
   "openFolder": "在资源管理器中显示",
 
   "_comment_status": "── 状态 ──",
+  "justNow": "刚刚",
+  "minAgo": "分钟后",
+  "hoursAgo": "小时前",
+  "daysAgo": "天前",
+  "monthsAgo": "个月前",
   "loading": "加载中",
   "connecting": "连接中",
   "pending": "等待中",
@@ -131,6 +136,7 @@
   "resetRelay": "重置中继",
 
   "_comment_savePath": "── 保存路径 ──",
+  "downloadsFolder": "内部存储/Download",
   "defaultSavePath": "默认保存路径",
   "selectFolder": "选择文件夹",
   "savePath": "保存路径",

@@ -318,7 +318,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ListItem(
                 leading: const Icon(Icons.folder),
                 title: Text(l10n.defaultSavePath),
-                subtitle: Text(formatPathForDisplay(appSettings.defaultSavePath.isEmpty ? _defaultDownloadPath() : appSettings.defaultSavePath)),
+                subtitle: Text(formatPathForDisplay(
+                  appSettings.defaultSavePath.isEmpty ? _defaultDownloadPath() : appSettings.defaultSavePath,
+                  downloadsLabel: l10n.downloadsFolder,
+                )),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -370,7 +373,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   child: Image.asset('assets/images/icon.png', width: 24, height: 24),
                 ),
                 title: Text(l10n.appVersion),
-                subtitle: Text('${globalState.packageInfo.version}+${globalState.packageInfo.buildNumber}'),
+                subtitle: Text(globalState.packageInfo.version),
                 trailing: IconButton(
                   icon: const Icon(Icons.open_in_new, size: 18),
                   tooltip: l10n.open,

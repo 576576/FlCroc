@@ -217,6 +217,7 @@ jobs:
             $v = $env:SYNCED_VER
           }
           echo "version=$v" >> $env:GITHUB_OUTPUT
+          echo "display_version=$($v -replace '\+.*$','')" >> $env:GITHUB_OUTPUT
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -260,12 +261,12 @@ jobs:
         run: Copy-Item "windows\runner\libcroc_bridge.dll" "build\windows\x64\runner\Release\libcroc_bridge.dll" -Force
 
       - name: Package zip
-        run: Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip
+        run: Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64
-          path: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip
+          name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64
+          path: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.zip
 
   # ── Windows arm64 ──
   build-windows-arm64:
@@ -301,35 +302,31 @@ jobs:
             $v = $env:SYNCED_VER
           }
           echo "version=$v" >> $env:GITHUB_OUTPUT
+          echo "display_version=$($v -replace '\+.*$','')" >> $env:GITHUB_OUTPUT
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Setup LLVM (for ARM64 cross-compile)
+      - name: Setup Zig (cross-compiler for ARM64)
         run: |
-          if (Get-Command clang -ErrorAction SilentlyContinue) {
-            Write-Host "clang found on PATH"
-          } elseif (Test-Path "${env:ProgramFiles}\LLVM\bin\clang.exe") {
-            $env:PATH = "${env:ProgramFiles}\LLVM\bin;$env:PATH"
-            Write-Host "clang added from ${env:ProgramFiles}\LLVM\bin"
-          } else {
-            choco install llvm --no-progress -y
-            $env:PATH = "${env:ProgramFiles}\LLVM\bin;$env:PATH"
+          if (!(Get-Command zig -ErrorAction SilentlyContinue)) {
+            choco install zig --no-progress -y
           }
-          clang --version
+          zig version
 
       - name: Build Go bridge (.dll)
         run: |
           Push-Location go_bridge
           go mod tidy
-          go env -w CC=clang CXX=clang++
           $env:CGO_ENABLED = "1"
           $env:GOOS = "windows"
           $env:GOARCH = "arm64"
-          Write-Host "CC: $(go env CC)"
-          Write-Host "clang: $(clang --version | Select-Object -First 1)"
+          $env:CC = "zig cc -target aarch64-windows-gnu"
+          $env:CXX = "zig c++ -target aarch64-windows-gnu"
+          Write-Host "CC: $env:CC"
+          Write-Host "Zig: $(zig version)"
           go build -buildmode=c-shared -ldflags="-s -w -H windowsgui" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
           Pop-Location
 
@@ -356,12 +353,12 @@ jobs:
         run: Copy-Item "windows\runner\libcroc_bridge.dll" "build\windows\arm64\runner\Release\libcroc_bridge.dll" -Force
 
       - name: Package zip
-        run: Compress-Archive -Path "build\windows\arm64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.version }}-windows-arm64.zip
+        run: Compress-Archive -Path "build\windows\arm64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FlCroc-${{ steps.ver.outputs.version }}-windows-arm64
-          path: FlCroc-${{ steps.ver.outputs.version }}-windows-arm64.zip
+          name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64
+          path: FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64.zip
 
   # ── Linux ──
   build-linux:
@@ -650,7 +647,9 @@ jobs:
         run: |
           # Prefer prebuild outputs (from release/beta commit)
           if [ "${{ needs.prebuild.outputs.do_release }}" = "true" ]; then
-            echo "version=${{ needs.prebuild.outputs.release_version }}" >> $GITHUB_OUTPUT
+            VER="${{ needs.prebuild.outputs.release_version }}"
+            DISPLAY_VER=$(echo "$VER" | cut -d+ -f1)
+            echo "version=$DISPLAY_VER" >> $GITHUB_OUTPUT
             echo "tag=${{ needs.prebuild.outputs.release_tag }}" >> $GITHUB_OUTPUT
             echo "release_name=${{ needs.prebuild.outputs.release_name }}" >> $GITHUB_OUTPUT
           else

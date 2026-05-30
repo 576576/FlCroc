@@ -54,7 +54,7 @@ class HistoryView extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   subtitle: Text(
-                    '${transfer.totalSize.fileSize} • ${transfer.startTime.timeAgo}',
+                    '${transfer.totalSize.fileSize} • ${transfer.startTime.timeAgoL10n(l10n)}',
                   ),
                   trailing: _buildStatusChip(transfer.status, context),
                 );

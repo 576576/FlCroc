@@ -175,11 +175,33 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
               final fileNames = progress.currentFile.isNotEmpty
                   ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
                   : <String>[];
-              final fileItems = fileNames.map((n) => FileItem(
-                name: n,
-                path: '$_effectiveOutputPath/$n',
-                size: fileNames.length == 1 ? progress.totalSize : 0,
-              )).toList();
+              
+              List<FileItem> fileItems;
+              if (fileNames.length > 1) {
+                // Detect common root directory: if all paths share a first component, it's a folder
+                final firstParts = fileNames[0].split('/');
+                final commonRoot = firstParts.length > 1 ? firstParts[0] : null;
+                final isFolder = commonRoot != null && fileNames.every((n) => n.startsWith('$commonRoot/'));
+                if (isFolder) {
+                  // Display as a single folder entry
+                  final folderPath = '$_effectiveOutputPath/$commonRoot';
+                  fileItems = [FileItem(name: commonRoot, path: folderPath, size: progress.totalSize)];
+                } else {
+                  fileItems = fileNames.map((n) => FileItem(
+                    name: n,
+                    path: '$_effectiveOutputPath/$n',
+                    size: fileNames.length == 1 ? progress.totalSize : 0,
+                  )).toList();
+                }
+              } else if (fileNames.length == 1) {
+                fileItems = [FileItem(
+                  name: fileNames[0],
+                  path: '$_effectiveOutputPath/${fileNames[0]}',
+                  size: progress.totalSize,
+                )];
+              } else {
+                fileItems = [];
+              }
 
               _receivedFiles.clear();
               _receivedFiles.addAll(fileItems);
@@ -332,29 +354,32 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                 if (_receivedFiles.isEmpty)
                   NullStatusWidget(message: l10n.noReceivedFiles, icon: Icons.inbox_outlined)
                 else
-                  ..._receivedFiles.map((f) => ListTile(
-                    leading: const Icon(Icons.insert_drive_file),
-                    title: Text(f.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    subtitle: f.size > 0 ? Text(f.size.fileSize, style: context.textTheme.bodySmall) : null,
-                    dense: true,
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.folder_open, size: 18),
-                          onPressed: () => globalState.openFolder(f.path),
-                          tooltip: l10n.openFolder,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.open_in_new, size: 18),
-                          onPressed: () => globalState.openFile(f.path),
-                          tooltip: l10n.open,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ],
-                    ),
-                  )),
+                  ..._receivedFiles.map((f) {
+                    final showAsFolder = f.name.contains('/') || (_receivedFiles.length == 1 && !f.name.contains('.'));
+                    return ListTile(
+                      leading: Icon(showAsFolder ? Icons.folder : Icons.insert_drive_file, color: showAsFolder ? Colors.amber : null),
+                      title: Text(f.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      subtitle: f.size > 0 ? Text(f.size.fileSize, style: context.textTheme.bodySmall) : null,
+                      dense: true,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.folder_open, size: 18),
+                            onPressed: () => globalState.openFolder(f.path),
+                            tooltip: l10n.openFolder,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.open_in_new, size: 18),
+                            onPressed: () => showAsFolder ? globalState.openFolder(f.path) : globalState.openFile(f.path),
+                            tooltip: l10n.open,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
                 Padding(
                   padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
                   child: Align(
@@ -476,7 +501,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Text(effectivePath, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textTheme.bodySmall),
+                          Text(formatPathForDisplay(effectivePath, downloadsLabel: l10n.downloadsFolder), maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textTheme.bodySmall),
                         ],
                       ),
                     );

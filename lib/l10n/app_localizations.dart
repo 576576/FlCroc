@@ -60,6 +60,7 @@ class AppLocalizations {
     'open', 'openFolder',
 
     // ── Common: Status ──
+    'justNow', 'minAgo', 'hoursAgo', 'daysAgo', 'monthsAgo',
     'loading', 'connecting', 'pending', 'sending', 'transferring',
     'receiving', 'completed', 'failed', 'cancelled',
     'default', 'custom',
@@ -101,7 +102,7 @@ class AppLocalizations {
     'defaultRelay', 'customRelay', 'noRelay', 'port', 'resetRelay',
 
     // ── Settings: Save Path ──
-    'defaultSavePath', 'selectFolder', 'savePath',
+    'downloadsFolder', 'defaultSavePath', 'selectFolder', 'savePath',
 
     // ── Settings: Theme ──
     'theme', 'themeMode', 'light', 'dark', 'system',
@@ -157,6 +158,11 @@ class AppLocalizations {
   String get openFolder => _('openFolder');
 
   // ── Common: Status ──
+  String get justNow => _('justNow');
+  String get minAgo => _('minAgo');
+  String get hoursAgo => _('hoursAgo');
+  String get daysAgo => _('daysAgo');
+  String get monthsAgo => _('monthsAgo');
   String get loading => _('loading');
   String get connecting => _('connecting');
   String get pending => _('pending');
@@ -259,6 +265,7 @@ class AppLocalizations {
   String get resetRelay => _('resetRelay');
 
   // ── Settings: Save Path ──
+  String get downloadsFolder => _('downloadsFolder');
   String get defaultSavePath => _('defaultSavePath');
   String get selectFolder => _('selectFolder');
   String get savePath => _('savePath');
