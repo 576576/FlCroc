@@ -270,7 +270,7 @@ jobs:
 
   # ── Windows arm64 ──
   build-windows-arm64:
-    needs: [test, prebuild]
+    needs: [test, prebuild, build-windows-amd64]
     if: needs.prebuild.outputs.windows == 'true'
     runs-on: windows-latest
     defaults:
@@ -325,8 +325,6 @@ jobs:
           $env:GOARCH = "arm64"
           $env:CC = "zig cc -target aarch64-windows-gnu"
           $env:CXX = "zig c++ -target aarch64-windows-gnu"
-          Write-Host "CC: $env:CC"
-          Write-Host "Zig: $(zig version)"
           go build -buildmode=c-shared -ldflags="-s -w -H windowsgui" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
           Pop-Location
 
@@ -338,22 +336,18 @@ jobs:
             Write-Error "libcroc_bridge.dll not found!"
           }
 
-      - uses: subosito/flutter-action@v2
+      - name: Download AMD64 artifact
+        uses: actions/download-artifact@v4
         with:
-          channel: stable
-          cache: true
+          name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64
+          path: amd64-pkg
 
-      - name: Install Flutter dependencies
-        run: flutter pub get
-
-      - name: Build Windows (ARM64)
-        run: flutter build windows --release --target-platform windows-arm64
-
-      - name: Bundle bridge .dll into build output
-        run: Copy-Item "windows\runner\libcroc_bridge.dll" "build\windows\arm64\runner\Release\libcroc_bridge.dll" -Force
-
-      - name: Package zip
-        run: Compress-Archive -Path "build\windows\arm64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64.zip
+      - name: Repack with ARM64 .dll
+        run: |
+          Expand-Archive "amd64-pkg\FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.zip" -DestinationPath arm64-repack
+          Copy-Item "windows\runner\libcroc_bridge.dll" "arm64-repack\libcroc_bridge.dll" -Force
+          Copy-Item "windows\runner\libcroc_bridge.dll" "arm64-repack\data\flutter_assets\libcroc_bridge.dll" -Force -ErrorAction SilentlyContinue
+          Compress-Archive -Path "arm64-repack\*" -DestinationPath FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64.zip
 
       - uses: actions/upload-artifact@v4
         with:
