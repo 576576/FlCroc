@@ -57,6 +57,37 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
     AppPrefs.setJson(_prefReceiveConfig, _receiveConfig.toJson());
   }
 
+  /// Build FileItem list from received file names, detecting folders.
+  List<FileItem> _buildFileItems(List<String> fileNames, int totalSize) {
+    if (fileNames.isEmpty) {
+      return [FileItem(name: 'file', path: _effectiveOutputPath, size: 0)];
+    }
+    if (fileNames.length > 1) {
+      final separator = fileNames[0].contains('/') ? '/' : (fileNames[0].contains('\\') ? '\\' : null);
+      String? commonRoot;
+      if (separator != null) {
+        final root = fileNames[0].split(separator)[0];
+        if (fileNames.every((n) => n.startsWith('$root$separator'))) {
+          commonRoot = root;
+        }
+      }
+      if (commonRoot != null) {
+        return [FileItem(name: commonRoot, path: '$_effectiveOutputPath${Platform.pathSeparator}$commonRoot', size: totalSize)];
+      }
+      return fileNames.map((n) => FileItem(
+        name: n,
+        path: '$_effectiveOutputPath${Platform.pathSeparator}${n.replaceAll('/', Platform.pathSeparator)}',
+        size: totalSize,
+      )).toList();
+    }
+    final name = fileNames[0];
+    return [FileItem(
+      name: name,
+      path: '$_effectiveOutputPath${Platform.pathSeparator}$name',
+      size: totalSize,
+    )];
+  }
+
   void _openScanner() async {
     if (isDesktop) {
       if (mounted) context.showSnackBar(context.appLocalizations.scanMobileOnly);
@@ -160,75 +191,55 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
             );
             if (mounted) setState(() {});
           case TransferProgressStatus.completed:
-            if (progress.isText) {
+            // Parse received file names
+            final fileNames = progress.currentFile.isNotEmpty
+                ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
+                : <String>[];
+
+            // Detect text receive: single file, likely text (croc text transfers produce temp .txt files)
+            final isTextReceive = progress.totalFiles == 0 && fileNames.isNotEmpty;
+
+            if (isTextReceive) {
+              final fileName = fileNames.first;
+              final filePath = '$_effectiveOutputPath${Platform.pathSeparator}$fileName';
+              String textContent = '';
+              try {
+                final file = File(filePath);
+                if (file.existsSync()) {
+                  textContent = file.readAsStringSync();
+                }
+              } catch (_) {}
+
               setState(() {
                 _receivedFiles.clear();
                 _selectedTab = 1;
                 _isReceiving = false;
                 _phase = ReceivePhase.completed;
               });
-              // Defer text controller update to after the frame
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (!mounted) return;
                 _receivedTextController
-                  ..text = progress.textContent
-                  ..selection = TextSelection.collapsed(offset: progress.textContent.length);
+                  ..text = textContent
+                  ..selection = TextSelection.collapsed(offset: textContent.length);
               });
               appController.updateTransferRecord(
                 record.copyWith(
                   status: TransferStatus.completed,
-                  totalSize: progress.textContent.length,
-                  files: [FileItem(name: progress.textContent, path: '', size: progress.textContent.length)],
+                  totalSize: textContent.length,
+                  files: [FileItem(name: textContent, path: '', size: textContent.length)],
                   endTime: DateTime.now(),
                 ),
               );
             } else {
-              // Parse file names from the completed event
-              final raw = progress.currentFile.isNotEmpty
-                  ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
-                  : <String>[];
-              
-              // Remove .zip wrapper if croc auto-extracted (strip trailing .zip from name)
-              final fileNames = raw.map((n) {
-                if (raw.length == 1 && n.endsWith('.zip')) {
+              // File receive: strip .zip wrapper if croc auto-extracted
+              final cleanedNames = fileNames.map((n) {
+                if (fileNames.length == 1 && n.endsWith('.zip')) {
                   return n.substring(0, n.length - 4);
                 }
                 return n;
               }).toList();
 
-              List<FileItem> fileItems;
-              if (fileNames.length > 1) {
-                // Detect common root directory
-                final separator = fileNames[0].contains('/') ? '/' : (fileNames[0].contains('\\') ? '\\' : null);
-                String? commonRoot;
-                if (separator != null) {
-                  final root = fileNames[0].split(separator)[0];
-                  if (fileNames.every((n) => n.startsWith('$root$separator'))) {
-                    commonRoot = root;
-                  }
-                }
-                if (commonRoot != null) {
-                  // Display as single folder
-                  final folderPath = '$_effectiveOutputPath${Platform.pathSeparator}$commonRoot';
-                  fileItems = [FileItem(name: commonRoot, path: folderPath, size: progress.totalSize)];
-                } else {
-                  fileItems = fileNames.map((n) => FileItem(
-                    name: n,
-                    path: '$_effectiveOutputPath${Platform.pathSeparator}${n.replaceAll('/', Platform.pathSeparator)}',
-                    size: progress.totalSize,
-                  )).toList();
-                }
-              } else if (fileNames.length == 1) {
-                // Single file: detect if it's a folder (no extension) or a file
-                final name = fileNames[0];
-                final isFolder = !name.contains('.') || progress.totalSize == 0;
-                final path = isFolder
-                    ? '$_effectiveOutputPath${Platform.pathSeparator}$name'
-                    : '$_effectiveOutputPath${Platform.pathSeparator}$name';
-                fileItems = [FileItem(name: name, path: path, size: progress.totalSize)];
-              } else {
-                fileItems = [FileItem(name: l10n.receiving, path: _effectiveOutputPath, size: 0)];
-              }
+              List<FileItem> fileItems = _buildFileItems(cleanedNames, progress.totalSize);
 
               setState(() {
                 _receivedFiles.clear();

@@ -391,30 +391,42 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
           context.showSnackBar(l10n.localizeCrocError(progress.error!));
         }
         if (progress.status == TransferProgressStatus.completed) {
-          if (progress.isText) {
+          final fileNames = progress.currentFile.isNotEmpty
+              ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
+              : <String>[];
+
+          // Detect text receive: croc text transfers produce 0 totalFiles with a single temp file
+          final isTextReceive = progress.totalFiles == 0 && fileNames.isNotEmpty;
+
+          if (isTextReceive) {
+            final fileName = fileNames.first;
+            final filePath = '${AppPaths.savePathSync}${Platform.pathSeparator}$fileName';
+            String textContent = '';
+            try {
+              final file = File(filePath);
+              if (file.existsSync()) {
+                textContent = file.readAsStringSync();
+              }
+            } catch (_) {}
             setState(() {
-              _receivedText = progress.textContent;
+              _receivedText = textContent;
               _receivedFiles.clear();
               _isTextMode = true;
             });
-            // Defer text controller update to after the frame so TextField exists
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
               _textCtrl
-                ..text = progress.textContent
-                ..selection = TextSelection.collapsed(offset: progress.textContent.length);
+                ..text = textContent
+                ..selection = TextSelection.collapsed(offset: textContent.length);
             });
             appController.updateTransferRecord(record.copyWith(
               status: TransferStatus.completed,
-              totalSize: progress.textContent.length,
-              files: [FileItem(name: progress.textContent, path: '', size: progress.textContent.length)],
+              totalSize: textContent.length,
+              files: [FileItem(name: textContent, path: '', size: textContent.length)],
               endTime: DateTime.now(),
             ));
           } else {
             setState(() {
-              final fileNames = progress.currentFile.isNotEmpty
-                  ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
-                  : <String>[];
               _receivedText = '';
               _textCtrl.clear();
               _isTextMode = false;

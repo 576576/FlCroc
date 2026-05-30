@@ -23,6 +23,7 @@ jobs:
       contents: write
     outputs:
       windows: ${{ steps.platform.outputs.windows }}
+      windows_arm64: ${{ steps.platform.outputs.windows_arm64 }}
       linux: ${{ steps.platform.outputs.linux }}
       android: ${{ steps.platform.outputs.android }}
       is_main: ${{ steps.branch.outputs.is_main }}
@@ -100,7 +101,7 @@ jobs:
             git push
           else
             # ── Non-release: increment build number only if a build will run ──
-            if ! echo "$MSG" | grep -qE '\b(b-win|b-linux|b-mobile|b-all)\b'; then
+            if ! echo "$MSG" | grep -qE '\b(b-win64|b-win|b-linux|b-mobile|b-all)\b'; then
               echo "No build trigger in commit message, skip version sync"
               echo "nightly_version=${CUR_VER}" >> $GITHUB_OUTPUT
               echo "nightly_date=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
@@ -149,21 +150,23 @@ jobs:
           MSG: ${{ github.event.head_commit.message || '' }}
           IS_TAG: ${{ steps.branch.outputs.is_tag }}
         run: |
-          W='false'; L='false'; A='false'
+          W='false'; WA='false'; L='false'; A='false'
           if [ "$IS_TAG" = "true" ]; then
-            W='true'; L='true'; A='true'
+            W='true'; WA='true'; L='true'; A='true'
           else
             case "$MSG" in
-              *b-win*)    W='true' ;;
+              *b-win64*)  W='true' ;;           # amd64 only, no arm64
+              *b-win*)    W='true'; WA='true' ;; # both amd64 + arm64
               *b-linux*)  L='true' ;;
               *b-mobile*) A='true' ;;
-              *b-all*)    W='true'; L='true'; A='true' ;;
+              *b-all*)    W='true'; WA='true'; L='true'; A='true' ;;
             esac
           fi
           echo "windows=$W" >> $GITHUB_OUTPUT
+          echo "windows_arm64=$WA" >> $GITHUB_OUTPUT
           echo "linux=$L" >> $GITHUB_OUTPUT
           echo "android=$A" >> $GITHUB_OUTPUT
-          echo "Platforms → windows:$W linux:$L android:$A"
+          echo "Platforms → windows:$W arm64:$WA linux:$L android:$A"
 
   # ── Test ──
   test:
@@ -271,7 +274,7 @@ jobs:
   # ── Windows arm64 ──
   build-windows-arm64:
     needs: [test, prebuild, build-windows-amd64]
-    if: needs.prebuild.outputs.windows == 'true'
+    if: needs.prebuild.outputs.windows_arm64 == 'true'
     runs-on: windows-latest
     defaults:
       run:
