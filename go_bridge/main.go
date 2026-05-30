@@ -15,8 +15,10 @@ package main
 import "C"
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -334,7 +336,31 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		os.Chdir(opts.OutputPath)
 	}
 
-	err = c.Receive()
+	// Capture stdout during receive — croc prints text content to stdout
+	// when SendingText is true (and then deletes the temp file).
+	// By capturing stdout we get the text without modifying croc source.
+	var capturedStdout string
+	oldStdout := os.Stdout
+	r, w, pipeErr := os.Pipe()
+	if pipeErr == nil {
+		os.Stdout = w
+		var stdoutBuf bytes.Buffer
+		done := make(chan struct{})
+		go func() {
+			io.Copy(&stdoutBuf, r)
+			r.Close()
+			close(done)
+		}()
+
+		err = c.Receive()
+
+		w.Close()
+		os.Stdout = oldStdout
+		<-done
+		capturedStdout = stdoutBuf.String()
+	} else {
+		err = c.Receive()
+	}
 	if err != nil {
 		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: err.Error()}
 		return
@@ -347,10 +373,13 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 	var textContent string
 
 	// Detect text receive: `c.Options.SendingText` is set by the receiver
-	// from the sender's info (see croc.go processMessageFileInfo L1305).
+	// from the sender's info. croc may print text to stdout and/or save
+	// a temp file depending on platform/config. Try captured stdout first,
+	// then fall back to reading the received file.
 	if c.Options.SendingText {
 		isText = true
-		if len(c.FilesToTransfer) == 1 {
+		textContent = capturedStdout
+		if textContent == "" && len(c.FilesToTransfer) == 1 {
 			f := c.FilesToTransfer[0]
 			filePath := filepath.Join(f.FolderRemote, f.Name)
 			if data, err := os.ReadFile(filePath); err == nil {
