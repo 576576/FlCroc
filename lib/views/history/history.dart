@@ -3,6 +3,7 @@ import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/providers/providers.dart';
+import 'package:fl_croc/state.dart';
 import 'package:fl_croc/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,6 +45,10 @@ class HistoryView extends ConsumerWidget {
               itemBuilder: (_, index) {
                 final transfer = completed[index];
                 final isSent = transfer.direction == TransferDirection.sent;
+                final hasReceivedFile = !isSent &&
+                    transfer.status == TransferStatus.completed &&
+                    transfer.files.isNotEmpty &&
+                    transfer.files.any((f) => f.path.isNotEmpty);
                 return ListTile(
                   leading: Icon(
                     isSent ? Icons.upload : Icons.download,
@@ -57,7 +62,27 @@ class HistoryView extends ConsumerWidget {
                   subtitle: Text(
                     '${transfer.totalSize.fileSize} • ${transfer.startTime.timeAgoL10n(l10n)}',
                   ),
-                  trailing: _buildStatusChip(transfer.status, context),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (hasReceivedFile)
+                        IconButton(
+                          icon: const Icon(Icons.folder_open, size: 18),
+                          tooltip: l10n.openFolder,
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () {
+                            final f = transfer.files.firstWhere((f) => f.path.isNotEmpty);
+                            final showAsFolder = !f.name.contains('.') || f.name.contains('/') || f.name.contains('\\');
+                            if (showAsFolder) {
+                              globalState.openFolder(f.path);
+                            } else {
+                              globalState.openFile(f.path);
+                            }
+                          },
+                        ),
+                      _buildStatusChip(transfer.status, context),
+                    ],
+                  ),
                 );
               },
             ),

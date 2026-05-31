@@ -117,21 +117,55 @@ class _DashboardViewState extends ConsumerState<DashboardView>
     return CommonScaffold(
       title: l10n.dashboard,
       actions: [
-        ValueListenableBuilder<(String, Color)?>(
+        ValueListenableBuilder<QuickStatus?>(
           valueListenable: QuickTransferWidget.statusNotifier,
           builder: (_, status, __) {
             if (status == null) return const SizedBox.shrink();
-            final (label, color) = status;
+            final isActive = status.label == context.appLocalizations.sending ||
+                             status.label == context.appLocalizations.receiving;
             return Padding(
               padding: const EdgeInsets.only(right: 4),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
-              ),
+              child: isActive
+                  ? Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: TweenAnimationBuilder<double>(
+                            tween: Tween<double>(
+                              begin: 0.0,
+                              end: status.progress >= 0 ? status.progress.clamp(0.0, 1.0) : 0.25,
+                            ),
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                            builder: (_, value, __) => CircularProgressIndicator(
+                              value: status.progress < 0 ? null : value,
+                              strokeWidth: 2.5,
+                              strokeCap: StrokeCap.round,
+                              valueColor: AlwaysStoppedAnimation<Color>(status.color),
+                              backgroundColor: status.color.withValues(alpha: 0.1),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: status.color.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(status.label, style: TextStyle(fontSize: 12, color: status.color, fontWeight: FontWeight.w600)),
+                        ),
+                      ],
+                    )
+                  : Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: status.color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(status.label, style: TextStyle(fontSize: 12, color: status.color, fontWeight: FontWeight.w600)),
+                    ),
             );
           },
         ),
@@ -152,9 +186,9 @@ class _DashboardViewState extends ConsumerState<DashboardView>
             builder: (_, isEdit, _) {
               return LayoutBuilder(builder: (context, constraints) {
                 final availableWidth = constraints.maxWidth - 32;
-                final columns = availableWidth < 400
+                final columns = availableWidth < 560
                     ? 1
-                    : availableWidth < 700
+                    : availableWidth < 900
                         ? 2
                         : 3;
                 final cardWidth =

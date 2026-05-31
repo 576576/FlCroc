@@ -27,7 +27,7 @@ class HomePage extends StatelessWidget {
 
         // ── Wide: NavigationRail sidebar ──
         if (!isNarrow) {
-          final labelStyle = context.textTheme.labelMedium?.copyWith(
+          final labelStyle = context.textTheme.labelLarge?.copyWith(
             overflow: TextOverflow.ellipsis,
           );
           final screenHeight = MediaQuery.of(context).size.height;
@@ -41,9 +41,9 @@ class HomePage extends StatelessWidget {
                 child: Column(
                   children: [
                     if (showLogo) ...[
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 4),
                       Padding(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(8),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: Image.asset(
@@ -53,7 +53,7 @@ class HomePage extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                     ],
                     Expanded(
                       child: NavigationRail(
@@ -76,7 +76,7 @@ class HomePage extends StatelessWidget {
                         labelType: NavigationRailLabelType.all,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
                   ],
                 ),
               ),

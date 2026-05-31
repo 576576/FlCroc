@@ -13,7 +13,7 @@ import 'package:fl_croc/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:gscankit/gscankit.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 class ReceiveView extends ConsumerStatefulWidget {
   const ReceiveView({super.key});
@@ -93,10 +93,9 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
       if (mounted) context.showSnackBar(context.appLocalizations.scanMobileOnly);
       return;
     }
-    final result = await Navigator.of(context).push<String>(
-      MaterialPageRoute(
-        builder: (_) => const _QRScannerPage(),
-      ),
+    final result = await showDialog<String>(
+      context: context,
+      builder: (_) => const _QRScannerDialog(),
     );
     if (result != null && mounted) {
       _codeController.text = result;
@@ -273,6 +272,12 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
       onError: (e) {
         if (!mounted) return;
         setState(() => _isReceiving = false);
+        appController.updateTransferRecord(
+          record.copyWith(
+            status: TransferStatus.failed,
+            endTime: DateTime.now(),
+          ),
+        );
         final l10n = context.appLocalizations;
         final errMsg = e.toString() == 'UnsupportedError: unavailable'
             ? l10n.noCrocBackend
@@ -578,49 +583,90 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   }
 }
 
-/// QR scanner page powered by gscankit.
-class _QRScannerPage extends StatefulWidget {
-  const _QRScannerPage();
+/// QR scanner dialog powered by mobile_scanner.
+class _QRScannerDialog extends StatefulWidget {
+  const _QRScannerDialog();
 
   @override
-  State<_QRScannerPage> createState() => _QRScannerPageState();
+  State<_QRScannerDialog> createState() => _QRScannerDialogState();
 }
 
-class _QRScannerPageState extends State<_QRScannerPage> {
+class _QRScannerDialogState extends State<_QRScannerDialog> {
+  final MobileScannerController _ctrl = MobileScannerController();
   bool _hasScanned = false;
 
-  void _onDetect(dynamic capture) {
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _onDetect(BarcodeCapture capture) {
     if (_hasScanned) return;
-    final raw = capture?.barcodes?.firstOrNull?.rawValue;
-    if (raw != null && raw is String && raw.isNotEmpty) {
+    final raw = capture.barcodes.firstOrNull?.rawValue;
+    if (raw != null && raw.isNotEmpty) {
       _hasScanned = true;
       Navigator.of(context).pop(raw);
     }
   }
 
+  Future<void> _pickImage() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.image);
+    if (result == null || result.files.isEmpty) return;
+    final path = result.files.first.path;
+    if (path == null) return;
+    try {
+      final capture = await _ctrl.analyzeImage(path);
+      if (capture != null && capture.barcodes.isNotEmpty && mounted) {
+        final raw = capture.barcodes.first.rawValue;
+        if (raw != null && raw.isNotEmpty) {
+          Navigator.of(context).pop(raw);
+        }
+      }
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.appLocalizations;
-    return GscanKit(
-      onDetect: _onDetect,
-      setPortraitOrientation: false,
-      gscanOverlayConfig: const GscanOverlayConfig(),
-      appBar: (context, ctrl) => AppBar(
-        title: Text(l10n.scanQRCode),
-        actions: [
-          GalleryButton(
-            controller: ctrl,
-            isSuccess: ValueNotifier<bool?>(null),
-            onDetect: _onDetect,
-            text: '',
-            icon: const Icon(Icons.image, color: Colors.white, size: 22),
-          ),
-          IconButton(
-            icon: const Icon(Icons.flip_camera_android),
-            tooltip: l10n.flipCamera,
-            onPressed: () => ctrl.switchCamera(),
-          ),
-        ],
+    return Dialog(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Scanner area (square)
+            AspectRatio(
+              aspectRatio: 1,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                child: MobileScanner(
+                  controller: _ctrl,
+                  onDetect: _onDetect,
+                ),
+              ),
+            ),
+            // Bottom buttons
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  FilledButton.icon(
+                    onPressed: _pickImage,
+                    icon: const Icon(Icons.image, size: 18),
+                    label: Text(l10n.selectQRImage),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, size: 18),
+                    label: Text(l10n.cancel),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

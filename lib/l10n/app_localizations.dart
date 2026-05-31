@@ -85,7 +85,8 @@ class AppLocalizations {
 
     // ── Send ──
     'codePhrase', 'enterCodePhrase', 'phraseHintCroc', 'phraseHintRandom',
-    'textHint', 'autoGeneratePhrase', 'phraseMode',
+    'textHint', 'textSizeLimit', 'unlimited',
+    'autoGeneratePhrase', 'phraseMode',
     'phraseModeOn', 'autoCopyPhrase',
     'enterPhraseWarning', 'enterTextWarning',
 
@@ -226,6 +227,8 @@ class AppLocalizations {
   String get phraseHintCroc => _('phraseHintCroc');
   String get phraseHintRandom => _('phraseHintRandom');
   String get textHint => _('textHint');
+  String get textSizeLimit => _('textSizeLimit');
+  String get unlimited => _('unlimited');
   String get autoGeneratePhrase => _('autoGeneratePhrase');
   String get phraseMode => _('phraseMode');
   String get phraseModeOn => _('phraseModeOn');

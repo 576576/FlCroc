@@ -242,6 +242,7 @@ class CoreLib extends CoreInterface {
               status: TransferProgressStatus.transferring,
               totalFiles: (event['total_files'] as int?) ?? 0,
               totalSize: (event['total_size'] as int?) ?? 0,
+              transferredSize: (event['transferred_size'] as int?) ?? 0,
               codePhrase: event['code_phrase'] as String?,
             );
           }
@@ -375,6 +376,7 @@ class CoreLib extends CoreInterface {
               status: TransferProgressStatus.transferring,
               totalFiles: (event['total_files'] as int?) ?? 0,
               totalSize: (event['total_size'] as int?) ?? 0,
+              transferredSize: (event['transferred_size'] as int?) ?? 0,
             );
           }
         } catch (_) {

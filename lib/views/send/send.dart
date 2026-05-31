@@ -737,13 +737,13 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
               ListItem.switchItem(leading: const Icon(Icons.folder_zip), title: Text(l10n.zipFolder), delegate: SwitchDelegate(value: _sendConfig.zipFolder, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(zipFolder: v); _saveSendPrefs(); }))),
               ListItem(
                 leading: const Icon(Icons.text_snippet),
-                title: const Text('文本大小限制'),
+                title: Text(l10n.textSizeLimit),
                 subtitle: Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Row(
                     children: [
                       ChoiceChip(
-                        label: const Text('默认', style: TextStyle(fontSize: 12)),
+                        label: Text(l10n.defaultLabel, style: const TextStyle(fontSize: 12)),
                         selected: _textByteLimit == null,
                         onSelected: (v) {
                           if (v) setState(() { _textByteLimit = null; _limitCtrl.clear(); _saveSendPrefs(); });
@@ -751,7 +751,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                       ),
                       const SizedBox(width: 8),
                       ChoiceChip(
-                        label: const Text('无限制', style: TextStyle(fontSize: 12)),
+                        label: Text(l10n.unlimited, style: const TextStyle(fontSize: 12)),
                         selected: _textByteLimit == 0,
                         onSelected: (v) {
                           if (v) setState(() { _textByteLimit = 0; _limitCtrl.clear(); _saveSendPrefs(); });
@@ -759,7 +759,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                       ),
                       const SizedBox(width: 8),
                       ChoiceChip(
-                        label: const Text('自定义', style: TextStyle(fontSize: 12)),
+                        label: Text(l10n.custom, style: const TextStyle(fontSize: 12)),
                         selected: _textByteLimit != null && _textByteLimit! > 0,
                         onSelected: (v) {
                           if (v) setState(() { _textByteLimit = _defaultTextLimit; _limitCtrl.text = '$_defaultTextLimit'; _saveSendPrefs(); });
@@ -795,7 +795,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                           visualDensity: VisualDensity.compact,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                          tooltip: '重置',
+                          tooltip: l10n.reset,
                           onPressed: () {
                             setState(() {
                               _textByteLimit = null;
