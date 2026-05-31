@@ -1,5 +1,3 @@
-import com.android.build.api.dsl.CommonExtension
-
 allprojects {
     repositories {
         google()
@@ -14,16 +12,9 @@ allprojects {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
-}
-subprojects {
-    afterEvaluate {
-        extensions.findByType<CommonExtension<*, *, *, *, *, *>>()?.apply {
-            compileSdk = 36
-            compileOptions {
-                sourceCompatibility = JavaVersion.VERSION_17
-                targetCompatibility = JavaVersion.VERSION_17
-            }
-        }
+    tasks.withType<JavaCompile>().configureEach {
+        sourceCompatibility = JavaVersion.VERSION_17.toString()
+        targetCompatibility = JavaVersion.VERSION_17.toString()
     }
 }
 
