@@ -124,12 +124,17 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
       if (mounted) context.showSnackBar(context.appLocalizations.scanMobileOnly);
       return;
     }
-    final result = await showDialog<String>(
-      context: context,
-      builder: (_) => const _QRScannerDialog(),
-    );
-    if (result != null && mounted) {
-      _codeController.text = result;
+    try {
+      final result = await showDialog<String>(
+        context: context,
+        builder: (_) => const _QRScannerDialog(),
+      );
+      if (result != null && mounted) {
+        _codeController.text = result;
+      }
+    } catch (e, st) {
+      commonPrint('Scanner dialog error: $e\n$st');
+      if (mounted) context.showSnackBar(context.appLocalizations.localizeCrocError(e.toString()));
     }
   }
 
@@ -295,6 +300,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
               ),
             );
             if (progress.error != null && mounted) {
+              commonPrint('Receive failed: ${progress.error}');
               final errMsg = progress.error == CoreController.noBackendError
                   ? l10n.noCrocBackend
                   : l10n.localizeCrocError(progress.error!);
@@ -685,7 +691,9 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
           Navigator.of(context).pop(raw);
         }
       }
-    } catch (_) {}
+    } catch (e, st) {
+      commonPrint('QR image analyze error: $e\n$st');
+    }
   }
 
   @override
@@ -705,6 +713,10 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
                 child: MobileScanner(
                   controller: _ctrl,
                   onDetect: _onDetect,
+                  errorBuilder: (context, error, child) {
+                    commonPrint('MobileScanner error: $error');
+                    return child ?? const SizedBox.shrink();
+                  },
                 ),
               ),
             ),

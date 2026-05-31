@@ -206,7 +206,8 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 	// croc recognises the "croc-stdin-" prefix as stdin/text content.
 	sendingText := opts.SendingText && opts.TextContent != ""
 	if sendingText {
-		tmpFile, err := os.CreateTemp("", "croc-stdin-*.txt")
+		tmpDir := opts.TempDir
+		tmpFile, err := os.CreateTemp(tmpDir, "croc-stdin-*.txt")
 		if err != nil {
 			progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: fmt.Sprintf("temp file: %s", err)}
 			return
@@ -487,6 +488,7 @@ type sendOptions struct {
 	Exclude       []string `json:"exclude"`
 	SendingText   bool     `json:"sending_text"`
 	TextContent   string   `json:"text_content"`
+	TempDir       string   `json:"temp_dir"`
 }
 
 type receiveOptions struct {

@@ -376,7 +376,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   child: Image.asset('assets/images/icon.png', width: 24, height: 24),
                 ),
                 title: Text(l10n.appVersion),
-                subtitle: Text(globalState.packageInfo.version),
+                subtitle: Text(_debugMode
+                    ? '${globalState.packageInfo.version}+${globalState.packageInfo.buildNumber}'
+                    : globalState.packageInfo.version),
                 trailing: IconButton(
                   icon: const Icon(Icons.open_in_new, size: 18),
                   tooltip: l10n.open,
@@ -389,6 +391,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     _versionTaps = 0;
                     setState(() => _debugMode = !_debugMode);
                     LogBuffer.debugMode = _debugMode;
+                    LogBuffer.clear();
                     final l10n = context.appLocalizations;
                     context.showSnackBar(_debugMode ? l10n.debugModeOn : l10n.debugModeOff);
                   }

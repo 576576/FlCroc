@@ -343,6 +343,7 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
     _activeTransferId = transferId;
 
     final resolvedPaths = <String>[];
+    String? tempDirPath;
     if (!_isTextMode) {
       if (_selectedFolder != null) {
         resolvedPaths.add(_selectedFolder!);
@@ -352,8 +353,8 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
           if (isAndroid && f.path!.startsWith('content://')) {
             try {
               final bytes = await File(f.path!).readAsBytes();
-              final tempDir = await getTemporaryDirectory();
-              final tmp = File('${tempDir.path}${Platform.pathSeparator}${f.name}');
+              tempDirPath ??= (await getTemporaryDirectory()).path;
+              final tmp = File('$tempDirPath${Platform.pathSeparator}${f.name}');
               await tmp.writeAsBytes(bytes);
               resolvedPaths.add(tmp.path);
             } catch (_) {}
@@ -362,6 +363,9 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
           }
         }
       }
+    }
+    if (_isTextMode) {
+      tempDirPath = (await getTemporaryDirectory()).path;
     }
 
     final code = _quickSendCode.isNotEmpty ? _quickSendCode : null;
@@ -392,6 +396,7 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
       codePhrase: code,
       sendingText: _isTextMode,
       textContent: _isTextMode ? _textCtrl.text.trim() : '',
+      tempDir: tempDirPath ?? '',
       onlyLocal: relayConfig.type == RelayType.noRelay,
       relayAddress: relayConfig.type == RelayType.customRelay ? relayConfig.address : null,
       relayPassword: relayConfig.type == RelayType.customRelay ? relayConfig.password : null,

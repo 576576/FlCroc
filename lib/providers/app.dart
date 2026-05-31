@@ -115,3 +115,7 @@ final transfersProvider = Provider<List<TransferRecord>>((ref) {
 final systemUiOverlayStyleStateProvider = StateProvider<SystemUiOverlayStyle>(
   (ref) => SystemUiOverlayStyle.light,
 );
+
+/// Holds file paths received via Android/iOS share intent.
+/// The send page picks these up and clears the list after adding.
+final pendingSharedFilesProvider = StateProvider<List<String>>((ref) => []);

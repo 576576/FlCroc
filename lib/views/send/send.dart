@@ -105,6 +105,30 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     );
     _loadSendPrefs();
     _textController.addListener(_enforceTextLimit);
+    _pickUpSharedFiles();
+  }
+
+  /// Pick up files shared via Android/iOS "Open with" intent.
+  void _pickUpSharedFiles() {
+    final paths = ref.read(pendingSharedFilesProvider);
+    if (paths.isEmpty) return;
+    final newFiles = <PlatformFile>[];
+    for (final p in paths) {
+      final f = File(p);
+      if (!f.existsSync()) continue;
+      // Avoid duplicates
+      if (_selectedFiles.any((s) => s.path == p)) continue;
+      newFiles.add(PlatformFile(
+        name: p.split(Platform.pathSeparator).last,
+        path: p,
+        size: f.lengthSync(),
+      ));
+    }
+    if (newFiles.isNotEmpty) {
+      setState(() => _selectedFiles.addAll(newFiles));
+    }
+    // Clear the pending list so we don't re-add on rebuild
+    ref.read(pendingSharedFilesProvider.notifier).state = [];
   }
 
   bool _limiting = false;
@@ -418,6 +442,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
     // Resolve file paths for Go bridge (Android content URIs → temp files)
     final resolvedPaths = <String>[];
+    String? tempDirPath;
     if (!isText) {
       if (_selectedFolder != null) {
         resolvedPaths.add(_selectedFolder!);
@@ -428,8 +453,8 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
           if (isAndroid && p.startsWith('content://')) {
             try {
               final bytes = await File(p).readAsBytes();
-              final tempDir = await getTemporaryDirectory();
-              final tempFile = File('${tempDir.path}${Platform.pathSeparator}${f.name}');
+              tempDirPath ??= (await getTemporaryDirectory()).path;
+              final tempFile = File('$tempDirPath${Platform.pathSeparator}${f.name}');
               await tempFile.writeAsBytes(bytes);
               resolvedPaths.add(tempFile.path);
             } catch (_) {
@@ -441,10 +466,15 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
         }
       }
     }
+    // Ensure we have a temp dir for text mode on Android
+    if (isText) {
+      tempDirPath = (await getTemporaryDirectory()).path;
+    }
 
     final options = SendOptions(
       filePaths: isText ? [] : resolvedPaths,
       codePhrase: code.isEmpty ? null : code, sendingText: isText, textContent: isText ? textContent : '',
+      tempDir: tempDirPath ?? '',
       curve: _sendConfig.curve, hashAlgorithm: _sendConfig.hashAlgorithm,
       noCompress: _sendConfig.noCompress, overwrite: _sendConfig.overwrite,
       zipFolder: _sendConfig.zipFolder,
@@ -565,6 +595,12 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     final l10n = context.appLocalizations;
+    // Watch for files shared from other apps (warm start)
+    ref.listen<List<String>>(pendingSharedFilesProvider, (prev, next) {
+      if (next.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _pickUpSharedFiles());
+      }
+    });
 
     return CommonScaffold(
       appBar: AppBar(

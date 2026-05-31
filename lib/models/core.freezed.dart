@@ -33,6 +33,7 @@ mixin _$SendOptions {
   bool get disableLocal => throw _privateConstructorUsedError;
   bool get sendingText => throw _privateConstructorUsedError;
   String get textContent => throw _privateConstructorUsedError;
+  String get tempDir => throw _privateConstructorUsedError;
   String get socks5Proxy => throw _privateConstructorUsedError;
   String get httpProxy => throw _privateConstructorUsedError;
   String get throttleUpload => throw _privateConstructorUsedError;
@@ -72,6 +73,7 @@ abstract class $SendOptionsCopyWith<$Res> {
     bool disableLocal,
     bool sendingText,
     String textContent,
+    String tempDir,
     String socks5Proxy,
     String httpProxy,
     String throttleUpload,
@@ -110,6 +112,7 @@ class _$SendOptionsCopyWithImpl<$Res, $Val extends SendOptions>
     Object? disableLocal = null,
     Object? sendingText = null,
     Object? textContent = null,
+    Object? tempDir = null,
     Object? socks5Proxy = null,
     Object? httpProxy = null,
     Object? throttleUpload = null,
@@ -168,6 +171,10 @@ class _$SendOptionsCopyWithImpl<$Res, $Val extends SendOptions>
             textContent: null == textContent
                 ? _value.textContent
                 : textContent // ignore: cast_nullable_to_non_nullable
+                      as String,
+            tempDir: null == tempDir
+                ? _value.tempDir
+                : tempDir // ignore: cast_nullable_to_non_nullable
                       as String,
             socks5Proxy: null == socks5Proxy
                 ? _value.socks5Proxy
@@ -229,6 +236,7 @@ abstract class _$$SendOptionsImplCopyWith<$Res>
     bool disableLocal,
     bool sendingText,
     String textContent,
+    String tempDir,
     String socks5Proxy,
     String httpProxy,
     String throttleUpload,
@@ -266,6 +274,7 @@ class __$$SendOptionsImplCopyWithImpl<$Res>
     Object? disableLocal = null,
     Object? sendingText = null,
     Object? textContent = null,
+    Object? tempDir = null,
     Object? socks5Proxy = null,
     Object? httpProxy = null,
     Object? throttleUpload = null,
@@ -325,6 +334,10 @@ class __$$SendOptionsImplCopyWithImpl<$Res>
             ? _value.textContent
             : textContent // ignore: cast_nullable_to_non_nullable
                   as String,
+        tempDir: null == tempDir
+            ? _value.tempDir
+            : tempDir // ignore: cast_nullable_to_non_nullable
+                  as String,
         socks5Proxy: null == socks5Proxy
             ? _value.socks5Proxy
             : socks5Proxy // ignore: cast_nullable_to_non_nullable
@@ -378,6 +391,7 @@ class _$SendOptionsImpl implements _SendOptions {
     this.disableLocal = false,
     this.sendingText = false,
     this.textContent = '',
+    this.tempDir = '',
     this.socks5Proxy = '',
     this.httpProxy = '',
     this.throttleUpload = '',
@@ -434,6 +448,9 @@ class _$SendOptionsImpl implements _SendOptions {
   final String textContent;
   @override
   @JsonKey()
+  final String tempDir;
+  @override
+  @JsonKey()
   final String socks5Proxy;
   @override
   @JsonKey()
@@ -461,7 +478,7 @@ class _$SendOptionsImpl implements _SendOptions {
 
   @override
   String toString() {
-    return 'SendOptions(filePaths: $filePaths, codePhrase: $codePhrase, curve: $curve, hashAlgorithm: $hashAlgorithm, noCompress: $noCompress, overwrite: $overwrite, zipFolder: $zipFolder, gitIgnore: $gitIgnore, onlyLocal: $onlyLocal, disableLocal: $disableLocal, sendingText: $sendingText, textContent: $textContent, socks5Proxy: $socks5Proxy, httpProxy: $httpProxy, throttleUpload: $throttleUpload, exclude: $exclude, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword, relayPorts: $relayPorts)';
+    return 'SendOptions(filePaths: $filePaths, codePhrase: $codePhrase, curve: $curve, hashAlgorithm: $hashAlgorithm, noCompress: $noCompress, overwrite: $overwrite, zipFolder: $zipFolder, gitIgnore: $gitIgnore, onlyLocal: $onlyLocal, disableLocal: $disableLocal, sendingText: $sendingText, textContent: $textContent, tempDir: $tempDir, socks5Proxy: $socks5Proxy, httpProxy: $httpProxy, throttleUpload: $throttleUpload, exclude: $exclude, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword, relayPorts: $relayPorts)';
   }
 
   @override
@@ -494,6 +511,7 @@ class _$SendOptionsImpl implements _SendOptions {
                 other.sendingText == sendingText) &&
             (identical(other.textContent, textContent) ||
                 other.textContent == textContent) &&
+            (identical(other.tempDir, tempDir) || other.tempDir == tempDir) &&
             (identical(other.socks5Proxy, socks5Proxy) ||
                 other.socks5Proxy == socks5Proxy) &&
             (identical(other.httpProxy, httpProxy) ||
@@ -527,6 +545,7 @@ class _$SendOptionsImpl implements _SendOptions {
     disableLocal,
     sendingText,
     textContent,
+    tempDir,
     socks5Proxy,
     httpProxy,
     throttleUpload,
@@ -565,6 +584,7 @@ abstract class _SendOptions implements SendOptions {
     final bool disableLocal,
     final bool sendingText,
     final String textContent,
+    final String tempDir,
     final String socks5Proxy,
     final String httpProxy,
     final String throttleUpload,
@@ -602,6 +622,8 @@ abstract class _SendOptions implements SendOptions {
   bool get sendingText;
   @override
   String get textContent;
+  @override
+  String get tempDir;
   @override
   String get socks5Proxy;
   @override
