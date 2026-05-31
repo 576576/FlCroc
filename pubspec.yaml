@@ -39,7 +39,7 @@ dependencies:
   open_filex: ^4.7.0
   mobile_scanner: ^6.0.0
   fluttertoast: ^9.1.0
-  receive_sharing_intent: ^1.8.1
+  share_receiver: ^1.0.2
 
 dev_dependencies:
   flutter_test:

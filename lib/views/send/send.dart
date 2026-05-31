@@ -116,7 +116,6 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     for (final p in paths) {
       final f = File(p);
       if (!f.existsSync()) continue;
-      // Avoid duplicates
       if (_selectedFiles.any((s) => s.path == p)) continue;
       newFiles.add(PlatformFile(
         name: p.split(Platform.pathSeparator).last,
@@ -125,9 +124,8 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       ));
     }
     if (newFiles.isNotEmpty) {
-      setState(() => _selectedFiles.addAll(newFiles));
+      setState(() { _selectedFiles.addAll(newFiles); _isTextMode = false; });
     }
-    // Clear the pending list so we don't re-add on rebuild
     ref.read(pendingSharedFilesProvider.notifier).state = [];
   }
 

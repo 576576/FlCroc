@@ -7,7 +7,7 @@ import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:share_receiver/share_receiver.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'application.dart';
@@ -29,7 +29,7 @@ Future<void> main() async {
 
     // ── Share intent handling (Android / iOS "Open with") ──
     if (Platform.isAndroid || Platform.isIOS) {
-      _initShareIntent(container);
+      _initShareReceiver(container);
     }
 
     runApp(
@@ -49,26 +49,27 @@ Future<void> main() async {
   }
 }
 
-void _initShareIntent(ProviderContainer container) {
+void _initShareReceiver(ProviderContainer container) async {
+  final receiver = ShareReceiver.instance;
+  await receiver.initialize();
+
   // Cold start: app launched via share
-  ReceiveSharingIntent.instance.getInitialMedia().then((List<SharedMediaFile> files) {
-    if (files.isNotEmpty) {
-      _handleSharedFiles(container, files);
-    }
-  });
+  final initial = await receiver.getInitialSharing();
+  if (initial != null && initial.filePaths.isNotEmpty) {
+    _handleSharedFiles(container, initial.filePaths);
+    await receiver.clear();
+  }
 
   // Warm start: share while app is already running
-  ReceiveSharingIntent.instance.getMediaStream().listen((List<SharedMediaFile> files) {
-    if (files.isNotEmpty) {
-      _handleSharedFiles(container, files);
+  receiver.getMediaStream().listen((SharedData data) {
+    if (data.filePaths.isNotEmpty) {
+      _handleSharedFiles(container, data.filePaths);
+      receiver.clear();
     }
   });
 }
 
-void _handleSharedFiles(ProviderContainer container, List<SharedMediaFile> files) {
-  final paths = files.map((f) => f.path).where((p) => p.isNotEmpty).toList();
-  if (paths.isEmpty) return;
+void _handleSharedFiles(ProviderContainer container, List<String> paths) {
   container.read(pendingSharedFilesProvider.notifier).state = paths;
-  // Navigate to send page (post-frame so UI is ready)
   container.read(appStateProvider.notifier).updatePageLabel(PageLabel.send);
 }

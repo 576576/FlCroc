@@ -117,5 +117,5 @@ final systemUiOverlayStyleStateProvider = StateProvider<SystemUiOverlayStyle>(
 );
 
 /// Holds file paths received via Android/iOS share intent.
-/// The send page picks these up and clears the list after adding.
+/// The send page picks these up on init and clears the list.
 final pendingSharedFilesProvider = StateProvider<List<String>>((ref) => []);
