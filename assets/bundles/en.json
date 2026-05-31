@@ -162,9 +162,15 @@
   "settingsReset": "Settings reset",
 
   "_comment_debug": "── Debug ──",
+  "debug": "Debug",
   "debugLog": "Debug Log",
   "debugModeOn": "Debug mode ON",
   "debugModeOff": "Debug mode OFF",
+  "autoClearLog": "Auto-clear log",
+  "autoClearLogDesc": "Clear log when entering or exiting debug mode",
+  "noLogs": "No logs",
+  "exportLog": "Export",
+  "logExported": "Log exported to {0}",
 
   "_comment_about": "── About ──",
   "about": "About",

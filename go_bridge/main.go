@@ -23,7 +23,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 	"unsafe"
 
 	"github.com/schollz/croc/v10/src/croc"
@@ -165,42 +164,6 @@ func marshalEvent(ev *progressEvent) *C.char {
 	return C.CString(string(b))
 }
 
-// pollProgress reads croc's internal TotalSent counter every 200ms and sends
-// type-1 progress events to progressChan. Stops when done is closed.
-// If totalSize is 0, it is computed from activeClient.FilesToTransfer.
-func pollProgress(done <-chan struct{}, totalSize int64, transferID string) {
-	ticker := time.NewTicker(200 * time.Millisecond)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-done:
-			return
-		case <-ticker.C:
-			mu.Lock()
-			c := activeClient
-			mu.Unlock()
-			if c == nil {
-				continue
-			}
-			ts := totalSize
-			if ts == 0 {
-				for _, f := range c.FilesToTransfer {
-					ts += f.Size
-				}
-			}
-			if ts == 0 {
-				continue // no size info yet → skip this tick
-			}
-			progressChan <- progressEvent{
-				Type:            1,
-				TransferID:      transferID,
-				TotalSize:       ts,
-				TransferredSize: c.TotalSent,
-			}
-		}
-	}
-}
-
 func doSend(paths []string, code string, opts sendOptions, transferID string) {
 	// Handle text mode: write text content to a temp file.
 	// croc recognises the "croc-stdin-" prefix as stdin/text content.
@@ -305,25 +268,7 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 		totalSize += f.Size
 	}
 
-	progressChan <- progressEvent{
-		Type: 1, TransferID: transferID,
-		TotalFiles: len(filesInfo), TotalSize: totalSize,
-	}
-
-	// Start progress poller during transfer
-	pollDone := make(chan struct{})
-	var pollWg sync.WaitGroup
-	pollWg.Add(1)
-	go func() {
-		defer pollWg.Done()
-		pollProgress(pollDone, totalSize, transferID)
-	}()
-
 	err = c.Send(filesInfo, emptyFolders, totalFolders)
-
-	close(pollDone) // signal poller to stop
-	pollWg.Wait()   // ensure poller goroutine exited
-
 	if err != nil {
 		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: err.Error()}
 		return
@@ -387,15 +332,6 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		os.Chdir(opts.OutputPath)
 	}
 
-	// Start progress poller during transfer (totalSize computed dynamically from croc)
-	pollDone := make(chan struct{})
-	var pollWg sync.WaitGroup
-	pollWg.Add(1)
-	go func() {
-		defer pollWg.Done()
-		pollProgress(pollDone, 0, transferID)
-	}()
-
 	// Capture stdout during receive — croc prints text content to stdout
 	// when SendingText is true (and then deletes the temp file).
 	// By capturing stdout we get the text without modifying croc source.
@@ -421,9 +357,6 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 	} else {
 		err = c.Receive()
 	}
-
-	close(pollDone) // signal poller to stop
-	pollWg.Wait()   // ensure poller goroutine exited
 
 	if err != nil {
 		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: err.Error()}

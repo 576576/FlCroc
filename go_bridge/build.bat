@@ -64,7 +64,16 @@ if "%PLATFORM%"=="windows" (
 if "%PLATFORM%"=="android" (
     set "GOOS=android"
     set "EXT=.so"
-    if "%ARCH%"=="arm64" set "GOARCH=arm64"
+    if "%ARCH%"=="arm64" (
+        set "GOARCH=arm64"
+        set "ANDROID_ABI=arm64-v8a"
+    ) else if "%ARCH%"=="amd64" (
+        set "GOARCH=amd64"
+        set "ANDROID_ABI=x86_64"
+    ) else (
+        echo [ERROR] Unsupported Android arch: %ARCH% (use arm64 or amd64)
+        exit /b 1
+    )
     if not defined ANDROID_NDK_HOME (
         if exist "%LOCALAPPDATA%\Android\Sdk\ndk" (
             for /f "tokens=*" %%d in ('dir /b /ad "%LOCALAPPDATA%\Android\Sdk\ndk" 2^>nul ^| sort /r') do (
@@ -77,7 +86,8 @@ if "%PLATFORM%"=="android" (
     )
     :ndk_found
     echo [OK] NDK: %ANDROID_NDK_HOME%
-    set "CC=%ANDROID_NDK_HOME%\toolchains\llvm\prebuilt\windows-x86_64\bin\aarch64-linux-android21-clang.cmd"
+    rem NDK clang naming: aarch64- for arm64, x86_64- for amd64
+    set "CC=%ANDROID_NDK_HOME%\toolchains\llvm\prebuilt\windows-x86_64\bin\%GOARCH%-linux-android21-clang.cmd"
 )
 
 if "%ARCH%"=="amd64" set "GOARCH=amd64"
@@ -106,9 +116,9 @@ if "%PLATFORM%"=="windows" (
     echo [OK] Copied to windows/runner/
 )
 if "%PLATFORM%"=="android" (
-    if not exist "%SCRIPT_DIR%..\android\app\src\main\jniLibs\arm64-v8a" mkdir "%SCRIPT_DIR%..\android\app\src\main\jniLibs\arm64-v8a"
-    copy /Y "%OUTPUT_DIR%\libcroc_bridge.so" "%SCRIPT_DIR%..\android\app\src\main\jniLibs\arm64-v8a\" >nul 2>&1
-    echo [OK] Copied to android/app/src/main/jniLibs/arm64-v8a/
+    if not exist "%SCRIPT_DIR%..\android\app\src\main\jniLibs\%ANDROID_ABI%" mkdir "%SCRIPT_DIR%..\android\app\src\main\jniLibs\%ANDROID_ABI%"
+    copy /Y "%OUTPUT_DIR%\libcroc_bridge.so" "%SCRIPT_DIR%..\android\app\src\main\jniLibs\%ANDROID_ABI%\" >nul 2>&1
+    echo [OK] Copied to android/app/src/main/jniLibs/%ANDROID_ABI%/
 )
 
 echo.

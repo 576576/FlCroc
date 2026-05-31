@@ -283,26 +283,34 @@ jobs:
           name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64
           path: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.zip
 
-      # ── AMD64: single-file EXE via 7z SFX ──
-      - name: "[AMD64] Create single-file EXE (7z SFX)"
+      # ── AMD64: portable single-file EXE via 7z SFX ──
+      - name: "[AMD64] Create portable single EXE"
         if: needs.prebuild.outputs.windows == 'true'
         run: |
           $staging = 'sfx-staging'
           $name = 'FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64'
           if (Test-Path $staging) { Remove-Item -Recurse -Force $staging }
           Expand-Archive "$name.zip" -DestinationPath $staging
-          # 7z SFX config: extract then run FlCroc.exe
-          "`";!@Install@!UTF-8!`r`nRunProgram=`"FlCroc.exe`"`r`n`";!@InstallEnd@!" | Out-File -Encoding ASCII "$staging\config.txt"
-          # Build SFX with 7z
-          $sevenZip = if (Test-Path 'C:\Program Files\7-Zip\7z.exe') { 'C:\Program Files\7-Zip\7z.exe' } else { '7z' }
+          # 7z SFX config: extract to fixed portable dir, then run
+          # InstallPath ensures extract-once portable behaviour (not temp)
+          $cfg = @'
+          ;!@Install@!UTF-8!
+          InstallPath=""%LOCALAPPDATA%\FlCroc""
+          RunProgram=""FlCroc.exe""
+          ;!@InstallEnd@!
+          '@
+          $cfg | Out-File -Encoding ASCII "$staging\config.txt" -NoNewline
+          $cfg | Set-Content -Path "$staging\config.txt" -NoNewline
+          # Build SFX archive
           Push-Location $staging
-          & $sevenZip a -mx9 ..\sfx.7z * -x!config.txt
+          & 7z a -mx9 ..\sfx.7z * -x!config.txt
           Pop-Location
-          $sfxStub = 'C:\Program Files\7-Zip\7z.sfx'
-          if (Test-Path $sfxStub) {
-            cmd /c copy /b "$sfxStub" + "$staging\config.txt" + sfx.7z "FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.exe"
+          # Combine: SFX stub + config + archive
+          $stub = 'C:\Program Files\7-Zip\7z.sfx'
+          if (Test-Path $stub) {
+            cmd /c copy /b "$stub" + "$staging\config.txt" + sfx.7z "$name.exe"
           } else {
-            & $sevenZip a -sfx -mx9 "FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.exe" ".\$staging\*"
+            & 7z a -sfx -mx9 "$name.exe" ".\$staging\*"
           }
           Remove-Item sfx.7z -ErrorAction SilentlyContinue
 
@@ -503,16 +511,27 @@ jobs:
           ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
         run: |
           mkdir -p android/app/src/main/jniLibs/arm64-v8a
+          mkdir -p android/app/src/main/jniLibs/x86_64
           cd go_bridge
           go mod tidy
           export HOST_TAG=linux-x86_64
+
+          # ARM64
           export CC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/${HOST_TAG}/bin/aarch64-linux-android21-clang"
           CGO_ENABLED=1 GOOS=android GOARCH=arm64 \
             go build -buildmode=c-shared -ldflags="-s -w" \
             -o ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so .
-          cd ..
           echo "✓ Go bridge built for Android ARM64"
-          file android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so
+          file ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so
+
+          # x86_64
+          export CC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/${HOST_TAG}/bin/x86_64-linux-android21-clang"
+          CGO_ENABLED=1 GOOS=android GOARCH=amd64 \
+            go build -buildmode=c-shared -ldflags="-s -w" \
+            -o ../android/app/src/main/jniLibs/x86_64/libcroc_bridge.so .
+          echo "✓ Go bridge built for Android x86_64"
+          file ../android/app/src/main/jniLibs/x86_64/libcroc_bridge.so
+          cd ..
 
       - uses: subosito/flutter-action@v2
         with:
@@ -537,15 +556,15 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: flutter build apk --release --target-platform android-arm64
+        run: flutter build apk --release --target-platform android-arm64,android-x64
 
       - name: Rename artifact
-        run: mv build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.display_version }}-android-arm64.apk
+        run: mv build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.display_version }}-android.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FlCroc-${{ steps.ver.outputs.display_version }}-android-arm64
-          path: FlCroc-${{ steps.ver.outputs.display_version }}-android-arm64.apk
+          name: FlCroc-${{ steps.ver.outputs.display_version }}-android
+          path: FlCroc-${{ steps.ver.outputs.display_version }}-android.apk
 
   # ── Nightly release (dev branch) ──
   nightly:

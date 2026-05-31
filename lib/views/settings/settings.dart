@@ -6,11 +6,13 @@ import 'package:file_picker/file_picker.dart';
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/core/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
+import 'package:fl_croc/l10n/l10n.dart';
 import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/state.dart';
 import 'package:fl_croc/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import 'acknowledgments.dart';
 
@@ -25,6 +27,8 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   String _crocVersion = '...';
   bool _debugMode = false;
   int _versionTaps = 0;
+  DateTime? _lastVersionTap;
+  bool _autoClearLog = true;
 
   late final _relayAddrCtrl = TextEditingController();
   late final _relayPortCtrl = TextEditingController();
@@ -386,12 +390,19 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   onPressed: () => globalState.openUrl('https://github.com/$repository'),
                 ),
                 onTap: () {
+                  final now = DateTime.now();
+                  if (_lastVersionTap != null &&
+                      now.difference(_lastVersionTap!).inSeconds >= 3) {
+                    _versionTaps = 0;
+                  }
+                  _lastVersionTap = now;
                   _versionTaps++;
                   if (_versionTaps >= 5) {
                     _versionTaps = 0;
+                    _lastVersionTap = null;
                     setState(() => _debugMode = !_debugMode);
                     LogBuffer.debugMode = _debugMode;
-                    LogBuffer.clear();
+                    if (_autoClearLog) LogBuffer.clear();
                     final l10n = context.appLocalizations;
                     context.showSnackBar(_debugMode ? l10n.debugModeOn : l10n.debugModeOff);
                   }
@@ -417,9 +428,15 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 title: Text(l10n.checkUpdate),
                 onTap: () => _checkForUpdate(context),
               ),
+            ],
+          ),
 
-              // Debug: log viewer
-              if (_debugMode)
+          // ── Debug section (visible when debug mode is active) ──
+          if (_debugMode)
+            ...generateSection(
+              title: l10n.debug,
+              separated: false,
+              items: [
                 ListItem(
                   leading: const Icon(Icons.bug_report),
                   title: Text(l10n.debugLog),
@@ -430,8 +447,17 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     );
                   },
                 ),
-            ],
-          ),
+                ListItem(
+                  leading: const Icon(Icons.auto_delete),
+                  title: Text(l10n.autoClearLog),
+                  subtitle: Text(l10n.autoClearLogDesc),
+                  trailing: Switch(
+                    value: _autoClearLog,
+                    onChanged: (v) => setState(() => _autoClearLog = v),
+                  ),
+                ),
+              ],
+            ),
 
           const SizedBox(height: 32),
         ],
@@ -750,16 +776,31 @@ class _LogViewerPageState extends State<_LogViewerPage> {
     super.dispose();
   }
 
+  Future<void> _exportLogs(List<String> logs, AppLocalizations l10n) async {
+    final timestamp = DateFormat('yyMMdd-HHmmss').format(DateTime.now());
+    final dir = Directory(AppPaths.savePathSync);
+    if (!dir.existsSync()) dir.createSync(recursive: true);
+    final file = File('${dir.path}${Platform.pathSeparator}FlCroc-debug-$timestamp.log');
+    await file.writeAsString(logs.join('\n'));
+    if (mounted) context.showSnackBar(l10n.logExported(file.path));
+  }
+
   @override
   Widget build(BuildContext context) {
     final logs = LogBuffer.logs;
+    final l10n = context.appLocalizations;
     return Scaffold(
       appBar: AppBar(
-        title: Text(context.appLocalizations.debugLog),
+        title: Text(l10n.debugLog),
         actions: [
           IconButton(
+            icon: const Icon(Icons.ios_share),
+            tooltip: l10n.exportLog,
+            onPressed: logs.isEmpty ? null : () => _exportLogs(logs, l10n),
+          ),
+          IconButton(
             icon: const Icon(Icons.delete_sweep),
-            tooltip: context.appLocalizations.clear,
+            tooltip: l10n.clear,
             onPressed: () {
               LogBuffer.clear();
               setState(() {});
@@ -767,18 +808,25 @@ class _LogViewerPageState extends State<_LogViewerPage> {
           ),
         ],
       ),
-      body: logs.isEmpty
-          ? const Center(child: Text('暂无日志'))
-          : ListView.builder(
-              itemCount: logs.length,
-              itemBuilder: (_, i) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                child: Text(
-                  logs[i],
-                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-                ),
-              ),
-            ),
+      body: Column(
+        children: [
+          if (isWindows || isLinux) const WindowTitleBar(),
+          Expanded(
+            child: logs.isEmpty
+                ? Center(child: Text(l10n.noLogs, style: context.textTheme.bodyMedium))
+                : ListView.builder(
+                    itemCount: logs.length,
+                    itemBuilder: (_, i) => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      child: SelectableText(
+                        logs[i],
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -162,9 +162,15 @@
   "settingsReset": "设置已重置",
 
   "_comment_debug": "── 调试 ──",
+  "debug": "调试",
   "debugLog": "运行日志",
   "debugModeOn": "调试模式已开启",
   "debugModeOff": "调试模式已关闭",
+  "autoClearLog": "自动清除日志",
+  "autoClearLogDesc": "进入/退出调试模式时清除日志",
+  "noLogs": "暂无日志",
+  "exportLog": "导出",
+  "logExported": "日志已导出到 {0}",
 
   "_comment_about": "── 关于 ──",
   "about": "关于",

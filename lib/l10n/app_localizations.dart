@@ -114,7 +114,9 @@ class AppLocalizations {
     'reset', 'resetAllSettings', 'resetAllConfirm', 'settingsReset',
 
     // ── Settings: Debug ──
-    'debugLog', 'debugModeOn', 'debugModeOff',
+    'debug', 'debugLog', 'debugModeOn', 'debugModeOff',
+    'autoClearLog', 'autoClearLogDesc', 'noLogs',
+    'exportLog', 'logExported',
 
     // ── Settings: About ──
     'about', 'application', 'appVersion', 'crocVersion',
@@ -298,9 +300,15 @@ class AppLocalizations {
   String get settingsReset => _('settingsReset');
 
   // ── Settings: Debug ──
+  String get debug => _('debug');
   String get debugLog => _('debugLog');
   String get debugModeOn => _('debugModeOn');
   String get debugModeOff => _('debugModeOff');
+  String get autoClearLog => _('autoClearLog');
+  String get autoClearLogDesc => _('autoClearLogDesc');
+  String get noLogs => _('noLogs');
+  String get exportLog => _('exportLog');
+  String logExported(String path) => _('logExported').replaceAll('{0}', path);
 
   // ── Settings: About ──
   String get about => _('about');
