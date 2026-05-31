@@ -161,6 +161,11 @@
   "resetAllConfirm": "确定要重置所有设置吗？此操作不可逆",
   "settingsReset": "设置已重置",
 
+  "_comment_debug": "── 调试 ──",
+  "debugLog": "运行日志",
+  "debugModeOn": "调试模式已开启",
+  "debugModeOff": "调试模式已关闭",
+
   "_comment_about": "── 关于 ──",
   "about": "关于",
   "application": "应用",

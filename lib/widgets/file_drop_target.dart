@@ -79,20 +79,22 @@ class _FileDropTargetState extends State<FileDropTarget> {
 
   void _handleDrop(DragTargetDetails<String> details) {
     final path = details.data;
+    // Accept empty strings — flush on next batch timer
+    if (path.isEmpty) return;
     final file = File(path);
-    if (file.existsSync()) {
-      _pendingFiles.add(file);
-      // Debounce: collect files for 100ms then dispatch batch
-      _batchTimer?.cancel();
-      _batchTimer = Timer(const Duration(milliseconds: 100), _flushPendingFiles);
-    }
+    // Always add; non-existent files will be filtered by the callback
+    _pendingFiles.add(file);
+    _batchTimer?.cancel();
+    _batchTimer = Timer(const Duration(milliseconds: 100), _flushPendingFiles);
   }
 
   void _flushPendingFiles() {
     if (_pendingFiles.isNotEmpty) {
-      final files = List<File>.from(_pendingFiles);
+      final files = _pendingFiles.where((f) => f.existsSync()).toList();
       _pendingFiles.clear();
-      widget.onFilesDropped(files);
+      if (files.isNotEmpty) {
+        widget.onFilesDropped(files);
+      }
     }
     _setHover(false);
   }

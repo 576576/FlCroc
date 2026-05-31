@@ -184,6 +184,7 @@ class CoreLib extends CoreInterface {
       _freeGoString?.call(resultPtr);  // Go-allocated
 
       final result = jsonDecode(resultJson) as Map<String, dynamic>;
+      commonPrint('CrocSendFiles result: $result');
       if (result.containsKey('error')) {
         yield TransferProgress(
           transferId: transferId,
@@ -318,6 +319,7 @@ class CoreLib extends CoreInterface {
       _freeGoString?.call(resultPtr);  // Go-allocated
 
       final result = jsonDecode(resultJson) as Map<String, dynamic>;
+      commonPrint('CrocReceiveFiles result: $result');
       if (result.containsKey('error')) {
         yield TransferProgress(
           transferId: transferId,

@@ -161,6 +161,11 @@
   "resetAllConfirm": "Reset all settings? This cannot be undone.",
   "settingsReset": "Settings reset",
 
+  "_comment_debug": "── Debug ──",
+  "debugLog": "Debug Log",
+  "debugModeOn": "Debug mode ON",
+  "debugModeOff": "Debug mode OFF",
+
   "_comment_about": "── About ──",
   "about": "About",
   "application": "Application",

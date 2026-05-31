@@ -614,28 +614,34 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       body: FileDropTarget(
         enabled: isDesktop,
         onFilesDropped: (files) {
+          if (files.isEmpty) return;
           if (_isTextMode) {
-            // Text mode: load first dropped file content (with limit)
-            final first = files.firstOrNull;
-            if (first != null && !FileSystemEntity.isDirectorySync(first.path)) {
-              try {
-                final content = first.readAsStringSync();
-                _textController.text = _applyTextLimit(content);
-              } catch (_) {}
+            // Text mode: load first dropped file content
+            for (final f in files) {
+              if (!FileSystemEntity.isDirectorySync(f.path)) {
+                try {
+                  final content = f.readAsStringSync();
+                  _textController.text = _applyTextLimit(content);
+                  _textController.selection = TextSelection.collapsed(offset: _textController.text.length);
+                  return;
+                } catch (_) {}
+              }
             }
           } else {
-            // File mode: add files or folders to selection
+            // File mode: add files/folders to selection
             final newFiles = <PlatformFile>[];
             for (final f in files) {
               if (FileSystemEntity.isDirectorySync(f.path)) {
-                // Dropped a folder
                 setState(() {
                   _selectedFolder = f.path;
                   _selectedFiles.clear();
                 });
-                return; // single folder at a time
+                return;
               }
-              if (!_selectedFiles.any((s) => s.path == f.path)) {
+            }
+            for (final f in files) {
+              if (!FileSystemEntity.isDirectorySync(f.path) &&
+                  !_selectedFiles.any((s) => s.path == f.path)) {
                 newFiles.add(PlatformFile(name: f.path.split(Platform.pathSeparator).last, path: f.path, size: f.lengthSync()));
               }
             }

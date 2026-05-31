@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -22,6 +23,8 @@ class SettingsView extends ConsumerStatefulWidget {
 
 class _SettingsViewState extends ConsumerState<SettingsView> {
   String _crocVersion = '...';
+  bool _debugMode = false;
+  int _versionTaps = 0;
 
   late final _relayAddrCtrl = TextEditingController();
   late final _relayPortCtrl = TextEditingController();
@@ -380,6 +383,16 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   visualDensity: VisualDensity.compact,
                   onPressed: () => globalState.openUrl('https://github.com/$repository'),
                 ),
+                onTap: () {
+                  _versionTaps++;
+                  if (_versionTaps >= 5) {
+                    _versionTaps = 0;
+                    setState(() => _debugMode = !_debugMode);
+                    LogBuffer.debugMode = _debugMode;
+                    final l10n = context.appLocalizations;
+                    context.showSnackBar(_debugMode ? l10n.debugModeOn : l10n.debugModeOff);
+                  }
+                },
               ),
               ListItem(
                 leading: const Icon(Icons.link),
@@ -401,6 +414,19 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 title: Text(l10n.checkUpdate),
                 onTap: () => _checkForUpdate(context),
               ),
+
+              // Debug: log viewer
+              if (_debugMode)
+                ListItem(
+                  leading: const Icon(Icons.bug_report),
+                  title: Text(l10n.debugLog),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const _LogViewerPage()),
+                    );
+                  },
+                ),
             ],
           ),
 
@@ -692,6 +718,64 @@ class _HueSliderState extends ConsumerState<_HueSlider> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Simple log viewer — displays LogBuffer contents.
+class _LogViewerPage extends StatefulWidget {
+  const _LogViewerPage();
+
+  @override
+  State<_LogViewerPage> createState() => _LogViewerPageState();
+}
+
+class _LogViewerPageState extends State<_LogViewerPage> {
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final logs = LogBuffer.logs;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(context.appLocalizations.debugLog),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_sweep),
+            tooltip: context.appLocalizations.clear,
+            onPressed: () {
+              LogBuffer.clear();
+              setState(() {});
+            },
+          ),
+        ],
+      ),
+      body: logs.isEmpty
+          ? const Center(child: Text('暂无日志'))
+          : ListView.builder(
+              itemCount: logs.length,
+              itemBuilder: (_, i) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: Text(
+                  logs[i],
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                ),
+              ),
+            ),
     );
   }
 }

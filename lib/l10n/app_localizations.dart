@@ -13,6 +13,7 @@ library;
 
 import 'dart:convert';
 
+import 'package:fl_croc/common/print.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -112,6 +113,9 @@ class AppLocalizations {
     // ── Settings: Reset ──
     'reset', 'resetAllSettings', 'resetAllConfirm', 'settingsReset',
 
+    // ── Settings: Debug ──
+    'debugLog', 'debugModeOn', 'debugModeOff',
+
     // ── Settings: About ──
     'about', 'application', 'appVersion', 'crocVersion',
     'unavailable', 'description',
@@ -186,7 +190,9 @@ class AppLocalizations {
   String get errorCouldNotConnect => _('errorCouldNotConnect');
 
   /// 将 croc 原始错误信息映射为本地化文案。
+  /// Debug 模式下直接返回原始错误信息。
   String localizeCrocError(String error, {bool isSend = false}) {
+    if (LogBuffer.debugMode) return error;
     final lower = error.toLowerCase();
     if (lower.contains('room (secure channel) not ready')) return errorRoomNotReady;
     if (lower.contains('bad password')) return errorRelayPassword;
@@ -290,6 +296,11 @@ class AppLocalizations {
   String get resetAllSettings => _('resetAllSettings');
   String get resetAllConfirm => _('resetAllConfirm');
   String get settingsReset => _('settingsReset');
+
+  // ── Settings: Debug ──
+  String get debugLog => _('debugLog');
+  String get debugModeOn => _('debugModeOn');
+  String get debugModeOff => _('debugModeOff');
 
   // ── Settings: About ──
   String get about => _('about');
