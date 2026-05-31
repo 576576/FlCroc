@@ -1,4 +1,5 @@
 export 'button.dart';
+export 'capsule_progress_chip.dart';
 export 'card.dart';
 export 'dialog.dart';
 export 'file_drop_target.dart';

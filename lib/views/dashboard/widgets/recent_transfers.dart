@@ -1,4 +1,5 @@
 import 'package:fl_croc/common/common.dart';
+import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/l10n/l10n.dart';
 import 'package:fl_croc/models/models.dart';
@@ -25,6 +26,12 @@ class RecentTransfersWidget extends ConsumerWidget {
 
     return CommonCard(
       info: Info(iconData: Icons.history, label: l10n.recentTransfers),
+      trailing: IconButton(
+        icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+        tooltip: l10n.clear,
+        visualDensity: VisualDensity.compact,
+        onPressed: () => appController.clearHistory(),
+      ),
       child: top3.isEmpty
             ? Center(
                 child: Text(

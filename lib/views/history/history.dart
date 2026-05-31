@@ -72,12 +72,7 @@ class HistoryView extends ConsumerWidget {
                           visualDensity: VisualDensity.compact,
                           onPressed: () {
                             final f = transfer.files.firstWhere((f) => f.path.isNotEmpty);
-                            final showAsFolder = !f.name.contains('.') || f.name.contains('/') || f.name.contains('\\');
-                            if (showAsFolder) {
-                              globalState.openFolder(f.path);
-                            } else {
-                              globalState.openFile(f.path);
-                            }
+                            globalState.openFolder(f.path);
                           },
                         ),
                       _buildStatusChip(transfer.status, context),

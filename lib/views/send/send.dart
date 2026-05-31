@@ -44,6 +44,47 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   static const _defaultTextLimit = 10000;
   final _limitCtrl = TextEditingController();
 
+  double _simProgress = 0;
+  Timer? _progressTimer;
+  bool _progressDone = false;
+
+  void _startSimProgress() {
+    _progressDone = false;
+    _simProgress = 0;
+    _progressTimer?.cancel();
+    int step = 0;
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 60), (t) {
+      if (!mounted) { t.cancel(); return; }
+      step++;
+      if (step <= 3) {
+        _simProgress = (step * 0.25 / 3);
+      } else if (_simProgress < 0.90) {
+        _simProgress += 0.01;
+        if (_simProgress > 0.90) _simProgress = 0.90;
+      }
+      setState(() {});
+    });
+  }
+
+  void _finishSimProgress() {
+    _progressTimer?.cancel();
+    _progressDone = true;
+    int step = 0;
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 16), (t) {
+      if (!mounted) { t.cancel(); return; }
+      step++;
+      if (step <= 10) {
+        _simProgress = 0.90 + (step * 0.01);
+      } else if (step <= 22) {
+        _simProgress = 1.0;
+      } else {
+        t.cancel();
+        if (mounted) setState(() => _phase = SendPhase.success);
+      }
+      setState(() {});
+    });
+  }
+
   int get _effectiveTextLimit => _textByteLimit ?? _defaultTextLimit;
 
   // Send lifecycle
@@ -95,6 +136,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
   @override
   void dispose() {
+    _progressTimer?.cancel();
     _saveSendPrefs();
     _sendSubscription?.cancel();
     _textController.dispose();
@@ -414,6 +456,8 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
     setState(() => _phase = SendPhase.sending);
 
+    _startSimProgress();
+
     _sendSubscription = coreController.sendFiles(options).listen(
       (progress) {
         if (!mounted) return;
@@ -427,11 +471,12 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
         }
         switch (progress.status) {
           case TransferProgressStatus.completed:
-            setState(() => _phase = SendPhase.success);
+            _finishSimProgress();
             appController.updateTransferRecord(record.copyWith(status: TransferStatus.completed, transferredSize: totalSize, endTime: DateTime.now()));
             _sendSubscription = null;
             break;
           case TransferProgressStatus.failed:
+            _progressTimer?.cancel();
             setState(() => _phase = SendPhase.fail);
             appController.updateTransferRecord(record.copyWith(status: TransferStatus.failed, endTime: DateTime.now()));
             if (progress.error != null && mounted) {
@@ -914,6 +959,13 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       _ => ('', Colors.transparent),
     };
     if (label.isEmpty) return const SizedBox.shrink();
+    if (_phase == SendPhase.sending) {
+      return CapsuleProgressChip(
+        label: label,
+        color: color,
+        progress: _simProgress,
+      );
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),

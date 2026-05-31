@@ -6,6 +6,7 @@ class CommonCard extends StatelessWidget {
   final Info? info;
   final Widget child;
   final Widget? leading;
+  final Widget? trailing;
   final VoidCallback? onPressed;
   final CommonCardType type;
   final double radius;
@@ -16,6 +17,7 @@ class CommonCard extends StatelessWidget {
     this.info,
     required this.child,
     this.leading,
+    this.trailing,
     this.onPressed,
     this.type = CommonCardType.outlined,
     this.radius = 16,
@@ -61,12 +63,15 @@ class CommonCard extends StatelessWidget {
         children: [
           leading ?? Icon(info!.iconData, size: 20),
           const SizedBox(width: 8),
-          Text(
-            info!.label,
-            style: context.textTheme.labelLarge?.copyWith(
-              color: context.colorScheme.primary,
+          Expanded(
+            child: Text(
+              info!.label,
+              style: context.textTheme.labelLarge?.copyWith(
+                color: context.colorScheme.primary,
+              ),
             ),
           ),
+          if (trailing != null) trailing!,
         ],
       ),
     );

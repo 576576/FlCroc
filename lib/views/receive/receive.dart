@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -29,6 +30,36 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   ReceiveConfig _receiveConfig = const ReceiveConfig();
 
   ReceivePhase _phase = ReceivePhase.idle;
+
+  double _simProgress = 0;
+  Timer? _progressTimer;
+  StreamSubscription<TransferProgress>? _receiveSub;
+
+  void _startSimProgress() {
+    _simProgress = 0;
+    _progressTimer?.cancel();
+    int step = 0;
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 60), (t) {
+      if (!mounted) { t.cancel(); return; }
+      step++;
+      if (step <= 3) { _simProgress = (step * 0.25 / 3); }
+      else if (_simProgress < 0.90) { _simProgress += 0.01; if (_simProgress > 0.90) _simProgress = 0.90; }
+      setState(() {});
+    });
+  }
+
+  void _finishSimProgress() {
+    _progressTimer?.cancel();
+    int step = 0;
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 16), (t) {
+      if (!mounted) { t.cancel(); return; }
+      step++;
+      if (step <= 10) { _simProgress = 0.90 + (step * 0.01); }
+      else if (step <= 22) { _simProgress = 1.0; }
+      else { t.cancel(); if (mounted) setState(() => _phase = ReceivePhase.completed); }
+      setState(() {});
+    });
+  }
 
   // Received content tracking
   final List<FileItem> _receivedFiles = [];
@@ -122,8 +153,11 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   }
   void _startReceive() {
     final code = _codeController.text.trim();
-    if (code.isEmpty) return;
     final l10n = context.appLocalizations;
+    if (code.isEmpty) {
+      context.showSnackBar(l10n.phraseEmpty);
+      return;
+    }
 
     if (!coreController.isAvailable) {
       context.showSnackBar(l10n.noCrocBackend);
@@ -172,16 +206,22 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
       relayPorts: useCustom ? relayConfig.port : null,
     );
 
-    coreController.receiveFiles(options).listen(
+    _receiveSub = coreController.receiveFiles(options).listen(
       (progress) {
         if (!mounted) return;
         switch (progress.status) {
           case TransferProgressStatus.initializing:
           case TransferProgressStatus.connecting:
-            if (mounted) setState(() { _phase = ReceivePhase.receiving; });
+            if (mounted) {
+              setState(() { _phase = ReceivePhase.receiving; });
+              _startSimProgress();
+            }
             break;
           case TransferProgressStatus.transferring:
-            if (_phase == ReceivePhase.pending) setState(() { _phase = ReceivePhase.receiving; });
+            if (_phase == ReceivePhase.pending) {
+              setState(() { _phase = ReceivePhase.receiving; });
+              _startSimProgress();
+            }
             appController.updateTransferRecord(
               record.copyWith(
                 status: TransferStatus.transferring,
@@ -191,12 +231,12 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
             if (mounted) setState(() {});
             break;
           case TransferProgressStatus.completed:
+            _finishSimProgress();
             if (progress.isText) {
               setState(() {
                 _receivedFiles.clear();
                 _selectedTab = 1;
                 _isReceiving = false;
-                _phase = ReceivePhase.completed;
               });
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (!mounted) return;
@@ -228,7 +268,6 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                 _receivedTextController.clear();
                 _selectedTab = fileItems.isNotEmpty ? 0 : _selectedTab;
                 _isReceiving = false;
-                _phase = ReceivePhase.completed;
               });
               if (fileItems.isNotEmpty && isAndroid) {
                 for (final f in fileItems) {
@@ -246,10 +285,12 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
               );
             }
           case TransferProgressStatus.failed:
+            _progressTimer?.cancel();
             setState(() { _isReceiving = false; _phase = ReceivePhase.failed; });
             appController.updateTransferRecord(
               record.copyWith(
                 status: TransferStatus.failed,
+                files: [FileItem(name: l10n.receiveFailed, path: '', size: 0)],
                 endTime: DateTime.now(),
               ),
             );
@@ -271,14 +312,15 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
       },
       onError: (e) {
         if (!mounted) return;
+        final l10n = context.appLocalizations;
         setState(() => _isReceiving = false);
         appController.updateTransferRecord(
           record.copyWith(
             status: TransferStatus.failed,
+            files: [FileItem(name: l10n.receiveFailed, path: '', size: 0)],
             endTime: DateTime.now(),
           ),
         );
-        final l10n = context.appLocalizations;
         final errMsg = e.toString() == 'UnsupportedError: unavailable'
             ? l10n.noCrocBackend
             : l10n.localizeCrocError(e.toString());
@@ -291,8 +333,20 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
     );
   }
 
+  void _cancelReceive() {
+    _progressTimer?.cancel();
+    _receiveSub?.cancel();
+    _receiveSub = null;
+    setState(() { _isReceiving = false; _phase = ReceivePhase.cancelled; });
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) setState(() => _phase = ReceivePhase.idle);
+    });
+  }
+
   @override
   void dispose() {
+    _progressTimer?.cancel();
+    _receiveSub?.cancel();
     _saveReceivePrefs();
     _codeController.dispose();
     _receivedTextController.dispose();
@@ -347,9 +401,9 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
           if (_phase != ReceivePhase.idle) _buildStatusChip(l10n),
           const SizedBox(width: 8),
           FilledButtonWidget(
-            onPressed: _isReceiving ? null : _startReceive,
-            text: l10n.receive,
-            icon: Icons.download,
+            onPressed: _isReceiving ? _cancelReceive : _phase == ReceivePhase.cancelled ? null : _startReceive,
+            text: _isReceiving ? l10n.cancel : l10n.receive,
+            icon: _isReceiving ? Icons.close : Icons.download,
           ),
           const SizedBox(width: 8),
         ],
@@ -548,9 +602,17 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
       ReceivePhase.receiving => (l10n.receiving, context.colorScheme.primary),
       ReceivePhase.completed => (l10n.completed, Colors.green),
       ReceivePhase.failed => (l10n.failed, Colors.red),
+      ReceivePhase.cancelled => (l10n.cancelled, Colors.grey),
       _ => ('', Colors.transparent),
     };
     if (label.isEmpty) return const SizedBox.shrink();
+    if (_phase == ReceivePhase.receiving) {
+      return CapsuleProgressChip(
+        label: label,
+        color: color,
+        progress: _simProgress,
+      );
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
@@ -672,4 +734,4 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
   }
 }
 
-enum ReceivePhase { idle, pending, receiving, completed, failed }
+enum ReceivePhase { idle, pending, receiving, completed, failed, cancelled }

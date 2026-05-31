@@ -109,7 +109,7 @@
   "scanQRCode": "扫描二维码",
   "generateQRCode": "生成二维码",
   "whiteBgQR": "白底二维码",
-  "phraseEmpty": "请先生成短语",
+  "phraseEmpty": "请先输入短语",
   "selectQRImage": "选择二维码图片",
   "flashlight": "闪光灯",
   "flipCamera": "翻转镜头",

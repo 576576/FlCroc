@@ -126,37 +126,10 @@ class _DashboardViewState extends ConsumerState<DashboardView>
             return Padding(
               padding: const EdgeInsets.only(right: 4),
               child: isActive
-                  ? Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        SizedBox(
-                          width: 28,
-                          height: 28,
-                          child: TweenAnimationBuilder<double>(
-                            tween: Tween<double>(
-                              begin: 0.0,
-                              end: status.progress >= 0 ? status.progress.clamp(0.0, 1.0) : 0.25,
-                            ),
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeInOut,
-                            builder: (_, value, __) => CircularProgressIndicator(
-                              value: status.progress < 0 ? null : value,
-                              strokeWidth: 2.5,
-                              strokeCap: StrokeCap.round,
-                              valueColor: AlwaysStoppedAnimation<Color>(status.color),
-                              backgroundColor: status.color.withValues(alpha: 0.1),
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: status.color.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(status.label, style: TextStyle(fontSize: 12, color: status.color, fontWeight: FontWeight.w600)),
-                        ),
-                      ],
+                  ? CapsuleProgressChip(
+                      label: status.label,
+                      color: status.color,
+                      progress: status.progress,
                     )
                   : Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

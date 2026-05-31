@@ -283,6 +283,35 @@ jobs:
           name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64
           path: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.zip
 
+      # ── AMD64: single-file EXE via 7z SFX ──
+      - name: "[AMD64] Create single-file EXE (7z SFX)"
+        if: needs.prebuild.outputs.windows == 'true'
+        run: |
+          $staging = 'sfx-staging'
+          $name = 'FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64'
+          if (Test-Path $staging) { Remove-Item -Recurse -Force $staging }
+          Expand-Archive "$name.zip" -DestinationPath $staging
+          # 7z SFX config: extract then run FlCroc.exe
+          "`";!@Install@!UTF-8!`r`nRunProgram=`"FlCroc.exe`"`r`n`";!@InstallEnd@!" | Out-File -Encoding ASCII "$staging\config.txt"
+          # Build SFX with 7z
+          $sevenZip = if (Test-Path 'C:\Program Files\7-Zip\7z.exe') { 'C:\Program Files\7-Zip\7z.exe' } else { '7z' }
+          Push-Location $staging
+          & $sevenZip a -mx9 ..\sfx.7z * -x!config.txt
+          Pop-Location
+          $sfxStub = 'C:\Program Files\7-Zip\7z.sfx'
+          if (Test-Path $sfxStub) {
+            cmd /c copy /b "$sfxStub" + "$staging\config.txt" + sfx.7z "FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.exe"
+          } else {
+            & $sevenZip a -sfx -mx9 "FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.exe" ".\$staging\*"
+          }
+          Remove-Item sfx.7z -ErrorAction SilentlyContinue
+
+      - uses: actions/upload-artifact@v4
+        if: needs.prebuild.outputs.windows == 'true'
+        with:
+          name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64-exe
+          path: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.exe
+
       # ════════════════════════════════════════════════════════════
       # ── ARM64: Zig cross-compile Go bridge → repack AMD64 artifact ──
       # ════════════════════════════════════════════════════════════
