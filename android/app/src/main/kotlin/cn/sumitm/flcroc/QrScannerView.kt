@@ -1,7 +1,9 @@
 package cn.sumitm.flcroc
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.pm.PackageManager
 import android.graphics.ImageFormat
 import android.util.Size
@@ -30,7 +32,10 @@ class QrScannerView(
     creationParams: Map<String, Any>?
 ) : PlatformView, MethodChannel.MethodCallHandler {
 
-    private val previewView = PreviewView(context)
+    // Use SURFACE_VIEW for reliable compositing with Flutter PlatformView
+    private val previewView = PreviewView(context).apply {
+        implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+    }
     private val channel = MethodChannel(messenger, "flcroc/qr_scanner_$viewId")
     private val analyzerExecutor = Executors.newSingleThreadExecutor()
     private var scanned = false
@@ -47,7 +52,21 @@ class QrScannerView(
 
     init {
         channel.setMethodCallHandler(this)
-        startCamera()
+        // Defer camera start until view is laid out
+        previewView.post { startCamera() }
+    }
+
+    /**
+     * Unwrap the context to find the underlying Activity (LifecycleOwner).
+     * Flutter's PlatformView wraps the context, so we need to peel it back.
+     */
+    private fun findActivity(): Activity? {
+        var ctx = context
+        while (ctx is ContextWrapper) {
+            if (ctx is Activity) return ctx
+            ctx = ctx.baseContext
+        }
+        return null
     }
 
     private fun startCamera() {
@@ -106,12 +125,20 @@ class QrScannerView(
         }
 
         val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+        // Unwrap to find the Activity for lifecycle binding
+        val lifecycleOwner = findActivity() as? LifecycleOwner
 
         try {
-            // Bind to the Activity's lifecycle (context is FlutterActivity)
-            val lifecycleOwner = context as? LifecycleOwner
             if (lifecycleOwner != null) {
                 provider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, imageAnalysis)
+            } else {
+                // Fallback: bind without lifecycle (stays active until unbindAll)
+                provider.bindToLifecycle(
+                    androidx.lifecycle.LifecycleRegistry(lifecycleOwner ?: return).also {
+                        it.currentState = androidx.lifecycle.Lifecycle.State.RESUMED
+                    },
+                    cameraSelector, preview, imageAnalysis
+                )
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -242,3 +269,4 @@ class QrScannerView(
         }
     }
 }
+

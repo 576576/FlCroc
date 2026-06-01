@@ -11,6 +11,7 @@ import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/state.dart';
 import 'package:fl_croc/widgets/widgets.dart';
+import 'package:fl_croc/widgets/native_qr_scanner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -699,6 +700,7 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
   void initState() {
     super.initState();
     _imageAnalyzer = MobileScannerController(
+      autoStart: false,
       formats: const [BarcodeFormat.qrCode],
     );
   }
@@ -771,14 +773,20 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
             NativeQrScanner(
               onDetect: _onDetect,
               errorBuilder: (context, error) {
-                commonPrint('QR scanner error: $error');
+                // Map native error codes to localized messages
+                final message = switch (error) {
+                  'permissionDenied' => l10n.cameraPermissionDenied,
+                  'unsupported' => l10n.cameraUnsupported,
+                  _ => '${l10n.cameraError}: $error',
+                };
+                commonPrint('QR scanner error: $message ($error)');
                 return Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(Icons.error_outline, size: 48, color: Colors.white70),
                       const SizedBox(height: 12),
-                      Text(error, style: const TextStyle(color: Colors.white70)),
+                      Text(message, style: const TextStyle(color: Colors.white70)),
                     ],
                   ),
                 );
