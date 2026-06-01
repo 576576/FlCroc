@@ -133,16 +133,21 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   }
 
   void _onFileDrop(List<File> files) {
-    final newFiles = <PlatformFile>[];
+    // Check for directories first
     for (final f in files) {
-      if (FileSystemEntity.isDirectorySync(f.path)) {
+      final path = f.path.endsWith(Platform.pathSeparator)
+          ? f.path.substring(0, f.path.length - 1)
+          : f.path;
+      if (FileSystemEntity.isDirectorySync(path) || Directory(path).existsSync()) {
         setState(() {
-          _selectedFolder = f.path;
+          _selectedFolder = path;
           _selectedFiles.clear();
         });
         return;
       }
     }
+    // Add files
+    final newFiles = <PlatformFile>[];
     for (final f in files) {
       if (!FileSystemEntity.isDirectorySync(f.path) &&
           !_selectedFiles.any((s) => s.path == f.path)) {

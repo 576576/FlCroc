@@ -1,12 +1,10 @@
 import 'dart:io';
 
 import 'package:desktop_drop/desktop_drop.dart';
+import 'package:fl_croc/common/common.dart';
 import 'package:flutter/material.dart';
 
 /// Cross-platform file drop target using the [desktop_drop] plugin.
-///
-/// On desktop, shows a hint overlay with [hintText] while files are dragged
-/// over. On mobile, renders [child] directly.
 class FileDropTarget extends StatefulWidget {
   final Widget child;
   final bool enabled;
@@ -38,50 +36,46 @@ class _FileDropTargetState extends State<FileDropTarget> {
 
     return DropTarget(
       onDragDone: (detail) {
-        final files = detail.files
-            .map((f) => File(f.path))
-            .where((f) => f.existsSync())
-            .toList();
+        commonPrint('DropTarget onDragDone: ${detail.files.length} files, paths=${detail.files.map((f) => f.path).toList()}');
+        final files = <File>[];
+        for (final f in detail.files) {
+          final file = File(f.path);
+          if (file.existsSync()) {
+            files.add(file);
+          } else {
+            commonPrint('DropTarget: file not found: ${f.path}');
+          }
+        }
         if (files.isNotEmpty) {
           widget.onFilesDropped(files);
         }
-        _setHover(false);
+        setState(() => _isOver = false);
       },
-      onDragEntered: (_) => _setHover(true),
-      onDragExited: (_) => _setHover(false),
-      child: SizedBox(
-        width: double.infinity,
-        child: Stack(
-          children: [
-            widget.child,
-            if (_isOver)
-              Positioned.fill(
-                child: Container(
-                  color: Theme.of(context).colorScheme.primary.withAlpha(40),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.cloud_upload, size: 48),
-                        if (hint.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          Text(hint, style: Theme.of(context).textTheme.titleMedium),
-                        ],
+      onDragEntered: (_) => setState(() => _isOver = true),
+      onDragExited: (_) => setState(() => _isOver = false),
+      child: Stack(
+        children: [
+          widget.child,
+          if (_isOver)
+            Positioned.fill(
+              child: Container(
+                color: Theme.of(context).colorScheme.primary.withAlpha(40),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.cloud_upload, size: 48),
+                      if (hint.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Text(hint, style: Theme.of(context).textTheme.titleMedium),
                       ],
-                    ),
+                    ],
                   ),
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
-  }
-
-  void _setHover(bool value) {
-    if (_isOver != value) {
-      _isOver = value;
-      widget.onHoverChanged?.call(value);
-    }
   }
 }

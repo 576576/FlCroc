@@ -4,7 +4,8 @@
     <application
         android:label="FlCroc"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:pageSizeCompat="16k">
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -563,9 +563,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   }
 
   void _showWarning(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 3)),
-    );
+    context.showSnackBar(msg);
   }
 
   // ── Build ──
@@ -897,16 +895,22 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   }
 
   void _onFileDrop(List<File> files) {
-    final newFiles = <PlatformFile>[];
+    commonPrint('_onFileDrop: ${files.length} files, paths=${files.map((f) => f.path).toList()}');
+    // Check for directories first
     for (final f in files) {
-      if (FileSystemEntity.isDirectorySync(f.path)) {
+      final path = f.path.endsWith(Platform.pathSeparator)
+          ? f.path.substring(0, f.path.length - 1)
+          : f.path;
+      if (FileSystemEntity.isDirectorySync(path) || Directory(path).existsSync()) {
         setState(() {
-          _selectedFolder = f.path;
+          _selectedFolder = path;
           _selectedFiles.clear();
         });
         return;
       }
     }
+    // Add files
+    final newFiles = <PlatformFile>[];
     for (final f in files) {
       if (!FileSystemEntity.isDirectorySync(f.path) &&
           !_selectedFiles.any((s) => s.path == f.path)) {

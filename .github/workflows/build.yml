@@ -283,43 +283,6 @@ jobs:
           name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64
           path: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.zip
 
-      # ── AMD64: portable single-file EXE via 7z SFX ──
-      - name: "[AMD64] Create portable single EXE"
-        if: needs.prebuild.outputs.windows == 'true'
-        run: |
-          $staging = 'sfx-staging'
-          $name = 'FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64'
-          if (Test-Path $staging) { Remove-Item -Recurse -Force $staging }
-          Expand-Archive "$name.zip" -DestinationPath $staging
-          # 7z SFX config: extract to fixed portable dir, then run
-          # InstallPath ensures extract-once portable behaviour (not temp)
-          $cfg = @'
-          ;!@Install@!UTF-8!
-          InstallPath=""%LOCALAPPDATA%\FlCroc""
-          RunProgram=""FlCroc.exe""
-          ;!@InstallEnd@!
-          '@
-          $cfg | Out-File -Encoding ASCII "$staging\config.txt" -NoNewline
-          $cfg | Set-Content -Path "$staging\config.txt" -NoNewline
-          # Build SFX archive
-          Push-Location $staging
-          & 7z a -mx9 ..\sfx.7z * -x!config.txt
-          Pop-Location
-          # Combine: SFX stub + config + archive
-          $stub = 'C:\Program Files\7-Zip\7z.sfx'
-          if (Test-Path $stub) {
-            cmd /c copy /b "$stub" + "$staging\config.txt" + sfx.7z "$name.exe"
-          } else {
-            & 7z a -sfx -mx9 "$name.exe" ".\$staging\*"
-          }
-          Remove-Item sfx.7z -ErrorAction SilentlyContinue
-
-      - uses: actions/upload-artifact@v4
-        if: needs.prebuild.outputs.windows == 'true'
-        with:
-          name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64-exe
-          path: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.exe
-
       # ════════════════════════════════════════════════════════════
       # ── ARM64: Zig cross-compile Go bridge → repack AMD64 artifact ──
       # ════════════════════════════════════════════════════════════
@@ -454,11 +417,24 @@ jobs:
           name: FlCroc-${{ steps.ver.outputs.display_version }}-linux-amd64
           path: FlCroc-${{ steps.ver.outputs.display_version }}-linux-amd64.tar.gz
 
-  # ── Android ──
+  # ── Android (ARM64 + AMD64 via matrix) ──
   build-android:
     needs: [test, prebuild]
     if: needs.prebuild.outputs.android == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - arch: arm64
+            goarch: arm64
+            abi: arm64-v8a
+            target: android-arm64
+            ndk-cc: aarch64-linux-android21-clang
+          - arch: amd64
+            goarch: amd64
+            abi: x86_64
+            target: android-x64
+            ndk-cc: x86_64-linux-android21-clang
     steps:
       - uses: actions/checkout@v4
         with:
@@ -506,32 +482,21 @@ jobs:
           ndk-version: r27c
           add-to-path: false
 
-      - name: Build Go bridge for Android (.so)
+      - name: Build Go bridge (${{ matrix.arch }})
         env:
           ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
         run: |
-          mkdir -p android/app/src/main/jniLibs/arm64-v8a
-          mkdir -p android/app/src/main/jniLibs/x86_64
+          mkdir -p android/app/src/main/jniLibs/${{ matrix.abi }}
           cd go_bridge
           go mod tidy
           export HOST_TAG=linux-x86_64
-
-          # ARM64
-          export CC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/${HOST_TAG}/bin/aarch64-linux-android21-clang"
-          CGO_ENABLED=1 GOOS=android GOARCH=arm64 \
+          export CC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/${HOST_TAG}/bin/${{ matrix.ndk-cc }}"
+          CGO_ENABLED=1 GOOS=android GOARCH=${{ matrix.goarch }} \
             go build -buildmode=c-shared -ldflags="-s -w" \
-            -o ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so .
-          echo "✓ Go bridge built for Android ARM64"
-          file ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so
-
-          # x86_64
-          export CC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/${HOST_TAG}/bin/x86_64-linux-android21-clang"
-          CGO_ENABLED=1 GOOS=android GOARCH=amd64 \
-            go build -buildmode=c-shared -ldflags="-s -w" \
-            -o ../android/app/src/main/jniLibs/x86_64/libcroc_bridge.so .
-          echo "✓ Go bridge built for Android x86_64"
-          file ../android/app/src/main/jniLibs/x86_64/libcroc_bridge.so
+            -o ../android/app/src/main/jniLibs/${{ matrix.abi }}/libcroc_bridge.so .
           cd ..
+          echo "✓ Go bridge built for Android ${{ matrix.arch }}"
+          file android/app/src/main/jniLibs/${{ matrix.abi }}/libcroc_bridge.so
 
       - uses: subosito/flutter-action@v2
         with:
@@ -544,27 +509,27 @@ jobs:
       - name: Generate launcher icons
         run: dart run flutter_launcher_icons
 
-      - name: Patch Android plugin registrant (catch Error too)
+      - name: Patch Android plugin registrant
         run: |
           FILE=android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
           sed -i 's/catch (Exception e)/catch (Throwable e)/g' "$FILE"
           rm -rf android/app/src/main/kotlin/com
 
-      - name: Build Android
+      - name: Build Android (${{ matrix.arch }})
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: flutter build apk --release --target-platform android-arm64,android-x64
+        run: flutter build apk --release --target-platform ${{ matrix.target }}
 
       - name: Rename artifact
-        run: mv build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.display_version }}-android.apk
+        run: mv build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.display_version }}-android-${{ matrix.arch }}.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FlCroc-${{ steps.ver.outputs.display_version }}-android
-          path: FlCroc-${{ steps.ver.outputs.display_version }}-android.apk
+          name: FlCroc-${{ steps.ver.outputs.display_version }}-android-${{ matrix.arch }}
+          path: FlCroc-${{ steps.ver.outputs.display_version }}-android-${{ matrix.arch }}.apk
 
   # ── Nightly release (dev branch) ──
   nightly:
