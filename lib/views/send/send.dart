@@ -30,6 +30,8 @@ class SendView extends ConsumerStatefulWidget {
 class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMixin {
   final List<PlatformFile> _selectedFiles = [];
   bool _isTextMode = false;
+  bool _dragOverFile = false;
+  bool _dragOverText = false;
   PhraseMode _phraseMode = PhraseMode.defaultMode;
   SendPhase _phase = SendPhase.idle;
 
@@ -43,6 +45,48 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   int? _textByteLimit;
   static const _defaultTextLimit = 10000;
   final _limitCtrl = TextEditingController();
+
+  double _simProgress = 0;
+  Timer? _progressTimer;
+  bool _progressDone = false;
+  bool _isPasteMode = true;
+
+  void _startSimProgress() {
+    _progressDone = false;
+    _simProgress = 0;
+    _progressTimer?.cancel();
+    int step = 0;
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 60), (t) {
+      if (!mounted) { t.cancel(); return; }
+      step++;
+      if (step <= 3) {
+        _simProgress = (step * 0.25 / 3);
+      } else if (_simProgress < 0.90) {
+        _simProgress += 0.01;
+        if (_simProgress > 0.90) _simProgress = 0.90;
+      }
+      setState(() {});
+    });
+  }
+
+  void _finishSimProgress() {
+    _progressTimer?.cancel();
+    _progressDone = true;
+    int step = 0;
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 16), (t) {
+      if (!mounted) { t.cancel(); return; }
+      step++;
+      if (step <= 10) {
+        _simProgress = 0.90 + (step * 0.01);
+      } else if (step <= 22) {
+        _simProgress = 1.0;
+      } else {
+        t.cancel();
+        if (mounted) setState(() => _phase = SendPhase.success);
+      }
+      setState(() {});
+    });
+  }
 
   int get _effectiveTextLimit => _textByteLimit ?? _defaultTextLimit;
 
@@ -64,6 +108,28 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     );
     _loadSendPrefs();
     _textController.addListener(_enforceTextLimit);
+    _pickUpSharedFiles();
+  }
+
+  /// Pick up files shared via Android/iOS "Open with" intent.
+  void _pickUpSharedFiles() {
+    final paths = ref.read(pendingSharedFilesProvider);
+    if (paths.isEmpty) return;
+    final newFiles = <PlatformFile>[];
+    for (final p in paths) {
+      final f = File(p);
+      if (!f.existsSync()) continue;
+      if (_selectedFiles.any((s) => s.path == p)) continue;
+      newFiles.add(PlatformFile(
+        name: p.split(Platform.pathSeparator).last,
+        path: p,
+        size: f.lengthSync(),
+      ));
+    }
+    if (newFiles.isNotEmpty) {
+      setState(() { _selectedFiles.addAll(newFiles); _isTextMode = false; });
+    }
+    ref.read(pendingSharedFilesProvider.notifier).state = [];
   }
 
   bool _limiting = false;
@@ -95,6 +161,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
   @override
   void dispose() {
+    _progressTimer?.cancel();
     _saveSendPrefs();
     _sendSubscription?.cancel();
     _textController.dispose();
@@ -115,6 +182,8 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
   // ── File management ──
 
+  String? _selectedFolder;
+
   Future<void> _pickFiles() async {
     final result = await FilePicker.platform.pickFiles(allowMultiple: true);
     if (result != null && result.files.isNotEmpty) {
@@ -122,9 +191,25 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     }
   }
 
+  Future<void> _pickFolder() async {
+    final path = await FilePicker.platform.getDirectoryPath();
+    if (path != null) {
+      setState(() {
+        _selectedFolder = path;
+        _selectedFiles.clear();
+      });
+    }
+  }
+
   void _removeFile(int index) => setState(() => _selectedFiles.removeAt(index));
-  void _clearFiles() => setState(() => _selectedFiles.clear());
+  void _clearFiles() => setState(() { _selectedFiles.clear(); _selectedFolder = null; });
   void _clearText() => _textController.clear();
+
+  void _copyText() {
+    if (_textController.text.isNotEmpty) {
+      Clipboard.setData(ClipboardData(text: _textController.text));
+    }
+  }
 
   void _pasteText() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
@@ -306,7 +391,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     final textContent = _textController.text.trim();
 
     // Validate content
-    if (!isText && _selectedFiles.isEmpty) {
+    if (!isText && _selectedFiles.isEmpty && _selectedFolder == null) {
       _showWarning(l10n.noFiles);
       _shake(0); // shake file section
       return;
@@ -340,9 +425,13 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     _activeTransferId = transferId;
 
     final files = isText
-        ? [FileItem(name: l10n.sentText, path: '', size: textContent.length)]
-        : _selectedFiles.map((f) => FileItem(name: f.name, path: f.path ?? '', size: f.size)).toList();
-    final totalSize = isText ? textContent.length : files.fold<int>(0, (a, f) => a + f.size);
+        ? [FileItem(name: textContent, path: '', size: textContent.length)]
+        : _selectedFolder != null
+            ? [FileItem(name: _selectedFolder!.split(Platform.pathSeparator).last, path: _selectedFolder!, size: 0)]
+            : _selectedFiles.map((f) => FileItem(name: f.name, path: f.path ?? '', size: f.size)).toList();
+    final totalSize = isText
+        ? textContent.length
+        : files.fold<int>(0, (a, f) => a + f.size);
 
     final record = TransferRecord(
       id: transferId,
@@ -360,29 +449,39 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
     // Resolve file paths for Go bridge (Android content URIs → temp files)
     final resolvedPaths = <String>[];
+    String? tempDirPath;
     if (!isText) {
-      for (final f in _selectedFiles) {
-        final p = f.path;
-        if (p == null || p.isEmpty) continue;
-        if (isAndroid && p.startsWith('content://')) {
-          try {
-            final bytes = await File(p).readAsBytes();
-            final tempDir = await getTemporaryDirectory();
-            final tempFile = File('${tempDir.path}${Platform.pathSeparator}${f.name}');
-            await tempFile.writeAsBytes(bytes);
-            resolvedPaths.add(tempFile.path);
-          } catch (_) {
-            // Skip inaccessible content URIs
+      if (_selectedFolder != null) {
+        resolvedPaths.add(_selectedFolder!);
+      } else {
+        for (final f in _selectedFiles) {
+          final p = f.path;
+          if (p == null || p.isEmpty) continue;
+          if (isAndroid && p.startsWith('content://')) {
+            try {
+              final bytes = await File(p).readAsBytes();
+              tempDirPath ??= (await getTemporaryDirectory()).path;
+              final tempFile = File('$tempDirPath${Platform.pathSeparator}${f.name}');
+              await tempFile.writeAsBytes(bytes);
+              resolvedPaths.add(tempFile.path);
+            } catch (_) {
+              // Skip inaccessible content URIs
+            }
+          } else {
+            resolvedPaths.add(p);
           }
-        } else {
-          resolvedPaths.add(p);
         }
       }
+    }
+    // Ensure we have a temp dir for text mode on Android
+    if (isText) {
+      tempDirPath = (await getTemporaryDirectory()).path;
     }
 
     final options = SendOptions(
       filePaths: isText ? [] : resolvedPaths,
       codePhrase: code.isEmpty ? null : code, sendingText: isText, textContent: isText ? textContent : '',
+      tempDir: tempDirPath ?? '',
       curve: _sendConfig.curve, hashAlgorithm: _sendConfig.hashAlgorithm,
       noCompress: _sendConfig.noCompress, overwrite: _sendConfig.overwrite,
       zipFolder: _sendConfig.zipFolder,
@@ -393,6 +492,8 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     );
 
     setState(() => _phase = SendPhase.sending);
+
+    _startSimProgress();
 
     _sendSubscription = coreController.sendFiles(options).listen(
       (progress) {
@@ -407,11 +508,12 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
         }
         switch (progress.status) {
           case TransferProgressStatus.completed:
-            setState(() => _phase = SendPhase.success);
+            _finishSimProgress();
             appController.updateTransferRecord(record.copyWith(status: TransferStatus.completed, transferredSize: totalSize, endTime: DateTime.now()));
             _sendSubscription = null;
             break;
           case TransferProgressStatus.failed:
+            _progressTimer?.cancel();
             setState(() => _phase = SendPhase.fail);
             appController.updateTransferRecord(record.copyWith(status: TransferStatus.failed, endTime: DateTime.now()));
             if (progress.error != null && mounted) {
@@ -470,9 +572,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   }
 
   void _showWarning(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 3)),
-    );
+    context.showSnackBar(msg);
   }
 
   // ── Build ──
@@ -500,6 +600,12 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     final l10n = context.appLocalizations;
+    // Watch for files shared from other apps (warm start)
+    ref.listen<List<String>>(pendingSharedFilesProvider, (prev, next) {
+      if (next.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _pickUpSharedFiles());
+      }
+    });
 
     return CommonScaffold(
       appBar: AppBar(
@@ -546,30 +652,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
           const SizedBox(width: 8),
         ],
       ),
-      body: FileDropTarget(
-        enabled: isDesktop,
-        onFilesDropped: (files) {
-          if (_isTextMode) {
-            // Text mode: load first dropped file content (with limit)
-            final first = files.firstOrNull;
-            if (first != null) {
-              try {
-                final content = first.readAsStringSync();
-                _textController.text = _applyTextLimit(content);
-              } catch (_) {}
-            }
-          } else {
-            // File mode: add to selection
-            final newFiles = <PlatformFile>[];
-            for (final f in files) {
-              if (!_selectedFiles.any((s) => s.path == f.path)) {
-                newFiles.add(PlatformFile(name: f.path.split(Platform.pathSeparator).last, path: f.path, size: f.lengthSync()));
-              }
-            }
-            if (newFiles.isNotEmpty) setState(() => _selectedFiles.addAll(newFiles));
-          }
-        },
-        child: ListView(
+      body: ListView(
         children: [
           // Mode toggle
           Padding(
@@ -588,15 +671,21 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
             _shakeWrap(1, _buildSection(l10n.text, Icons.text_snippet, [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                child: TextField(
-                  controller: _textController, maxLines: 5,
-                  decoration: InputDecoration(
-                    hintText: l10n.textHint,
-                    border: InputBorder.none,
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.paste, size: 20),
-                      onPressed: _pasteText,
-                      tooltip: l10n.paste,
+                child: FileDropTarget(
+                  enabled: isDesktop,
+                  onFilesDropped: _onTextDrop,
+                  onHoverChanged: (over) => setState(() => _dragOverText = over),
+                  child: TextField(
+                    controller: _textController, maxLines: 5,
+                    decoration: InputDecoration(
+                      hintText: l10n.textHint,
+                      border: InputBorder.none,
+                      suffixIcon: _ClipboardToggleButton(
+                        isPasteMode: _isPasteMode,
+                        isActive: false,
+                        onTap: _isPasteMode ? _pasteText : _copyText,
+                        onLongPress: () => setState(() => _isPasteMode = !_isPasteMode),
+                      ),
                     ),
                   ),
                 ),
@@ -619,25 +708,50 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
             ])),
           ] else ...[
             _shakeWrap(0, _buildSection(l10n.file, Icons.insert_drive_file, [
-              if (_selectedFiles.isEmpty)
-                NullStatusWidget(message: l10n.noFiles, icon: Icons.cloud_upload_outlined)
-              else
-                ...List.generate(_selectedFiles.length, (i) {
-                  final f = _selectedFiles[i];
-                  return ListTile(
-                    leading: const Icon(Icons.insert_drive_file), title: Text(f.name),
-                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text(f.size.fileSize, style: context.textTheme.bodySmall), const SizedBox(width: 4),
-                      IconButton(icon: const Icon(Icons.close, size: 18), onPressed: () => _removeFile(i), visualDensity: VisualDensity.compact),
-                    ]),
-                  );
-                }),
+              FileDropTarget(
+                enabled: isDesktop,
+                onFilesDropped: _onFileDrop,
+                onHoverChanged: (over) => setState(() => _dragOverFile = over),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  if (_selectedFolder != null)
+                    ListTile(
+                      leading: const Icon(Icons.folder, color: Colors.amber),
+                      title: Text(_selectedFolder!.split(Platform.pathSeparator).last),
+                      subtitle: Text(_selectedFolder!, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textTheme.bodySmall),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.close, size: 18),
+                        onPressed: () => setState(() => _selectedFolder = null),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    )
+                  else if (_selectedFiles.isEmpty)
+                    NullStatusWidget(
+                      message: _dragOverFile ? l10n.dropToAdd : l10n.noFiles,
+                      icon: _dragOverFile ? Icons.cloud_upload : Icons.cloud_upload_outlined,
+                    )
+                  else
+                    ...List.generate(_selectedFiles.length, (i) {
+                      final f = _selectedFiles[i];
+                      return ListTile(
+                        leading: const Icon(Icons.insert_drive_file), title: Text(f.name),
+                        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Text(f.size.fileSize, style: context.textTheme.bodySmall), const SizedBox(width: 4),
+                          IconButton(icon: const Icon(Icons.close, size: 18), onPressed: () => _removeFile(i), visualDensity: VisualDensity.compact),
+                        ]),
+                      );
+                    }),
+                ]),
+              ),
               Padding(
                 padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  TextButton.icon(onPressed: _pickFiles, icon: const Icon(Icons.add, size: 16), label: Text(l10n.selectFiles)),
+                  Row(mainAxisSize: MainAxisSize.min, children: [
+                    TextButton.icon(onPressed: _pickFiles, icon: const Icon(Icons.add, size: 16), label: Text(l10n.selectFiles)),
+                    const SizedBox(width: 8),
+                    TextButton.icon(onPressed: _pickFolder, icon: const Icon(Icons.create_new_folder, size: 16), label: Text(l10n.selectFolder)),
+                  ]),
                   TextButton.icon(
-                    onPressed: _selectedFiles.isNotEmpty ? _clearFiles : null,
+                    onPressed: _selectedFiles.isNotEmpty || _selectedFolder != null ? _clearFiles : null,
                     icon: const Icon(Icons.clear_all, size: 16),
                     label: Text(l10n.clear),
                   ),
@@ -685,7 +799,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
               ),
               ListItem.switchItem(
                 leading: const Icon(Icons.qr_code_2, size: 20),
-                title: const Text('始终使用白底二维码'),
+                title: Text(l10n.whiteBgQR),
                 delegate: SwitchDelegate(value: _whiteBgQR, onChanged: (v) => setState(() { _whiteBgQR = v; _saveSendPrefs(); })),
               ),
               ListItem(leading: const Icon(Icons.show_chart), title: Text(l10n.encryptionCurve), subtitle: _buildCurveChips(l10n)),
@@ -694,13 +808,13 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
               ListItem.switchItem(leading: const Icon(Icons.folder_zip), title: Text(l10n.zipFolder), delegate: SwitchDelegate(value: _sendConfig.zipFolder, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(zipFolder: v); _saveSendPrefs(); }))),
               ListItem(
                 leading: const Icon(Icons.text_snippet),
-                title: const Text('文本大小限制'),
+                title: Text(l10n.textSizeLimit),
                 subtitle: Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Row(
                     children: [
                       ChoiceChip(
-                        label: const Text('默认', style: TextStyle(fontSize: 12)),
+                        label: Text(l10n.defaultLabel, style: const TextStyle(fontSize: 12)),
                         selected: _textByteLimit == null,
                         onSelected: (v) {
                           if (v) setState(() { _textByteLimit = null; _limitCtrl.clear(); _saveSendPrefs(); });
@@ -708,7 +822,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                       ),
                       const SizedBox(width: 8),
                       ChoiceChip(
-                        label: const Text('无限制', style: TextStyle(fontSize: 12)),
+                        label: Text(l10n.unlimited, style: const TextStyle(fontSize: 12)),
                         selected: _textByteLimit == 0,
                         onSelected: (v) {
                           if (v) setState(() { _textByteLimit = 0; _limitCtrl.clear(); _saveSendPrefs(); });
@@ -716,7 +830,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                       ),
                       const SizedBox(width: 8),
                       ChoiceChip(
-                        label: const Text('自定义', style: TextStyle(fontSize: 12)),
+                        label: Text(l10n.custom, style: const TextStyle(fontSize: 12)),
                         selected: _textByteLimit != null && _textByteLimit! > 0,
                         onSelected: (v) {
                           if (v) setState(() { _textByteLimit = _defaultTextLimit; _limitCtrl.text = '$_defaultTextLimit'; _saveSendPrefs(); });
@@ -752,7 +866,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                           visualDensity: VisualDensity.compact,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                          tooltip: '重置',
+                          tooltip: l10n.reset,
                           onPressed: () {
                             setState(() {
                               _textByteLimit = null;
@@ -776,10 +890,48 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
           const SizedBox(height: 32),
         ],
-        ),  // ListView
-      ),    // FileDropTarget
+      ),
     );
-}
+  }
+
+  void _onTextDrop(List<File> files) {
+    for (final f in files) {
+      if (!FileSystemEntity.isDirectorySync(f.path)) {
+        try {
+          final content = f.readAsStringSync();
+          _textController.text = _applyTextLimit(content);
+          _textController.selection = TextSelection.collapsed(offset: _textController.text.length);
+          return;
+        } catch (_) {}
+      }
+    }
+  }
+
+  void _onFileDrop(List<File> files) {
+    commonPrint('_onFileDrop: ${files.length} files, paths=${files.map((f) => f.path).toList()}');
+    // Check for directories first
+    for (final f in files) {
+      final path = f.path.endsWith(Platform.pathSeparator)
+          ? f.path.substring(0, f.path.length - 1)
+          : f.path;
+      if (FileSystemEntity.isDirectorySync(path) || Directory(path).existsSync()) {
+        setState(() {
+          _selectedFolder = path;
+          _selectedFiles.clear();
+        });
+        return;
+      }
+    }
+    // Add files
+    final newFiles = <PlatformFile>[];
+    for (final f in files) {
+      if (!FileSystemEntity.isDirectorySync(f.path) &&
+          !_selectedFiles.any((s) => s.path == f.path)) {
+        newFiles.add(PlatformFile(name: f.path.split(Platform.pathSeparator).last, path: f.path, size: f.lengthSync()));
+      }
+    }
+    if (newFiles.isNotEmpty) setState(() => _selectedFiles.addAll(newFiles));
+  }
 
   // ── Shake wrapper ──
 
@@ -871,6 +1023,13 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       _ => ('', Colors.transparent),
     };
     if (label.isEmpty) return const SizedBox.shrink();
+    if (_phase == SendPhase.sending) {
+      return CapsuleProgressChip(
+        label: label,
+        color: color,
+        progress: _simProgress,
+      );
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
@@ -888,6 +1047,56 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       ...children,
     ],
   );
+}
+
+/// Animated clipboard button with press animation and long-press paste/copy toggle.
+class _ClipboardToggleButton extends StatefulWidget {
+  const _ClipboardToggleButton({
+    required this.isPasteMode,
+    required this.isActive,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  final bool isPasteMode;
+  final bool isActive;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  @override
+  State<_ClipboardToggleButton> createState() => _ClipboardToggleButtonState();
+}
+
+class _ClipboardToggleButtonState extends State<_ClipboardToggleButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onLongPress: widget.isActive ? null : widget.onLongPress,
+      onTapDown: widget.isActive ? null : (_) => setState(() => _pressed = true),
+      onTapUp: widget.isActive ? null : (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.isActive ? null : () {
+        widget.onTap();
+        setState(() => _pressed = false);
+      },
+      child: AnimatedScale(
+        scale: _pressed ? 0.75 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeInOut,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+          child: Icon(
+            key: ValueKey(widget.isPasteMode),
+            widget.isPasteMode ? Icons.content_paste : Icons.content_copy,
+            size: 20,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 enum SendPhase { idle, pending, sending, success, fail, cancelled }

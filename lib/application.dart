@@ -97,6 +97,7 @@ class _ApplicationState extends ConsumerState<Application> {
     return ThemeData(
       useMaterial3: true,
       colorScheme: cachedColorScheme(primaryColor, Brightness.light),
+      fontFamilyFallback: const ['Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC'],
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: CupertinoPageTransitionsBuilder(),
@@ -118,6 +119,7 @@ class _ApplicationState extends ConsumerState<Application> {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
+      fontFamilyFallback: const ['Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC'],
       scaffoldBackgroundColor: isPureBlack ? Colors.black : null,
     );
   }

@@ -172,6 +172,7 @@ class CoreLib extends CoreInterface {
         opts['relay_ports'] = options.relayPorts;
       }
       if (options.exclude.isNotEmpty) opts['exclude'] = options.exclude;
+      if (options.tempDir.isNotEmpty) opts['temp_dir'] = options.tempDir;
       final optsJson = jsonEncode(opts);
 
       final pathsPtr = pathsJson.toNativeUtf8();
@@ -184,11 +185,14 @@ class CoreLib extends CoreInterface {
       _freeGoString?.call(resultPtr);  // Go-allocated
 
       final result = jsonDecode(resultJson) as Map<String, dynamic>;
+      commonPrint('CrocSendFiles result: $result');
       if (result.containsKey('error')) {
+        final err = result['error'] as String?;
+        commonPrint('CrocSendFiles error: $err');
         yield TransferProgress(
           transferId: transferId,
           status: TransferProgressStatus.failed,
-          error: result['error'] as String?,
+          error: err,
         );
         return;
       }
@@ -230,13 +234,15 @@ class CoreLib extends CoreInterface {
             );
             return;
           } else if (type == 3) {
+            final err = event['error'] as String?;
+            commonPrint('Send poll error: $err');
             yield TransferProgress(
               transferId: transferId,
               status: TransferProgressStatus.failed,
-              error: event['error'] as String?,
+              error: err,
             );
             return;
-          } else if (type == 1 || type == 4) {
+          } else if (type == 4) {
             yield TransferProgress(
               transferId: transferId,
               status: TransferProgressStatus.transferring,
@@ -250,6 +256,7 @@ class CoreLib extends CoreInterface {
         }
       }
     } catch (e) {
+      commonPrint('Send exception: $e');
       yield TransferProgress(
         transferId: transferId,
         status: TransferProgressStatus.failed,
@@ -262,10 +269,12 @@ class CoreLib extends CoreInterface {
   Stream<TransferProgress> receiveFiles(ReceiveOptions options) async* {
     final lib = _lib;
     if (!_isAvailable || lib == null) {
+      const err = 'croc bridge not available';
+      commonPrint('Receive failed: $err');
       yield const TransferProgress(
         transferId: '',
         status: TransferProgressStatus.failed,
-        error: 'croc bridge not available',
+        error: err,
       );
       return;
     }
@@ -317,11 +326,14 @@ class CoreLib extends CoreInterface {
       _freeGoString?.call(resultPtr);  // Go-allocated
 
       final result = jsonDecode(resultJson) as Map<String, dynamic>;
+      commonPrint('CrocReceiveFiles result: $result');
       if (result.containsKey('error')) {
+        final err = result['error'] as String?;
+        commonPrint('CrocReceiveFiles error: $err');
         yield TransferProgress(
           transferId: transferId,
           status: TransferProgressStatus.failed,
-          error: result['error'] as String?,
+          error: err,
         );
         return;
       }
@@ -363,13 +375,15 @@ class CoreLib extends CoreInterface {
             }
             return;
           } else if (type == 3) {
+            final err = event['error'] as String?;
+            commonPrint('Receive poll error: $err');
             yield TransferProgress(
               transferId: transferId,
               status: TransferProgressStatus.failed,
-              error: event['error'] as String?,
+              error: err,
             );
             return;
-          } else if (type == 1 || type == 4) {
+          } else if (type == 4) {
             yield TransferProgress(
               transferId: transferId,
               status: TransferProgressStatus.transferring,
@@ -382,6 +396,7 @@ class CoreLib extends CoreInterface {
         }
       }
     } catch (e) {
+      commonPrint('Receive exception: $e');
       yield TransferProgress(
         transferId: transferId,
         status: TransferProgressStatus.failed,

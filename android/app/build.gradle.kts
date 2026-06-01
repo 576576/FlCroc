@@ -27,7 +27,7 @@ android {
     defaultConfig {
         applicationId = "cn.sumitm.flcroc"
         minSdk = flutter.minSdkVersion
-        targetSdk = 36
+        targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -74,6 +74,16 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+// ── Native QR Scanner: CameraX + ZXing ──
+// Replaces mobile_scanner plugin on Android for reliable QR scanning.
+dependencies {
+    val cameraxVersion = "1.4.1"
+    implementation("androidx.camera:camera-camera2:$cameraxVersion")
+    implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
+    implementation("androidx.camera:camera-view:$cameraxVersion")
+    implementation("com.google.zxing:core:3.5.3")
 }
 
 // Auto-patch plugin registrant after flutter pub get regenerates it.

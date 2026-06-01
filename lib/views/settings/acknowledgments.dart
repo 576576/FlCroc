@@ -14,6 +14,7 @@ class AcknowledgmentsPage extends StatelessWidget {
       _Project(name: 'Flutter', description: l10n.flutterDesc, url: 'https://github.com/flutter/flutter'),
       _Project(name: 'croc', description: l10n.crocDesc, url: 'https://github.com/schollz/croc'),
       _Project(name: 'FlClash', description: l10n.flClashDesc, url: 'https://github.com/chen08209/FlClash'),
+      _Project(name: 'croc-app', description: l10n.crocAppDesc, url: 'https://github.com/Dking08/croc-app'),
     ];
     final body = ListView.separated(
       itemCount: projects.length,

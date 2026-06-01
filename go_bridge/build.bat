@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 REM ============================================================
 REM  FlCroc Go Bridge Build Script (Windows)
-REM  Clones croc source, then builds the shared library.
+REM  Uses local submodule croc source, builds the shared library.
 REM
 REM  Usage: build.bat [platform] [arch]
 REM    platform: windows (default), android
@@ -16,8 +16,6 @@ if "%ARCH%"=="" set "ARCH=amd64"
 
 set "SCRIPT_DIR=%~dp0"
 set "OUTPUT_DIR=%SCRIPT_DIR%..\build\%PLATFORM%"
-set "CROC_TAG=v10.4.4"
-set "CROC_SRC=%TEMP%\croc_src"
 
 echo ========================================
 echo  FlCroc Go Bridge Builder
@@ -33,22 +31,20 @@ if %ERRORLEVEL% neq 0 (
 echo [OK] Go found:
 go version
 
-REM --- Clone croc source ---
+REM --- Use submodule croc source (skip clone) ---
 echo.
-echo [STEP 1/4] Cloning croc source (tag %CROC_TAG%)...
-if exist "%CROC_SRC%" rmdir /s /q "%CROC_SRC%"
-git clone --depth 1 --branch %CROC_TAG% https://github.com/schollz/croc.git "%CROC_SRC%"
-if %ERRORLEVEL% neq 0 (
-    echo [ERROR] Failed to clone croc
+echo [STEP 1/4] Using submodule croc at ..\submodules\croc...
+set "CROC_SRC=%SCRIPT_DIR%..\submodules\croc"
+if not exist "%CROC_SRC%\go.mod" (
+    echo [ERROR] Submodule not found. Run: git submodule update --init
     exit /b 1
 )
-echo [OK] croc source cloned
+echo [OK] croc submodule found
 
-REM --- Set up Go module with replace ---
+REM --- Verify go.mod replace directive ---
 echo.
-echo [STEP 2/4] Setting up Go module...
+echo [STEP 2/4] Verifying Go module...
 cd /d "%SCRIPT_DIR%"
-go mod edit -replace github.com/schollz/croc/v10=%CROC_SRC%
 go mod tidy
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] go mod tidy failed
@@ -65,32 +61,48 @@ if "%PLATFORM%"=="windows" (
     set "GOOS=windows"
     set "EXT=.dll"
 )
+if "%ARCH%"=="amd64" set "GOARCH=amd64"
+if "%ARCH%"=="arm64" set "GOARCH=arm64"
+
 if "%PLATFORM%"=="android" (
     set "GOOS=android"
     set "EXT=.so"
-    if "%ARCH%"=="arm64" set "GOARCH=arm64"
-    if not defined ANDROID_NDK_HOME (
-        if exist "%LOCALAPPDATA%\Android\Sdk\ndk" (
-            for /f "tokens=*" %%d in ('dir /b /ad "%LOCALAPPDATA%\Android\Sdk\ndk" 2^>nul ^| sort /r') do (
-                set "ANDROID_NDK_HOME=%LOCALAPPDATA%\Android\Sdk\ndk\%%d"
-                goto :ndk_found
-            )
-        )
-        echo [ERROR] Android NDK not found. Set ANDROID_NDK_HOME.
+    if "%ARCH%"=="arm64" (
+        set "ANDROID_ABI=arm64-v8a"
+    ) else if "%ARCH%"=="amd64" (
+        set "ANDROID_ABI=x86_64"
+    ) else (
+        echo [ERROR] Unsupported Android arch: %ARCH% (use arm64 or amd64)
         exit /b 1
     )
-    :ndk_found
-    echo [OK] NDK: %ANDROID_NDK_HOME%
-    set "CC=%ANDROID_NDK_HOME%\toolchains\llvm\prebuilt\windows-x86_64\bin\aarch64-linux-android21-clang.cmd"
+    call :resolve_ndk
+    set "CC=%ANDROID_NDK_HOME%\toolchains\llvm\prebuilt\windows-x86_64\bin\%GOARCH%-linux-android21-clang.cmd"
 )
-
-if "%ARCH%"=="amd64" set "GOARCH=amd64"
+goto :skip_ndk
+:resolve_ndk
+if not defined ANDROID_NDK_HOME (
+    if exist "%LOCALAPPDATA%\Android\Sdk\ndk" (
+        for /f "tokens=*" %%d in ('dir /b /ad "%LOCALAPPDATA%\Android\Sdk\ndk" 2^>nul ^| sort /r') do (
+            set "ANDROID_NDK_HOME=%LOCALAPPDATA%\Android\Sdk\ndk\%%d"
+            goto :eof
+        )
+    )
+    echo [ERROR] Android NDK not found. Set ANDROID_NDK_HOME.
+    exit /b 1
+)
+goto :eof
+:skip_ndk
 
 REM --- Build ---
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
+if "%PLATFORM%"=="windows" (
+    set "LDFLAGS=-s -w -H windowsgui -extldflags=-Wl,--subsystem,windows"
+) else (
+    set "LDFLAGS=-s -w"
+)
 go build -buildmode=c-shared ^
     -o "%OUTPUT_DIR%\libcroc_bridge%EXT%" ^
-    -ldflags="-s -w" .
+    -ldflags="%LDFLAGS%" .
 
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Build failed
@@ -105,9 +117,9 @@ if "%PLATFORM%"=="windows" (
     echo [OK] Copied to windows/runner/
 )
 if "%PLATFORM%"=="android" (
-    if not exist "%SCRIPT_DIR%..\android\app\src\main\jniLibs\arm64-v8a" mkdir "%SCRIPT_DIR%..\android\app\src\main\jniLibs\arm64-v8a"
-    copy /Y "%OUTPUT_DIR%\libcroc_bridge.so" "%SCRIPT_DIR%..\android\app\src\main\jniLibs\arm64-v8a\" >nul 2>&1
-    echo [OK] Copied to android/app/src/main/jniLibs/arm64-v8a/
+    if not exist "%SCRIPT_DIR%..\android\app\src\main\jniLibs\%ANDROID_ABI%" mkdir "%SCRIPT_DIR%..\android\app\src\main\jniLibs\%ANDROID_ABI%"
+    copy /Y "%OUTPUT_DIR%\libcroc_bridge.so" "%SCRIPT_DIR%..\android\app\src\main\jniLibs\%ANDROID_ABI%\" >nul 2>&1
+    echo [OK] Copied to android/app/src/main/jniLibs/%ANDROID_ABI%/
 )
 
 echo.

@@ -15,8 +15,10 @@ package main
 import "C"
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -74,10 +76,13 @@ func CrocSendFiles(pathsJSON *C.char, optionsJSON *C.char) *C.char {
 		code = utils.GetRandomName()
 	}
 
+	mu.Lock()
 	progressChan = make(chan progressEvent, 100)
+	ch := progressChan
+	mu.Unlock()
 
 	go func() {
-		defer close(progressChan)
+		defer close(ch)
 		doSend(paths, code, opts, transferID)
 	}()
 
@@ -93,11 +98,16 @@ func CrocReceiveFiles(codePhrase *C.char, optionsJSON *C.char) *C.char {
 	}
 
 	transferID := fmt.Sprintf("%d", os.Getpid())
+	code := C.GoString(codePhrase) // copy before goroutine (Dart frees ptr after return)
+
+	mu.Lock()
 	progressChan = make(chan progressEvent, 100)
+	ch := progressChan
+	mu.Unlock()
 
 	go func() {
-		defer close(progressChan)
-		doReceive(C.GoString(codePhrase), opts, transferID)
+		defer close(ch)
+		doReceive(code, opts, transferID)
 	}()
 
 	return marshalResult(transferID, "")
@@ -105,14 +115,21 @@ func CrocReceiveFiles(codePhrase *C.char, optionsJSON *C.char) *C.char {
 
 //export CrocPollProgress
 func CrocPollProgress() *C.char {
-	if progressChan == nil {
+	mu.Lock()
+	ch := progressChan
+	mu.Unlock()
+	if ch == nil {
 		return marshalEvent(nil)
 	}
 	select {
-	case ev, ok := <-progressChan:
+	case ev, ok := <-ch:
 		if !ok {
-			// Channel closed — return completed sentinel.
-			progressChan = nil
+			// Channel closed — clear it.
+			mu.Lock()
+			if progressChan == ch {
+				progressChan = nil
+			}
+			mu.Unlock()
 			closedEvent := progressEvent{Type: 2, TransferID: "closed"}
 			return marshalEvent(&closedEvent)
 		}
@@ -167,7 +184,8 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 	// croc recognises the "croc-stdin-" prefix as stdin/text content.
 	sendingText := opts.SendingText && opts.TextContent != ""
 	if sendingText {
-		tmpFile, err := os.CreateTemp("", "croc-stdin-*.txt")
+		tmpDir := opts.TempDir
+		tmpFile, err := os.CreateTemp(tmpDir, "croc-stdin-*.txt")
 		if err != nil {
 			progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: fmt.Sprintf("temp file: %s", err)}
 			return
@@ -195,9 +213,15 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 	if relayAddr == "" {
 		relayAddr = models.DEFAULT_RELAY
 	}
+	if relayAddr == "" {
+		relayAddr = fallbackRelay
+	}
 	relayAddr6 := opts.RelayAddress6
 	if relayAddr6 == "" {
 		relayAddr6 = models.DEFAULT_RELAY6
+	}
+	if relayAddr6 == "" {
+		relayAddr6 = fallbackRelay6
 	}
 	relayPass := opts.RelayPassword
 	if relayPass == "" {
@@ -265,11 +289,6 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 		totalSize += f.Size
 	}
 
-	progressChan <- progressEvent{
-		Type: 1, TransferID: transferID,
-		TotalFiles: len(filesInfo), TotalSize: totalSize,
-	}
-
 	err = c.Send(filesInfo, emptyFolders, totalFolders)
 	if err != nil {
 		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: err.Error()}
@@ -286,6 +305,16 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 	relayAddr := opts.RelayAddress
 	if relayAddr == "" {
 		relayAddr = models.DEFAULT_RELAY
+	}
+	if relayAddr == "" {
+		relayAddr = fallbackRelay
+	}
+	relayAddr6 := opts.RelayAddress6
+	if relayAddr6 == "" {
+		relayAddr6 = models.DEFAULT_RELAY6
+	}
+	if relayAddr6 == "" {
+		relayAddr6 = fallbackRelay6
 	}
 	relayPass := opts.RelayPassword
 	if relayPass == "" {
@@ -308,7 +337,7 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		SharedSecret:  code,
 		Debug:         false,
 		RelayAddress:  relayAddr,
-		RelayAddress6: models.DEFAULT_RELAY6,
+		RelayAddress6: relayAddr6,
 		RelayPorts:    relayPorts,
 		RelayPassword: relayPass,
 		NoPrompt:      true,
@@ -334,7 +363,38 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		os.Chdir(opts.OutputPath)
 	}
 
-	err = c.Receive()
+	// Signal that transfer has started (type 4 — mirrors doSend)
+	progressChan <- progressEvent{
+		Type:       4,
+		TransferID: transferID,
+	}
+
+	// Capture stdout during receive — croc prints text content to stdout
+	// when SendingText is true (and then deletes the temp file).
+	// By capturing stdout we get the text without modifying croc source.
+	var capturedStdout string
+	oldStdout := os.Stdout
+	r, w, pipeErr := os.Pipe()
+	if pipeErr == nil {
+		os.Stdout = w
+		var stdoutBuf bytes.Buffer
+		stdoutDone := make(chan struct{})
+		go func() {
+			io.Copy(&stdoutBuf, r)
+			r.Close()
+			close(stdoutDone)
+		}()
+
+		err = c.Receive()
+
+		w.Close()
+		os.Stdout = oldStdout
+		<-stdoutDone
+		capturedStdout = stdoutBuf.String()
+	} else {
+		err = c.Receive()
+	}
+
 	if err != nil {
 		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: err.Error()}
 		return
@@ -346,15 +406,20 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 	var isText bool
 	var textContent string
 
-	if c.Options.SendingText && len(c.FilesToTransfer) > 0 {
+	// Detect text receive: `c.Options.SendingText` is reliably set by the
+	// receiver from the sender's info (croc.go processMessageFileInfo L1305).
+	if c.Options.SendingText {
 		isText = true
-		f := c.FilesToTransfer[0]
-		filePath := filepath.Join(f.FolderRemote, f.Name)
-		data, err := os.ReadFile(filePath)
-		if err == nil {
-			textContent = string(data)
+		textContent = capturedStdout
+		if textContent == "" && len(c.FilesToTransfer) == 1 {
+			f := c.FilesToTransfer[0]
+			filePath := filepath.Join(f.FolderRemote, f.Name)
+			if data, err := os.ReadFile(filePath); err == nil {
+				textContent = string(data)
+			}
 		}
-	} else {
+	}
+	if !isText {
 		for _, f := range c.FilesToTransfer {
 			if f.Name != "" {
 				fileNames = append(fileNames, f.Name)
@@ -393,6 +458,7 @@ type sendOptions struct {
 	Exclude       []string `json:"exclude"`
 	SendingText   bool     `json:"sending_text"`
 	TextContent   string   `json:"text_content"`
+	TempDir       string   `json:"temp_dir"`
 }
 
 type receiveOptions struct {
@@ -440,5 +506,12 @@ func defaultRelayPorts() []string {
 
 const defaultCurve = "p256"
 const defaultHashAlgo = "xxhash"
+
+// Fallback relay addresses used when models.DEFAULT_RELAY / DEFAULT_RELAY6
+// resolve to empty (e.g. DNS failure during croc's init()).
+// Port is intentionally omitted — croc defaults to DEFAULT_PORT (9009) and
+// the relay banner overrides RelayPorts after connection.
+const fallbackRelay = "croc.schollz.com"
+const fallbackRelay6 = "croc6.schollz.com"
 
 func main() {} // required for c-shared builds

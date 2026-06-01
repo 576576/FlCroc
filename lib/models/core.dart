@@ -18,6 +18,7 @@ abstract class SendOptions with _$SendOptions {
     @Default(false) bool disableLocal,
     @Default(false) bool sendingText,
     @Default('') String textContent,
+    @Default('') String tempDir,
     @Default('') String socks5Proxy,
     @Default('') String httpProxy,
     @Default('') String throttleUpload,

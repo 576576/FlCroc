@@ -1,15 +1,14 @@
-import 'dart:async';
 import 'dart:io';
 
+import 'package:desktop_drop/desktop_drop.dart';
+import 'package:fl_croc/common/common.dart';
 import 'package:flutter/material.dart';
 
-/// Cross-platform file drop target using Flutter's native DragTarget.
+/// Cross-platform file drop target using the [desktop_drop] plugin.
 ///
-/// On desktop (Windows/macOS/Linux), Flutter's engine forwards
-/// native OS file drops as [DragTarget]<String> events.
-/// Multiple files dropped simultaneously are collected and
-/// dispatched as a batch via [onFilesDropped].
-/// On mobile, renders [child] directly.
+/// The [onHoverChanged] callback notifies the parent about drag-over state,
+/// allowing custom visual feedback. The widget itself only applies a subtle
+/// tint when files are dragged over.
 class FileDropTarget extends StatefulWidget {
   final Widget child;
   final bool enabled;
@@ -30,76 +29,47 @@ class FileDropTarget extends StatefulWidget {
 
 class _FileDropTargetState extends State<FileDropTarget> {
   bool _isOver = false;
-  final List<File> _pendingFiles = [];
-  Timer? _batchTimer;
-
-  @override
-  void dispose() {
-    _batchTimer?.cancel();
-    _flushPendingFiles();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     if (!widget.enabled) return widget.child;
 
-    return DragTarget<String>(
-      onWillAcceptWithDetails: (_) {
-        _setHover(true);
-        return true;
+    return DropTarget(
+      onDragDone: (detail) {
+        commonPrint('DropTarget onDragDone: ${detail.files.length} files, paths=${detail.files.map((f) => f.path).toList()}');
+        final files = <File>[];
+        for (final f in detail.files) {
+          final file = File(f.path);
+          if (file.existsSync()) {
+            files.add(file);
+          } else {
+            commonPrint('DropTarget: file not found: ${f.path}');
+          }
+        }
+        _setOver(false);
+        if (files.isNotEmpty) {
+          widget.onFilesDropped(files);
+        }
       },
-      onAcceptWithDetails: _handleDrop,
-      onLeave: (_) => _setHover(false),
-      builder: (context, candidate, rejected) {
-        final hovering = candidate.isNotEmpty;
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            widget.child,
-            if (hovering)
-              Container(
-                color: Theme.of(context).colorScheme.primary.withAlpha(30),
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Icon(Icons.cloud_upload, size: 48),
-                  ),
-                ),
+      onDragEntered: (_) => _setOver(true),
+      onDragExited: (_) => _setOver(false),
+      child: Stack(
+        children: [
+          widget.child,
+          if (_isOver)
+            Positioned.fill(
+              child: Container(
+                color: Theme.of(context).colorScheme.primary.withAlpha(25),
               ),
-          ],
-        );
-      },
+            ),
+        ],
+      ),
     );
   }
 
-  void _handleDrop(DragTargetDetails<String> details) {
-    final path = details.data;
-    final file = File(path);
-    if (file.existsSync()) {
-      _pendingFiles.add(file);
-      // Debounce: collect files for 100ms then dispatch batch
-      _batchTimer?.cancel();
-      _batchTimer = Timer(const Duration(milliseconds: 100), _flushPendingFiles);
-    }
-  }
-
-  void _flushPendingFiles() {
-    if (_pendingFiles.isNotEmpty) {
-      final files = List<File>.from(_pendingFiles);
-      _pendingFiles.clear();
-      widget.onFilesDropped(files);
-    }
-    _setHover(false);
-  }
-
-  void _setHover(bool value) {
+  void _setOver(bool value) {
     if (_isOver != value) {
-      _isOver = value;
+      setState(() => _isOver = value);
       widget.onHoverChanged?.call(value);
     }
   }

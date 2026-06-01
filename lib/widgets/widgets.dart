@@ -1,4 +1,5 @@
 export 'button.dart';
+export 'capsule_progress_chip.dart';
 export 'card.dart';
 export 'dialog.dart';
 export 'file_drop_target.dart';
@@ -13,3 +14,4 @@ export 'super_grid.dart';
 export 'switch_delegate.dart';
 export 'tab.dart';
 export 'text.dart';
+export 'window_title_bar.dart';

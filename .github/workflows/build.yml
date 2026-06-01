@@ -23,8 +23,10 @@ jobs:
       contents: write
     outputs:
       windows: ${{ steps.platform.outputs.windows }}
+      windows_arm64: ${{ steps.platform.outputs.windows_arm64 }}
       linux: ${{ steps.platform.outputs.linux }}
       android: ${{ steps.platform.outputs.android }}
+      arch_all: ${{ steps.platform.outputs.arch_all }}
       is_main: ${{ steps.branch.outputs.is_main }}
       is_tag: ${{ steps.branch.outputs.is_tag }}
       do_release: ${{ steps.ver.outputs.do_release }}
@@ -70,19 +72,22 @@ jobs:
             # ── Release / Beta ──
             PREFIX=$(echo "$MSG" | grep -oE '^(r|release|beta)' | head -1)
             VER=$(echo "$MSG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+            CUR_BUILD=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}' | grep -oE '\+[0-9]+$' | tr -d '+')
+            CUR_BUILD=${CUR_BUILD:-0}
+            NEW_BUILD=$((CUR_BUILD + 1))
+            NEW_VERSION_BASE="$VER"
+            NEW_VERSION="${NEW_VERSION_BASE}+${NEW_BUILD}"
             case "$PREFIX" in
               beta)
-                NEW_VERSION="$VER"
                 TAG="v$VER-beta"
                 REL_NAME="FlCroc Beta $VER"
                 ;;
               *)
-                NEW_VERSION="$VER"
                 TAG="v$VER"
                 REL_NAME="FlCroc $VER"
                 ;;
             esac
-            echo "Syncing release version: $NEW_VERSION"
+            echo "Syncing release version: $NEW_VERSION (build $CUR_BUILD → $NEW_BUILD)"
             echo "do_release=true" >> $GITHUB_OUTPUT
             echo "release_version=$NEW_VERSION" >> $GITHUB_OUTPUT
             echo "release_tag=$TAG" >> $GITHUB_OUTPUT
@@ -96,9 +101,8 @@ jobs:
             git commit -m "sync-ver: $NEW_VERSION [skip ci]"
             git push
           else
-            # ── Non-release: increment build number (only if a build job will run) ──
-            # Check if any platform build trigger is in the commit message
-            if ! echo "$MSG" | grep -qE '\b(b-win|b-linux|b-mobile|b-all)\b'; then
+            # ── Non-release: increment build number only if a build will run ──
+            if ! echo "$MSG" | grep -qE '\b(b-win64|b-win|b-linux|b-mobile|b-all)\b'; then
               echo "No build trigger in commit message, skip version sync"
               echo "nightly_version=${CUR_VER}" >> $GITHUB_OUTPUT
               echo "nightly_date=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
@@ -147,9 +151,11 @@ jobs:
           MSG: ${{ github.event.head_commit.message || '' }}
           IS_TAG: ${{ steps.branch.outputs.is_tag }}
         run: |
-          W='false'; L='false'; A='false'
+          W='false'; WA='false'; L='false'; A='false'; ALL='false'
+          # arch-all: include secondary architectures (Win-ARM64, Android-AMD64)
+          if echo "$MSG" | grep -qE '\b(arch-all)\b'; then ALL='true'; fi
           if [ "$IS_TAG" = "true" ]; then
-            W='true'; L='true'; A='true'
+            W='true'; WA='true'; L='true'; A='true'; ALL='true'
           else
             case "$MSG" in
               *b-win*)    W='true' ;;
@@ -157,11 +163,17 @@ jobs:
               *b-mobile*) A='true' ;;
               *b-all*)    W='true'; L='true'; A='true' ;;
             esac
+            # Secondary arch: only when arch-all flag is present
+            if [ "$ALL" = 'true' ]; then
+              if [ "$W" = 'true' ]; then WA='true'; fi
+            fi
           fi
           echo "windows=$W" >> $GITHUB_OUTPUT
+          echo "windows_arm64=$WA" >> $GITHUB_OUTPUT
           echo "linux=$L" >> $GITHUB_OUTPUT
           echo "android=$A" >> $GITHUB_OUTPUT
-          echo "Platforms → windows:$W linux:$L android:$A"
+          echo "arch_all=$ALL" >> $GITHUB_OUTPUT
+          echo "Platforms → windows:$W arm64:$WA linux:$L android:$A arch-all:$ALL"
 
   # ── Test ──
   test:
@@ -181,10 +193,10 @@ jobs:
       - name: Run tests
         run: flutter test
 
-  # ── Windows amd64 ──
-  build-windows-amd64:
+  # ── Windows (AMD64 + optional ARM64 via Zig cross-compile) ──
+  build-windows:
     needs: [test, prebuild]
-    if: needs.prebuild.outputs.windows == 'true'
+    if: needs.prebuild.outputs.windows == 'true' || needs.prebuild.outputs.windows_arm64 == 'true'
     runs-on: windows-latest
     defaults:
       run:
@@ -215,30 +227,14 @@ jobs:
             $v = $env:SYNCED_VER
           }
           echo "version=$v" >> $env:GITHUB_OUTPUT
+          echo "display_version=$($v -replace '\+.*$','')" >> $env:GITHUB_OUTPUT
+
+      # ── Shared: Go + Flutter setup ──
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-
-      - name: Build Go bridge (.dll)
-        run: |
-          Push-Location go_bridge
-          go mod tidy
-          $env:CGO_ENABLED = "1"
-          $env:GOOS = "windows"
-          $env:GOARCH = "amd64"
-          $env:CC = "gcc"
-          go build -buildmode=c-shared -ldflags="-s -w -H windowsgui" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
-          Pop-Location
-
-      - name: Verify .dll
-        run: |
-          if (Test-Path windows\runner\libcroc_bridge.dll) {
-            Get-Item windows\runner\libcroc_bridge.dll | Select-Object Length, FullName
-          } else {
-            Write-Error "libcroc_bridge.dll not found!"
-          }
 
       - uses: subosito/flutter-action@v2
         with:
@@ -251,92 +247,24 @@ jobs:
       - name: Generate launcher icons
         run: dart run flutter_launcher_icons
 
-      - name: Build Windows
-        run: flutter build windows --release
+      # ════════════════════════════════════════════════════════════
+      # ── AMD64: native Go build + Flutter Windows ──
+      # ════════════════════════════════════════════════════════════
 
-      - name: Bundle bridge .dll into build output
-        run: Copy-Item "windows\runner\libcroc_bridge.dll" "build\windows\x64\runner\Release\libcroc_bridge.dll" -Force
-
-      - name: Package zip
-        run: Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip
-
-      - name: Setup Inno Setup
-        run: choco install innosetup --no-progress -y
-
-      - name: Download Chinese language for installer
-        run: Invoke-WebRequest -Uri "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/ChineseSimplified.isl" -OutFile "windows\installer\ChineseSimplified.isl"
-
-      - name: Build installer
-        run: |
-          iscc windows\installer\setup.iss /DAppVersion=${{ steps.ver.outputs.version }}
-          Move-Item "FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer.exe" -Destination . -Force
-          Get-Item "FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer.exe"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64
-          path: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64.zip
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer
-          path: FlCroc-${{ steps.ver.outputs.version }}-windows-amd64-installer.exe
-
-  # ── Windows arm64 ──
-  build-windows-arm64:
-    needs: [test, prebuild]
-    if: needs.prebuild.outputs.windows == 'true'
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: pwsh
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
-          fetch-depth: 0
-
-      - name: Pull latest (include version sync from prebuild)
-        if: needs.prebuild.outputs.is_tag != 'true'
-        run: git pull origin ${{ github.ref_name }}
-
-      - name: Get short SHA
-        id: sha
-        run: echo "sha=$(git rev-parse --short HEAD)" >> $env:GITHUB_OUTPUT
-
-      - name: Get version
-        id: ver
-        env:
-          IS_TAG: ${{ needs.prebuild.outputs.is_tag }}
-          SYNCED_VER: ${{ needs.prebuild.outputs.synced_version }}
-        run: |
-          if ($env:IS_TAG -eq 'true') {
-            $v = (Get-Content pubspec.yaml | Where-Object { $_ -match '^version:' } | Select-Object -First 1) -replace '^version:\s+(\S+).*', '$1'
-          } else {
-            $v = $env:SYNCED_VER
-          }
-          echo "version=$v" >> $env:GITHUB_OUTPUT
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-
-      - name: Setup LLVM (for ARM64 cross-compile)
-        run: choco install llvm --no-progress -y --version=18.1.8
-
-      - name: Build Go bridge (.dll)
+      - name: "[AMD64] Build Go bridge (.dll)"
+        if: needs.prebuild.outputs.windows == 'true'
         run: |
           Push-Location go_bridge
           go mod tidy
           $env:CGO_ENABLED = "1"
           $env:GOOS = "windows"
-          $env:GOARCH = "arm64"
-          $env:CC = "clang"
-          go build -buildmode=c-shared -ldflags="-s -w -H windowsgui" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
+          $env:GOARCH = "amd64"
+          $env:CC = "gcc"
+          go build -buildmode=c-shared -ldflags="-s -w -H windowsgui -extldflags=-Wl,--subsystem,windows" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
           Pop-Location
 
-      - name: Verify .dll
+      - name: "[AMD64] Verify .dll"
+        if: needs.prebuild.outputs.windows == 'true'
         run: |
           if (Test-Path windows\runner\libcroc_bridge.dll) {
             Get-Item windows\runner\libcroc_bridge.dll | Select-Object Length, FullName
@@ -344,27 +272,78 @@ jobs:
             Write-Error "libcroc_bridge.dll not found!"
           }
 
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
+      - name: "[AMD64] Build Flutter Windows"
+        if: needs.prebuild.outputs.windows == 'true'
+        run: flutter build windows --release
 
-      - name: Install Flutter dependencies
-        run: flutter pub get
+      - name: "[AMD64] Bundle bridge .dll into build output"
+        if: needs.prebuild.outputs.windows == 'true'
+        run: Copy-Item "windows\runner\libcroc_bridge.dll" "build\windows\x64\runner\Release\libcroc_bridge.dll" -Force
 
-      - name: Build Windows (ARM64)
-        run: flutter build windows --release --target-platform windows-arm64
-
-      - name: Bundle bridge .dll into build output
-        run: Copy-Item "windows\runner\libcroc_bridge.dll" "build\windows\arm64\runner\Release\libcroc_bridge.dll" -Force
-
-      - name: Package zip
-        run: Compress-Archive -Path "build\windows\arm64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.version }}-windows-arm64.zip
+      - name: "[AMD64] Package zip"
+        if: needs.prebuild.outputs.windows == 'true'
+        run: Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.zip
 
       - uses: actions/upload-artifact@v4
+        if: needs.prebuild.outputs.windows == 'true'
         with:
-          name: FlCroc-${{ steps.ver.outputs.version }}-windows-arm64
-          path: FlCroc-${{ steps.ver.outputs.version }}-windows-arm64.zip
+          name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64
+          path: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.zip
+
+      # ════════════════════════════════════════════════════════════
+      # ── ARM64: Zig cross-compile Go bridge → repack AMD64 artifact ──
+      # ════════════════════════════════════════════════════════════
+
+      - name: "[ARM64] Setup Zig (cross-compiler)"
+        if: needs.prebuild.outputs.windows_arm64 == 'true'
+        run: |
+          if (!(Get-Command zig -ErrorAction SilentlyContinue)) {
+            choco install zig --no-progress -y
+          }
+          zig version
+
+      - name: "[ARM64] Build Go bridge (.dll)"
+        if: needs.prebuild.outputs.windows_arm64 == 'true'
+        run: |
+          Push-Location go_bridge
+          go mod tidy
+          $env:CGO_ENABLED = "1"
+          $env:GOOS = "windows"
+          $env:GOARCH = "arm64"
+          $env:CC = "zig cc -target aarch64-windows-gnu"
+          $env:CXX = "zig c++ -target aarch64-windows-gnu"
+          go build -buildmode=c-shared -ldflags="-s -w -H windowsgui -extldflags=-Wl,--subsystem,windows" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge_arm64.dll" .
+          Pop-Location
+
+      - name: "[ARM64] Verify .dll"
+        if: needs.prebuild.outputs.windows_arm64 == 'true'
+        run: |
+          if (Test-Path windows\runner\libcroc_bridge_arm64.dll) {
+            Get-Item windows\runner\libcroc_bridge_arm64.dll | Select-Object Length, FullName
+          } else {
+            Write-Error "libcroc_bridge_arm64.dll not found!"
+          }
+
+      - name: "[ARM64] Download AMD64 artifact"
+        if: needs.prebuild.outputs.windows_arm64 == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64
+          path: amd64-pkg
+
+      - name: "[ARM64] Repack with ARM64 .dll"
+        if: needs.prebuild.outputs.windows_arm64 == 'true'
+        run: |
+          Expand-Archive "amd64-pkg\FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.zip" -DestinationPath arm64-repack
+          Copy-Item "windows\runner\libcroc_bridge_arm64.dll" "arm64-repack\libcroc_bridge.dll" -Force
+          Copy-Item "windows\runner\libcroc_bridge_arm64.dll" "arm64-repack\data\flutter_assets\libcroc_bridge.dll" -Force -ErrorAction SilentlyContinue
+          Compress-Archive -Path "arm64-repack\*" -DestinationPath FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64.zip
+
+      - uses: actions/upload-artifact@v4
+        if: needs.prebuild.outputs.windows_arm64 == 'true'
+        with:
+          name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64
+          path: FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64.zip
 
   # ── Linux ──
   build-linux:
@@ -392,9 +371,12 @@ jobs:
           SYNCED_VER: ${{ needs.prebuild.outputs.synced_version }}
         run: |
           if [ "$IS_TAG" = "true" ]; then
-            echo "version=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)" >> $GITHUB_OUTPUT
+            V=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
+            echo "version=$V" >> $GITHUB_OUTPUT
+            echo "display_version=$V" >> $GITHUB_OUTPUT
           else
             echo "version=$SYNCED_VER" >> $GITHUB_OUTPUT
+            echo "display_version=$(echo $SYNCED_VER | cut -d+ -f1)" >> $GITHUB_OUTPUT
           fi
 
       - name: Setup Go
@@ -435,14 +417,14 @@ jobs:
           cp linux/flutter/ephemeral/libcroc_bridge.so build/linux/x64/release/bundle/lib/
 
       - name: Package tar
-        run: tar -czf FlCroc-${{ steps.ver.outputs.version }}-linux-amd64.tar.gz -C build/linux/x64/release/bundle .
+        run: tar -czf FlCroc-${{ steps.ver.outputs.display_version }}-linux-amd64.tar.gz -C build/linux/x64/release/bundle .
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FlCroc-${{ steps.ver.outputs.version }}-linux-amd64
-          path: FlCroc-${{ steps.ver.outputs.version }}-linux-amd64.tar.gz
+          name: FlCroc-${{ steps.ver.outputs.display_version }}-linux-amd64
+          path: FlCroc-${{ steps.ver.outputs.display_version }}-linux-amd64.tar.gz
 
-  # ── Android ──
+  # ── Android (ARM64 + AMD64 sequential) ──
   build-android:
     needs: [test, prebuild]
     if: needs.prebuild.outputs.android == 'true'
@@ -468,9 +450,12 @@ jobs:
           SYNCED_VER: ${{ needs.prebuild.outputs.synced_version }}
         run: |
           if [ "$IS_TAG" = "true" ]; then
-            echo "version=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)" >> $GITHUB_OUTPUT
+            V=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
+            echo "version=$V" >> $GITHUB_OUTPUT
+            echo "display_version=$V" >> $GITHUB_OUTPUT
           else
             echo "version=$SYNCED_VER" >> $GITHUB_OUTPUT
+            echo "display_version=$(echo $SYNCED_VER | cut -d+ -f1)" >> $GITHUB_OUTPUT
           fi
 
       - name: Setup Java
@@ -491,21 +476,32 @@ jobs:
           ndk-version: r27c
           add-to-path: false
 
-      - name: Build Go bridge for Android (.so)
+      - name: Build Go bridge (arm64 + amd64)
         env:
           ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
         run: |
-          mkdir -p android/app/src/main/jniLibs/arm64-v8a
           cd go_bridge
           go mod tidy
           export HOST_TAG=linux-x86_64
+
+          mkdir -p ../android/app/src/main/jniLibs/arm64-v8a
           export CC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/${HOST_TAG}/bin/aarch64-linux-android21-clang"
           CGO_ENABLED=1 GOOS=android GOARCH=arm64 \
             go build -buildmode=c-shared -ldflags="-s -w" \
             -o ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so .
-          cd ..
           echo "✓ Go bridge built for Android ARM64"
-          file android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so
+          file ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so
+
+          if [ "${{ needs.prebuild.outputs.arch_all }}" = "true" ]; then
+            mkdir -p ../android/app/src/main/jniLibs/x86_64
+            export CC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/${HOST_TAG}/bin/x86_64-linux-android21-clang"
+            CGO_ENABLED=1 GOOS=android GOARCH=amd64 \
+              go build -buildmode=c-shared -ldflags="-s -w" \
+              -o ../android/app/src/main/jniLibs/x86_64/libcroc_bridge.so .
+            echo "✓ Go bridge built for Android AMD64"
+            file ../android/app/src/main/jniLibs/x86_64/libcroc_bridge.so
+          fi
+          cd ..
 
       - uses: subosito/flutter-action@v2
         with:
@@ -518,13 +514,13 @@ jobs:
       - name: Generate launcher icons
         run: dart run flutter_launcher_icons
 
-      - name: Patch Android plugin registrant (catch Error too)
+      - name: Patch Android plugin registrant
         run: |
           FILE=android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
           sed -i 's/catch (Exception e)/catch (Throwable e)/g' "$FILE"
           rm -rf android/app/src/main/kotlin/com
 
-      - name: Build Android
+      - name: Build Android ARM64
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -532,22 +528,37 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: flutter build apk --release --target-platform android-arm64
 
-      - name: Rename artifact
-        run: mv build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.version }}-android-arm64.apk
+      - name: Save ARM64 APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.display_version }}-android-arm64.apk
+
+      - name: Build Android AMD64
+        if: needs.prebuild.outputs.arch_all == 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: flutter build apk --release --target-platform android-x64
+
+      - name: Save AMD64 APK
+        if: needs.prebuild.outputs.arch_all == 'true'
+        run: cp build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.display_version }}-android-amd64.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FlCroc-${{ steps.ver.outputs.version }}-android-arm64
-          path: FlCroc-${{ steps.ver.outputs.version }}-android-arm64.apk
+          name: FlCroc-${{ steps.ver.outputs.display_version }}-android
+          path: |
+            FlCroc-${{ steps.ver.outputs.display_version }}-android-arm64.apk
+            FlCroc-${{ steps.ver.outputs.display_version }}-android-amd64.apk
+        continue-on-error: true
 
   # ── Nightly release (dev branch) ──
   nightly:
-    needs: [prebuild, build-windows-amd64, build-windows-arm64, build-linux, build-android]
+    needs: [prebuild, build-windows, build-linux, build-android]
     if: |
       always() && !failure() && !cancelled() &&
       needs.prebuild.outputs.do_release == 'false' &&
-      (needs.build-windows-amd64.result != 'skipped' ||
-       needs.build-windows-arm64.result != 'skipped' ||
+      (needs.build-windows.result != 'skipped' ||
        needs.build-linux.result != 'skipped' ||
        needs.build-android.result != 'skipped')
     runs-on: ubuntu-latest
@@ -632,7 +643,7 @@ jobs:
 
   # ── Production release (manual tag push or auto from release/beta commit) ──
   release:
-    needs: [prebuild, build-android, build-windows-amd64, build-windows-arm64, build-linux]
+    needs: [prebuild, build-android, build-windows, build-linux]
     if: |
       always() && !cancelled() &&
       needs.prebuild.result != 'failure' &&
@@ -653,7 +664,9 @@ jobs:
         run: |
           # Prefer prebuild outputs (from release/beta commit)
           if [ "${{ needs.prebuild.outputs.do_release }}" = "true" ]; then
-            echo "version=${{ needs.prebuild.outputs.release_version }}" >> $GITHUB_OUTPUT
+            VER="${{ needs.prebuild.outputs.release_version }}"
+            DISPLAY_VER=$(echo "$VER" | cut -d+ -f1)
+            echo "version=$DISPLAY_VER" >> $GITHUB_OUTPUT
             echo "tag=${{ needs.prebuild.outputs.release_tag }}" >> $GITHUB_OUTPUT
             echo "release_name=${{ needs.prebuild.outputs.release_name }}" >> $GITHUB_OUTPUT
           else

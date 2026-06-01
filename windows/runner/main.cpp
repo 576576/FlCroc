@@ -17,6 +17,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   // plugins.
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
+  // Enable DirectWrite for improved font rendering on Windows.
+  SetEnvironmentVariableW(L"ENABLE_FLUTTER_DIRECTWRITE", L"1");
+
   flutter::DartProject project(L"data");
 
   std::vector<std::string> command_line_arguments =

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -5,11 +6,13 @@ import 'package:file_picker/file_picker.dart';
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/core/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
+import 'package:fl_croc/l10n/l10n.dart';
 import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/state.dart';
 import 'package:fl_croc/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import 'acknowledgments.dart';
 
@@ -22,6 +25,10 @@ class SettingsView extends ConsumerStatefulWidget {
 
 class _SettingsViewState extends ConsumerState<SettingsView> {
   String _crocVersion = '...';
+  bool _debugMode = false;
+  int _versionTaps = 0;
+  DateTime? _lastVersionTap;
+  bool _autoClearLog = true;
 
   late final _relayAddrCtrl = TextEditingController();
   late final _relayPortCtrl = TextEditingController();
@@ -30,6 +37,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   @override
   void initState() {
     super.initState();
+    _debugMode = LogBuffer.debugMode;
     // Delay version check until after core controller initializes (post first frame)
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadCrocVersion());
     final relay = ref.read(appSettingProvider).relayConfig;
@@ -302,6 +310,19 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   child: _HueSlider(),
                 ),
               ),
+              ListItem.switchItem(
+                leading: const Icon(Icons.featured_video_outlined),
+                title: Text(l10n.noTextMode),
+                subtitle: Text(l10n.noTextModeDesc),
+                delegate: SwitchDelegate(
+                  value: appSettings.noTextMode,
+                  onChanged: (v) {
+                    ref.read(appSettingProvider.notifier).update(
+                          (s) => s.copyWith(noTextMode: v),
+                        );
+                  },
+                ),
+              ),
             ],
           ),
 
@@ -318,7 +339,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ListItem(
                 leading: const Icon(Icons.folder),
                 title: Text(l10n.defaultSavePath),
-                subtitle: Text(formatPathForDisplay(appSettings.defaultSavePath.isEmpty ? _defaultDownloadPath() : appSettings.defaultSavePath)),
+                subtitle: Text(formatPathForDisplay(
+                  appSettings.defaultSavePath.isEmpty ? _defaultDownloadPath() : appSettings.defaultSavePath,
+                  downloadsLabel: l10n.downloadsFolder,
+                )),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -370,13 +394,39 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   child: Image.asset('assets/images/icon.png', width: 24, height: 24),
                 ),
                 title: Text(l10n.appVersion),
-                subtitle: Text('${globalState.packageInfo.version}+${globalState.packageInfo.buildNumber}'),
+                subtitle: Text(_debugMode
+                    ? '${globalState.packageInfo.version}+${globalState.packageInfo.buildNumber}'
+                    : globalState.packageInfo.version),
                 trailing: IconButton(
                   icon: const Icon(Icons.open_in_new, size: 18),
                   tooltip: l10n.open,
                   visualDensity: VisualDensity.compact,
                   onPressed: () => globalState.openUrl('https://github.com/$repository'),
                 ),
+                onTap: () {
+                  final now = DateTime.now();
+                  if (_lastVersionTap != null &&
+                      now.difference(_lastVersionTap!).inSeconds >= 3) {
+                    _versionTaps = 0;
+                  }
+                  _lastVersionTap = now;
+                  _versionTaps++;
+                  if (_versionTaps >= 5) {
+                    _versionTaps = 0;
+                    _lastVersionTap = null;
+                    setState(() => _debugMode = !_debugMode);
+                    LogBuffer.debugMode = _debugMode;
+                    if (_autoClearLog) LogBuffer.clear();
+                    final l10n = context.appLocalizations;
+                    context.showSnackBar(_debugMode ? l10n.debugModeOn : l10n.debugModeOff);
+                  } else if (_versionTaps >= 2) {
+                    final remaining = 5 - _versionTaps;
+                    final enable = !_debugMode;
+                    context.showSnackBar(
+                      context.appLocalizations.debugTapHint(remaining, enable: enable),
+                    );
+                  }
+                },
               ),
               ListItem(
                 leading: const Icon(Icons.link),
@@ -400,6 +450,34 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ),
             ],
           ),
+
+          // ── Debug section (visible when debug mode is active) ──
+          if (_debugMode)
+            ...generateSection(
+              title: l10n.debug,
+              separated: false,
+              items: [
+                ListItem(
+                  leading: const Icon(Icons.bug_report),
+                  title: Text(l10n.debugLog),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const _LogViewerPage()),
+                    );
+                  },
+                ),
+                ListItem(
+                  leading: const Icon(Icons.auto_delete),
+                  title: Text(l10n.autoClearLog),
+                  subtitle: Text(l10n.autoClearLogDesc),
+                  trailing: Switch(
+                    value: _autoClearLog,
+                    onChanged: (v) => setState(() => _autoClearLog = v),
+                  ),
+                ),
+              ],
+            ),
 
           const SizedBox(height: 32),
         ],
@@ -689,6 +767,86 @@ class _HueSliderState extends ConsumerState<_HueSlider> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Simple log viewer — displays LogBuffer contents.
+class _LogViewerPage extends StatefulWidget {
+  const _LogViewerPage();
+
+  @override
+  State<_LogViewerPage> createState() => _LogViewerPageState();
+}
+
+class _LogViewerPageState extends State<_LogViewerPage> {
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _exportLogs(List<String> logs, AppLocalizations l10n) async {
+    final timestamp = DateFormat('yyMMdd-HHmmss').format(DateTime.now());
+    final dir = Directory(AppPaths.savePathSync);
+    if (!dir.existsSync()) dir.createSync(recursive: true);
+    final file = File('${dir.path}${Platform.pathSeparator}FlCroc-debug-$timestamp.log');
+    await file.writeAsString(logs.join('\n'));
+    if (mounted) context.showSnackBar(l10n.logExported(file.path));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final logs = LogBuffer.logs;
+    final l10n = context.appLocalizations;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(l10n.debugLog),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.ios_share),
+            tooltip: l10n.exportLog,
+            onPressed: logs.isEmpty ? null : () => _exportLogs(logs, l10n),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_sweep),
+            tooltip: l10n.clear,
+            onPressed: () {
+              LogBuffer.clear();
+              setState(() {});
+            },
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          if (isWindows || isLinux) const WindowTitleBar(),
+          Expanded(
+            child: logs.isEmpty
+                ? Center(child: Text(l10n.noLogs, style: context.textTheme.bodyMedium))
+                : ListView.builder(
+                    itemCount: logs.length,
+                    itemBuilder: (_, i) => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      child: SelectableText(
+                        logs[i],
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

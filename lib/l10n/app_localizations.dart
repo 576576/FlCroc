@@ -13,6 +13,7 @@ library;
 
 import 'dart:convert';
 
+import 'package:fl_croc/common/print.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -60,6 +61,7 @@ class AppLocalizations {
     'open', 'openFolder',
 
     // ── Common: Status ──
+    'justNow', 'minAgo', 'hoursAgo', 'daysAgo', 'monthsAgo',
     'loading', 'connecting', 'pending', 'sending', 'transferring',
     'receiving', 'completed', 'failed', 'cancelled',
     'default', 'custom',
@@ -84,13 +86,15 @@ class AppLocalizations {
 
     // ── Send ──
     'codePhrase', 'enterCodePhrase', 'phraseHintCroc', 'phraseHintRandom',
-    'textHint', 'autoGeneratePhrase', 'phraseMode',
+    'textHint', 'textSizeLimit', 'unlimited',
+    'autoGeneratePhrase', 'phraseMode',
     'phraseModeOn', 'autoCopyPhrase',
     'enterPhraseWarning', 'enterTextWarning',
 
     // ── Receive ──
-    'startReceive', 'scanQRCode', 'generateQRCode', 'phraseEmpty',
+    'startReceive', 'scanQRCode', 'generateQRCode', 'whiteBgQR', 'phraseEmpty',
     'selectQRImage', 'flashlight', 'flipCamera', 'noQRFound', 'scanMobileOnly',
+    'cameraPermissionDenied', 'cameraUnsupported', 'cameraError',
 
     // ── Settings: Transfer Options ──
     'options', 'transferOptions', 'encryptionCurve', 'hashAlgorithm',
@@ -101,14 +105,26 @@ class AppLocalizations {
     'defaultRelay', 'customRelay', 'noRelay', 'port', 'resetRelay',
 
     // ── Settings: Save Path ──
-    'defaultSavePath', 'selectFolder', 'savePath',
+    'downloadsFolder', 'defaultSavePath', 'selectFolder', 'savePath',
 
     // ── Settings: Theme ──
     'theme', 'themeMode', 'light', 'dark', 'system',
     'language', 'autoLanguage', 'pureBlackMode', 'colorPalette',
 
+    // ── Settings: Navigation ──
+    'noTextMode', 'noTextModeDesc',
+
     // ── Settings: Reset ──
     'reset', 'resetAllSettings', 'resetAllConfirm', 'settingsReset',
+
+    // ── Send ──
+    'dragHere', 'dropToAdd',
+
+    // ── Settings: Debug ──
+    'debug', 'debugLog', 'debugModeOn', 'debugModeOff',
+    'debugTapEnable', 'debugTapDisable',
+    'autoClearLog', 'autoClearLogDesc', 'noLogs',
+    'exportLog', 'logExported',
 
     // ── Settings: About ──
     'about', 'application', 'appVersion', 'crocVersion',
@@ -116,7 +132,7 @@ class AppLocalizations {
 
     // ── Settings: Acknowledgments ──
     'acknowledgments', 'openSourceProjects',
-    'flutterDesc', 'crocDesc', 'flClashDesc',
+    'flutterDesc', 'crocDesc', 'flClashDesc', 'crocAppDesc',
   };
 
   // ═══════════════════════════════════════════════════════════
@@ -157,6 +173,11 @@ class AppLocalizations {
   String get openFolder => _('openFolder');
 
   // ── Common: Status ──
+  String get justNow => _('justNow');
+  String get minAgo => _('minAgo');
+  String get hoursAgo => _('hoursAgo');
+  String get daysAgo => _('daysAgo');
+  String get monthsAgo => _('monthsAgo');
   String get loading => _('loading');
   String get connecting => _('connecting');
   String get pending => _('pending');
@@ -179,7 +200,9 @@ class AppLocalizations {
   String get errorCouldNotConnect => _('errorCouldNotConnect');
 
   /// 将 croc 原始错误信息映射为本地化文案。
+  /// Debug 模式下直接返回原始错误信息。
   String localizeCrocError(String error, {bool isSend = false}) {
+    if (LogBuffer.debugMode) return error;
     final lower = error.toLowerCase();
     if (lower.contains('room (secure channel) not ready')) return errorRoomNotReady;
     if (lower.contains('bad password')) return errorRelayPassword;
@@ -220,6 +243,8 @@ class AppLocalizations {
   String get phraseHintCroc => _('phraseHintCroc');
   String get phraseHintRandom => _('phraseHintRandom');
   String get textHint => _('textHint');
+  String get textSizeLimit => _('textSizeLimit');
+  String get unlimited => _('unlimited');
   String get autoGeneratePhrase => _('autoGeneratePhrase');
   String get phraseMode => _('phraseMode');
   String get phraseModeOn => _('phraseModeOn');
@@ -231,12 +256,16 @@ class AppLocalizations {
   String get startReceive => _('startReceive');
   String get scanQRCode => _('scanQRCode');
   String get generateQRCode => _('generateQRCode');
+  String get whiteBgQR => _('whiteBgQR');
   String get phraseEmpty => _('phraseEmpty');
   String get selectQRImage => _('selectQRImage');
   String get flashlight => _('flashlight');
   String get flipCamera => _('flipCamera');
   String get noQRFound => _('noQRFound');
   String get scanMobileOnly => _('scanMobileOnly');
+  String get cameraPermissionDenied => _('cameraPermissionDenied');
+  String get cameraUnsupported => _('cameraUnsupported');
+  String get cameraError => _('cameraError');
 
   // ── Settings: Transfer Options ──
   String get options => _('options');
@@ -259,6 +288,7 @@ class AppLocalizations {
   String get resetRelay => _('resetRelay');
 
   // ── Settings: Save Path ──
+  String get downloadsFolder => _('downloadsFolder');
   String get defaultSavePath => _('defaultSavePath');
   String get selectFolder => _('selectFolder');
   String get savePath => _('savePath');
@@ -274,11 +304,35 @@ class AppLocalizations {
   String get pureBlackMode => _('pureBlackMode');
   String get colorPalette => _('colorPalette');
 
+  // ── Settings: Navigation ──
+  String get noTextMode => _('noTextMode');
+  String get noTextModeDesc => _('noTextModeDesc');
+
   // ── Settings: Reset ──
   String get reset => _('reset');
   String get resetAllSettings => _('resetAllSettings');
   String get resetAllConfirm => _('resetAllConfirm');
   String get settingsReset => _('settingsReset');
+
+  // ── Send ──
+  String get dropToAdd => _('dropToAdd');
+
+  // ── Settings: Debug ──
+  String get debug => _('debug');
+  String get debugLog => _('debugLog');
+  String get debugModeOn => _('debugModeOn');
+  String get debugModeOff => _('debugModeOff');
+
+  /// Show countdown hint: "Press N more times to enable/disable debug mode".
+  String debugTapHint(int remaining, {required bool enable}) {
+    final key = enable ? 'debugTapEnable' : 'debugTapDisable';
+    return _(key).replaceAll('{count}', '$remaining');
+  }
+  String get autoClearLog => _('autoClearLog');
+  String get autoClearLogDesc => _('autoClearLogDesc');
+  String get noLogs => _('noLogs');
+  String get exportLog => _('exportLog');
+  String logExported(String path) => _('logExported').replaceAll('{0}', path);
 
   // ── Settings: About ──
   String get about => _('about');
@@ -294,6 +348,7 @@ class AppLocalizations {
   String get flutterDesc => _('flutterDesc');
   String get crocDesc => _('crocDesc');
   String get flClashDesc => _('flClashDesc');
+  String get crocAppDesc => _('crocAppDesc');
 
   /// Map [PageLabel] to its localized display name.
   String pageLabel(Enum label) {

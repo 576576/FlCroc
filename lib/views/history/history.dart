@@ -1,7 +1,9 @@
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
+import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/providers/providers.dart';
+import 'package:fl_croc/state.dart';
 import 'package:fl_croc/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,24 +45,66 @@ class HistoryView extends ConsumerWidget {
               itemBuilder: (_, index) {
                 final transfer = completed[index];
                 final isSent = transfer.direction == TransferDirection.sent;
+                final hasReceivedFile = !isSent &&
+                    transfer.status == TransferStatus.completed &&
+                    transfer.files.isNotEmpty &&
+                    transfer.files.any((f) => f.path.isNotEmpty);
                 return ListTile(
                   leading: Icon(
-                    isSent ? Icons.upload_file : Icons.download,
-                    color: isSent ? Colors.blue : Colors.green,
+                    isSent ? Icons.upload : Icons.download,
+                    color: _getIconColor(transfer, context),
                   ),
                   title: Text(
-                    transfer.files.map((f) => f.name).join(', '),
+                    _formatTransferTitle(transfer),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   subtitle: Text(
-                    '${transfer.totalSize.fileSize} • ${transfer.startTime.timeAgo}',
+                    '${transfer.totalSize.fileSize} • ${transfer.startTime.timeAgoL10n(l10n)}',
                   ),
-                  trailing: _buildStatusChip(transfer.status, context),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (hasReceivedFile)
+                        IconButton(
+                          icon: const Icon(Icons.folder_open, size: 18),
+                          tooltip: l10n.openFolder,
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () {
+                            final f = transfer.files.firstWhere((f) => f.path.isNotEmpty);
+                            globalState.openFolder(f.path);
+                          },
+                        ),
+                      _buildStatusChip(transfer.status, context),
+                    ],
+                  ),
                 );
               },
             ),
     );
+  }
+
+  /// Format transfer title: for text, show first 50 chars; for files, show file names.
+  String _formatTransferTitle(TransferRecord t) {
+    final names = t.files.map((f) => f.name);
+    final joined = names.join(', ');
+    // If it's a text transfer (single file with no extension and path empty), truncate
+    if (t.files.length == 1 && !t.files.first.name.contains('.') && t.files.first.path.isEmpty) {
+      return joined.length > 50 ? '${joined.substring(0, 50)}…' : joined;
+    }
+    return joined;
+  }
+
+  /// Icon color: text → primary, file → green, failed → red.
+  Color _getIconColor(TransferRecord t, BuildContext context) {
+    if (t.status == TransferStatus.failed) return Colors.red;
+    return _isTextTransfer(t) ? context.colorScheme.primary : Colors.green;
+  }
+
+  bool _isTextTransfer(TransferRecord t) {
+    return t.files.length == 1 &&
+        !t.files.first.name.contains('.') &&
+        t.files.first.path.isEmpty;
   }
 
   Widget _buildStatusChip(TransferStatus status, BuildContext context) {
@@ -77,7 +121,7 @@ class HistoryView extends ConsumerWidget {
         label = l10n.failed;
         break;
       case TransferStatus.cancelled:
-        color = Colors.orange;
+        color = context.colorScheme.onSurfaceVariant;
         label = l10n.cancelled;
         break;
       default:

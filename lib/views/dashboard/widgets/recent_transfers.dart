@@ -1,4 +1,5 @@
 import 'package:fl_croc/common/common.dart';
+import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/l10n/l10n.dart';
 import 'package:fl_croc/models/models.dart';
@@ -14,11 +15,24 @@ class RecentTransfersWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.appLocalizations;
     final transfers = ref.watch(transfersProvider);
-    final recent = transfers.take(3).toList();
+    final recent = transfers
+        .where((t) =>
+            t.status == TransferStatus.completed ||
+            t.status == TransferStatus.failed ||
+            t.status == TransferStatus.cancelled)
+        .toList()
+      ..sort((a, b) => b.startTime.compareTo(a.startTime));
+    final top3 = recent.take(3).toList();
 
     return CommonCard(
       info: Info(iconData: Icons.history, label: l10n.recentTransfers),
-      child: recent.isEmpty
+      trailing: IconButton(
+        icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+        tooltip: l10n.clear,
+        visualDensity: VisualDensity.compact,
+        onPressed: () => appController.clearHistory(),
+      ),
+      child: top3.isEmpty
             ? Center(
                 child: Text(
                   l10n.noTransfersYet,
@@ -29,16 +43,17 @@ class RecentTransfersWidget extends ConsumerWidget {
               )
             : Column(
                 mainAxisSize: MainAxisSize.min,
-                children: recent.map((t) {
+                children: top3.map((t) {
                   final icon = t.direction == TransferDirection.sent
                       ? Icons.upload
                       : Icons.download;
+                  final iconColor = _getIconColor(t, context);
                   final statusColor = _getStatusColor(t.status, context);
                   return ListTile(
                     dense: true,
-                    leading: Icon(icon, size: 20),
+                    leading: Icon(icon, size: 20, color: iconColor),
                     title: Text(
-                      t.files.first.name,
+                      _truncate(t.files.first.name),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -65,6 +80,9 @@ class RecentTransfersWidget extends ConsumerWidget {
     );
   }
 
+  /// Truncate long text for display.
+  String _truncate(String text) => text.length > 40 ? '${text.substring(0, 40)}…' : text;
+
   String _statusLabel(TransferStatus status, AppLocalizations l10n) {
     switch (status) {
       case TransferStatus.completed:
@@ -80,6 +98,12 @@ class RecentTransfersWidget extends ConsumerWidget {
     }
   }
 
+  /// Icon color: text → primary, file → green, failed → red.
+  Color _getIconColor(TransferRecord t, BuildContext context) {
+    if (t.status == TransferStatus.failed) return Colors.red;
+    return _isTextTransfer(t) ? context.colorScheme.primary : Colors.green;
+  }
+
   Color _getStatusColor(TransferStatus status, BuildContext context) {
     switch (status) {
       case TransferStatus.completed:
@@ -91,5 +115,11 @@ class RecentTransfersWidget extends ConsumerWidget {
       default:
         return context.colorScheme.onSurfaceVariant;
     }
+  }
+
+  bool _isTextTransfer(TransferRecord t) {
+    return t.files.length == 1 &&
+        !t.files.first.name.contains('.') &&
+        t.files.first.path.isEmpty;
   }
 }

@@ -32,6 +32,7 @@ mixin _$AppSettingProps {
   ColorSchemeType get colorSchemeType => throw _privateConstructorUsedError;
   FontFamily get fontFamily => throw _privateConstructorUsedError;
   bool get pureBlackMode => throw _privateConstructorUsedError;
+  bool get noTextMode => throw _privateConstructorUsedError;
   bool get developerMode => throw _privateConstructorUsedError;
   bool get autoCheckUpdate => throw _privateConstructorUsedError;
   RelayConfig get relayConfig => throw _privateConstructorUsedError;
@@ -64,6 +65,7 @@ abstract class $AppSettingPropsCopyWith<$Res> {
     ColorSchemeType colorSchemeType,
     FontFamily fontFamily,
     bool pureBlackMode,
+    bool noTextMode,
     bool developerMode,
     bool autoCheckUpdate,
     RelayConfig relayConfig,
@@ -97,6 +99,7 @@ class _$AppSettingPropsCopyWithImpl<$Res, $Val extends AppSettingProps>
     Object? colorSchemeType = null,
     Object? fontFamily = null,
     Object? pureBlackMode = null,
+    Object? noTextMode = null,
     Object? developerMode = null,
     Object? autoCheckUpdate = null,
     Object? relayConfig = null,
@@ -139,6 +142,10 @@ class _$AppSettingPropsCopyWithImpl<$Res, $Val extends AppSettingProps>
             pureBlackMode: null == pureBlackMode
                 ? _value.pureBlackMode
                 : pureBlackMode // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            noTextMode: null == noTextMode
+                ? _value.noTextMode
+                : noTextMode // ignore: cast_nullable_to_non_nullable
                       as bool,
             developerMode: null == developerMode
                 ? _value.developerMode
@@ -191,6 +198,7 @@ abstract class _$$AppSettingPropsImplCopyWith<$Res>
     ColorSchemeType colorSchemeType,
     FontFamily fontFamily,
     bool pureBlackMode,
+    bool noTextMode,
     bool developerMode,
     bool autoCheckUpdate,
     RelayConfig relayConfig,
@@ -224,6 +232,7 @@ class __$$AppSettingPropsImplCopyWithImpl<$Res>
     Object? colorSchemeType = null,
     Object? fontFamily = null,
     Object? pureBlackMode = null,
+    Object? noTextMode = null,
     Object? developerMode = null,
     Object? autoCheckUpdate = null,
     Object? relayConfig = null,
@@ -267,6 +276,10 @@ class __$$AppSettingPropsImplCopyWithImpl<$Res>
             ? _value.pureBlackMode
             : pureBlackMode // ignore: cast_nullable_to_non_nullable
                   as bool,
+        noTextMode: null == noTextMode
+            ? _value.noTextMode
+            : noTextMode // ignore: cast_nullable_to_non_nullable
+                  as bool,
         developerMode: null == developerMode
             ? _value.developerMode
             : developerMode // ignore: cast_nullable_to_non_nullable
@@ -302,6 +315,7 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
     this.colorSchemeType = ColorSchemeType.fidelity,
     this.fontFamily = FontFamily.system,
     this.pureBlackMode = false,
+    this.noTextMode = false,
     this.developerMode = false,
     this.autoCheckUpdate = false,
     this.relayConfig = const RelayConfig(),
@@ -347,6 +361,9 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
   final bool pureBlackMode;
   @override
   @JsonKey()
+  final bool noTextMode;
+  @override
+  @JsonKey()
   final bool developerMode;
   @override
   @JsonKey()
@@ -360,7 +377,7 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
 
   @override
   String toString() {
-    return 'AppSettingProps(locale: $locale, dashboardWidgets: $dashboardWidgets, autoLaunch: $autoLaunch, silentLaunch: $silentLaunch, minimizeOnExit: $minimizeOnExit, themeMode: $themeMode, colorSchemeType: $colorSchemeType, fontFamily: $fontFamily, pureBlackMode: $pureBlackMode, developerMode: $developerMode, autoCheckUpdate: $autoCheckUpdate, relayConfig: $relayConfig, defaultSavePath: $defaultSavePath)';
+    return 'AppSettingProps(locale: $locale, dashboardWidgets: $dashboardWidgets, autoLaunch: $autoLaunch, silentLaunch: $silentLaunch, minimizeOnExit: $minimizeOnExit, themeMode: $themeMode, colorSchemeType: $colorSchemeType, fontFamily: $fontFamily, pureBlackMode: $pureBlackMode, noTextMode: $noTextMode, developerMode: $developerMode, autoCheckUpdate: $autoCheckUpdate, relayConfig: $relayConfig, defaultSavePath: $defaultSavePath)';
   }
 
   @override
@@ -387,6 +404,8 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
                 other.fontFamily == fontFamily) &&
             (identical(other.pureBlackMode, pureBlackMode) ||
                 other.pureBlackMode == pureBlackMode) &&
+            (identical(other.noTextMode, noTextMode) ||
+                other.noTextMode == noTextMode) &&
             (identical(other.developerMode, developerMode) ||
                 other.developerMode == developerMode) &&
             (identical(other.autoCheckUpdate, autoCheckUpdate) ||
@@ -410,6 +429,7 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
     colorSchemeType,
     fontFamily,
     pureBlackMode,
+    noTextMode,
     developerMode,
     autoCheckUpdate,
     relayConfig,
@@ -445,6 +465,7 @@ abstract class _AppSettingProps implements AppSettingProps {
     final ColorSchemeType colorSchemeType,
     final FontFamily fontFamily,
     final bool pureBlackMode,
+    final bool noTextMode,
     final bool developerMode,
     final bool autoCheckUpdate,
     final RelayConfig relayConfig,
@@ -473,6 +494,8 @@ abstract class _AppSettingProps implements AppSettingProps {
   FontFamily get fontFamily;
   @override
   bool get pureBlackMode;
+  @override
+  bool get noTextMode;
   @override
   bool get developerMode;
   @override

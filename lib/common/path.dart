@@ -115,10 +115,15 @@ class AppPaths {
   }
 }
 
-/// 保存路径的 UI 显示标签。
-String formatPathForDisplay(String path) {
+/// 保存路径的 UI 显示标签（接受本地化对象）。
+String formatPathForDisplay(String path, {String? downloadsLabel}) {
+  if (path.isEmpty) return downloadsLabel ?? 'Downloads';
+  // Android app-specific or iOS sandbox path → show friendly label
   if (Platform.isAndroid && path.contains('/Android/data/')) {
-    return '内部存储 / FlCroc';
+    return downloadsLabel ?? 'Downloads';
+  }
+  if (Platform.isIOS && path.contains('/Documents')) {
+    return downloadsLabel ?? 'Downloads';
   }
   return path;
 }

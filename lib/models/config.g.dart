@@ -28,6 +28,7 @@ _$AppSettingPropsImpl _$$AppSettingPropsImplFromJson(
       $enumDecodeNullable(_$FontFamilyEnumMap, json['fontFamily']) ??
       FontFamily.system,
   pureBlackMode: json['pureBlackMode'] as bool? ?? false,
+  noTextMode: json['noTextMode'] as bool? ?? false,
   developerMode: json['developerMode'] as bool? ?? false,
   autoCheckUpdate: json['autoCheckUpdate'] as bool? ?? false,
   relayConfig: json['relayConfig'] == null
@@ -50,6 +51,7 @@ Map<String, dynamic> _$$AppSettingPropsImplToJson(
   'colorSchemeType': _$ColorSchemeTypeEnumMap[instance.colorSchemeType]!,
   'fontFamily': _$FontFamilyEnumMap[instance.fontFamily]!,
   'pureBlackMode': instance.pureBlackMode,
+  'noTextMode': instance.noTextMode,
   'developerMode': instance.developerMode,
   'autoCheckUpdate': instance.autoCheckUpdate,
   'relayConfig': instance.relayConfig,
