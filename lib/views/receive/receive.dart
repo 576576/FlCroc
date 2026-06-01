@@ -125,9 +125,11 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
       return;
     }
     try {
-      final result = await showDialog<String>(
+      final result = await showGeneralDialog<String>(
         context: context,
-        builder: (_) => const _QRScannerDialog(),
+        barrierDismissible: false,
+        barrierLabel: 'Close',
+        pageBuilder: (context, animation, secondaryAnimation) => const _QRScannerDialog(),
       );
       if (result != null && mounted) {
         _codeController.text = result;
@@ -651,7 +653,8 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   }
 }
 
-/// QR scanner dialog powered by mobile_scanner.
+/// QR scanner dialog — uses showGeneralDialog with pageBuilder to
+/// avoid Android platform view rendering issues.
 class _QRScannerDialog extends StatefulWidget {
   const _QRScannerDialog();
 
@@ -699,47 +702,51 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.appLocalizations;
-    return Dialog(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Scanner area (square)
-            AspectRatio(
-              aspectRatio: 1,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                child: MobileScanner(
-                  controller: _ctrl,
-                  onDetect: _onDetect,
-                  errorBuilder: (context, error, child) {
-                    commonPrint('MobileScanner error: $error');
-                    return child ?? const SizedBox.shrink();
-                  },
+    return SafeArea(
+      child: Center(
+        child: Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Scanner area (square)
+                AspectRatio(
+                  aspectRatio: 1,
+                  child: MobileScanner(
+                    controller: _ctrl,
+                    onDetect: _onDetect,
+                    errorBuilder: (context, error, child) {
+                      commonPrint('MobileScanner error: $error');
+                      return child ?? const SizedBox.shrink();
+                    },
+                  ),
                 ),
-              ),
-            ),
-            // Bottom buttons
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  FilledButton.icon(
-                    onPressed: _pickImage,
-                    icon: const Icon(Icons.image, size: 18),
-                    label: Text(l10n.selectQRImage),
+                // Bottom buttons
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: _pickImage,
+                        icon: const Icon(Icons.image, size: 18),
+                        label: Text(l10n.selectQRImage),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, size: 18),
+                        label: Text(l10n.cancel),
+                      ),
+                    ],
                   ),
-                  OutlinedButton.icon(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, size: 18),
-                    label: Text(l10n.cancel),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

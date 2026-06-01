@@ -1,20 +1,18 @@
-import 'dart:async';
 import 'dart:io';
 
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 
-/// Cross-platform file drop target using Flutter's native DragTarget.
+/// Cross-platform file drop target using the [desktop_drop] plugin.
 ///
-/// On desktop (Windows/macOS/Linux), Flutter's engine forwards
-/// native OS file drops as [DragTarget]<String> events.
-/// Multiple files dropped simultaneously are collected and
-/// dispatched as a batch via [onFilesDropped].
-/// On mobile, renders [child] directly.
+/// On desktop, shows a hint overlay with [hintText] while files are dragged
+/// over. On mobile, renders [child] directly.
 class FileDropTarget extends StatefulWidget {
   final Widget child;
   final bool enabled;
   final ValueChanged<List<File>> onFilesDropped;
   final ValueChanged<bool>? onHoverChanged;
+  final String? hintText;
 
   const FileDropTarget({
     super.key,
@@ -22,6 +20,7 @@ class FileDropTarget extends StatefulWidget {
     this.enabled = true,
     required this.onFilesDropped,
     this.onHoverChanged,
+    this.hintText,
   });
 
   @override
@@ -30,73 +29,53 @@ class FileDropTarget extends StatefulWidget {
 
 class _FileDropTargetState extends State<FileDropTarget> {
   bool _isOver = false;
-  final List<File> _pendingFiles = [];
-  Timer? _batchTimer;
-
-  @override
-  void dispose() {
-    _batchTimer?.cancel();
-    _flushPendingFiles();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     if (!widget.enabled) return widget.child;
 
-    return DragTarget<String>(
-      onWillAcceptWithDetails: (_) {
-        _setHover(true);
-        return true;
+    final hint = widget.hintText ?? '';
+
+    return DropTarget(
+      onDragDone: (detail) {
+        final files = detail.files
+            .map((f) => File(f.path))
+            .where((f) => f.existsSync())
+            .toList();
+        if (files.isNotEmpty) {
+          widget.onFilesDropped(files);
+        }
+        _setHover(false);
       },
-      onAcceptWithDetails: _handleDrop,
-      onLeave: (_) => _setHover(false),
-      builder: (context, candidate, rejected) {
-        final hovering = candidate.isNotEmpty;
-        return Stack(
-          fit: StackFit.expand,
+      onDragEntered: (_) => _setHover(true),
+      onDragExited: (_) => _setHover(false),
+      child: SizedBox(
+        width: double.infinity,
+        child: Stack(
           children: [
             widget.child,
-            if (hovering)
-              Container(
-                color: Theme.of(context).colorScheme.primary.withAlpha(30),
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(16),
+            if (_isOver)
+              Positioned.fill(
+                child: Container(
+                  color: Theme.of(context).colorScheme.primary.withAlpha(40),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.cloud_upload, size: 48),
+                        if (hint.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Text(hint, style: Theme.of(context).textTheme.titleMedium),
+                        ],
+                      ],
                     ),
-                    child: const Icon(Icons.cloud_upload, size: 48),
                   ),
                 ),
               ),
           ],
-        );
-      },
+        ),
+      ),
     );
-  }
-
-  void _handleDrop(DragTargetDetails<String> details) {
-    final path = details.data;
-    // Accept empty strings — flush on next batch timer
-    if (path.isEmpty) return;
-    final file = File(path);
-    // Always add; non-existent files will be filtered by the callback
-    _pendingFiles.add(file);
-    _batchTimer?.cancel();
-    _batchTimer = Timer(const Duration(milliseconds: 100), _flushPendingFiles);
-  }
-
-  void _flushPendingFiles() {
-    if (_pendingFiles.isNotEmpty) {
-      final files = _pendingFiles.where((f) => f.existsSync()).toList();
-      _pendingFiles.clear();
-      if (files.isNotEmpty) {
-        widget.onFilesDropped(files);
-      }
-    }
-    _setHover(false);
   }
 
   void _setHover(bool value) {

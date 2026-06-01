@@ -61,36 +61,37 @@ if "%PLATFORM%"=="windows" (
     set "GOOS=windows"
     set "EXT=.dll"
 )
+if "%ARCH%"=="amd64" set "GOARCH=amd64"
+if "%ARCH%"=="arm64" set "GOARCH=arm64"
+
 if "%PLATFORM%"=="android" (
     set "GOOS=android"
     set "EXT=.so"
     if "%ARCH%"=="arm64" (
-        set "GOARCH=arm64"
         set "ANDROID_ABI=arm64-v8a"
     ) else if "%ARCH%"=="amd64" (
-        set "GOARCH=amd64"
         set "ANDROID_ABI=x86_64"
     ) else (
         echo [ERROR] Unsupported Android arch: %ARCH% (use arm64 or amd64)
         exit /b 1
     )
-    if not defined ANDROID_NDK_HOME (
-        if exist "%LOCALAPPDATA%\Android\Sdk\ndk" (
-            for /f "tokens=*" %%d in ('dir /b /ad "%LOCALAPPDATA%\Android\Sdk\ndk" 2^>nul ^| sort /r') do (
-                set "ANDROID_NDK_HOME=%LOCALAPPDATA%\Android\Sdk\ndk\%%d"
-                goto :ndk_found
-            )
-        )
-        echo [ERROR] Android NDK not found. Set ANDROID_NDK_HOME.
-        exit /b 1
-    )
-    :ndk_found
-    echo [OK] NDK: %ANDROID_NDK_HOME%
-    rem NDK clang naming: aarch64- for arm64, x86_64- for amd64
+    call :resolve_ndk
     set "CC=%ANDROID_NDK_HOME%\toolchains\llvm\prebuilt\windows-x86_64\bin\%GOARCH%-linux-android21-clang.cmd"
 )
-
-if "%ARCH%"=="amd64" set "GOARCH=amd64"
+goto :skip_ndk
+:resolve_ndk
+if not defined ANDROID_NDK_HOME (
+    if exist "%LOCALAPPDATA%\Android\Sdk\ndk" (
+        for /f "tokens=*" %%d in ('dir /b /ad "%LOCALAPPDATA%\Android\Sdk\ndk" 2^>nul ^| sort /r') do (
+            set "ANDROID_NDK_HOME=%LOCALAPPDATA%\Android\Sdk\ndk\%%d"
+            goto :eof
+        )
+    )
+    echo [ERROR] Android NDK not found. Set ANDROID_NDK_HOME.
+    exit /b 1
+)
+goto :eof
+:skip_ndk
 
 REM --- Build ---
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"

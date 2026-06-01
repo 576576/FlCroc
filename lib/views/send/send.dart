@@ -645,44 +645,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
           const SizedBox(width: 8),
         ],
       ),
-      body: FileDropTarget(
-        enabled: isDesktop,
-        onFilesDropped: (files) {
-          if (files.isEmpty) return;
-          if (_isTextMode) {
-            // Text mode: load first dropped file content
-            for (final f in files) {
-              if (!FileSystemEntity.isDirectorySync(f.path)) {
-                try {
-                  final content = f.readAsStringSync();
-                  _textController.text = _applyTextLimit(content);
-                  _textController.selection = TextSelection.collapsed(offset: _textController.text.length);
-                  return;
-                } catch (_) {}
-              }
-            }
-          } else {
-            // File mode: add files/folders to selection
-            final newFiles = <PlatformFile>[];
-            for (final f in files) {
-              if (FileSystemEntity.isDirectorySync(f.path)) {
-                setState(() {
-                  _selectedFolder = f.path;
-                  _selectedFiles.clear();
-                });
-                return;
-              }
-            }
-            for (final f in files) {
-              if (!FileSystemEntity.isDirectorySync(f.path) &&
-                  !_selectedFiles.any((s) => s.path == f.path)) {
-                newFiles.add(PlatformFile(name: f.path.split(Platform.pathSeparator).last, path: f.path, size: f.lengthSync()));
-              }
-            }
-            if (newFiles.isNotEmpty) setState(() => _selectedFiles.addAll(newFiles));
-          }
-        },
-        child: ListView(
+      body: ListView(
         children: [
           // Mode toggle
           Padding(
@@ -701,15 +664,20 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
             _shakeWrap(1, _buildSection(l10n.text, Icons.text_snippet, [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                child: TextField(
-                  controller: _textController, maxLines: 5,
-                  decoration: InputDecoration(
-                    hintText: l10n.textHint,
-                    border: InputBorder.none,
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.paste, size: 20),
-                      onPressed: _pasteText,
-                      tooltip: l10n.paste,
+                child: FileDropTarget(
+                  enabled: isDesktop,
+                  onFilesDropped: _onTextDrop,
+                  hintText: l10n.dropToAdd,
+                  child: TextField(
+                    controller: _textController, maxLines: 5,
+                    decoration: InputDecoration(
+                      hintText: l10n.textHint,
+                      border: InputBorder.none,
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.paste, size: 20),
+                        onPressed: _pasteText,
+                        tooltip: l10n.paste,
+                      ),
                     ),
                   ),
                 ),
@@ -732,30 +700,37 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
             ])),
           ] else ...[
             _shakeWrap(0, _buildSection(l10n.file, Icons.insert_drive_file, [
-              if (_selectedFolder != null)
-                ListTile(
-                  leading: const Icon(Icons.folder, color: Colors.amber),
-                  title: Text(_selectedFolder!.split(Platform.pathSeparator).last),
-                  subtitle: Text(_selectedFolder!, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textTheme.bodySmall),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.close, size: 18),
-                    onPressed: () => setState(() => _selectedFolder = null),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                )
-              else if (_selectedFiles.isEmpty)
-                NullStatusWidget(message: l10n.noFiles, icon: Icons.cloud_upload_outlined)
-              else
-                ...List.generate(_selectedFiles.length, (i) {
-                  final f = _selectedFiles[i];
-                  return ListTile(
-                    leading: const Icon(Icons.insert_drive_file), title: Text(f.name),
-                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text(f.size.fileSize, style: context.textTheme.bodySmall), const SizedBox(width: 4),
-                      IconButton(icon: const Icon(Icons.close, size: 18), onPressed: () => _removeFile(i), visualDensity: VisualDensity.compact),
-                    ]),
-                  );
-                }),
+              FileDropTarget(
+                enabled: isDesktop,
+                onFilesDropped: _onFileDrop,
+                hintText: l10n.dropToAdd,
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  if (_selectedFolder != null)
+                    ListTile(
+                      leading: const Icon(Icons.folder, color: Colors.amber),
+                      title: Text(_selectedFolder!.split(Platform.pathSeparator).last),
+                      subtitle: Text(_selectedFolder!, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textTheme.bodySmall),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.close, size: 18),
+                        onPressed: () => setState(() => _selectedFolder = null),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    )
+                  else if (_selectedFiles.isEmpty)
+                    NullStatusWidget(message: l10n.noFiles, icon: Icons.cloud_upload_outlined)
+                  else
+                    ...List.generate(_selectedFiles.length, (i) {
+                      final f = _selectedFiles[i];
+                      return ListTile(
+                        leading: const Icon(Icons.insert_drive_file), title: Text(f.name),
+                        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Text(f.size.fileSize, style: context.textTheme.bodySmall), const SizedBox(width: 4),
+                          IconButton(icon: const Icon(Icons.close, size: 18), onPressed: () => _removeFile(i), visualDensity: VisualDensity.compact),
+                        ]),
+                      );
+                    }),
+                ]),
+              ),
               Padding(
                 padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -904,10 +879,42 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
           const SizedBox(height: 32),
         ],
-        ),  // ListView
-      ),    // FileDropTarget
+      ),
     );
-}
+  }
+
+  void _onTextDrop(List<File> files) {
+    for (final f in files) {
+      if (!FileSystemEntity.isDirectorySync(f.path)) {
+        try {
+          final content = f.readAsStringSync();
+          _textController.text = _applyTextLimit(content);
+          _textController.selection = TextSelection.collapsed(offset: _textController.text.length);
+          return;
+        } catch (_) {}
+      }
+    }
+  }
+
+  void _onFileDrop(List<File> files) {
+    final newFiles = <PlatformFile>[];
+    for (final f in files) {
+      if (FileSystemEntity.isDirectorySync(f.path)) {
+        setState(() {
+          _selectedFolder = f.path;
+          _selectedFiles.clear();
+        });
+        return;
+      }
+    }
+    for (final f in files) {
+      if (!FileSystemEntity.isDirectorySync(f.path) &&
+          !_selectedFiles.any((s) => s.path == f.path)) {
+        newFiles.add(PlatformFile(name: f.path.split(Platform.pathSeparator).last, path: f.path, size: f.lengthSync()));
+      }
+    }
+    if (newFiles.isNotEmpty) setState(() => _selectedFiles.addAll(newFiles));
+  }
 
   // ── Shake wrapper ──
 

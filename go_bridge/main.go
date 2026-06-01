@@ -332,6 +332,12 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		os.Chdir(opts.OutputPath)
 	}
 
+	// Signal that transfer has started (type 4 — mirrors doSend)
+	progressChan <- progressEvent{
+		Type:       4,
+		TransferID: transferID,
+	}
+
 	// Capture stdout during receive — croc prints text content to stdout
 	// when SendingText is true (and then deletes the temp file).
 	// By capturing stdout we get the text without modifying croc source.

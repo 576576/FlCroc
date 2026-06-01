@@ -47,10 +47,11 @@ class RecentTransfersWidget extends ConsumerWidget {
                   final icon = t.direction == TransferDirection.sent
                       ? Icons.upload
                       : Icons.download;
+                  final iconColor = _getIconColor(t, context);
                   final statusColor = _getStatusColor(t.status, context);
                   return ListTile(
                     dense: true,
-                    leading: Icon(icon, size: 20),
+                    leading: Icon(icon, size: 20, color: iconColor),
                     title: Text(
                       _truncate(t.files.first.name),
                       maxLines: 1,
@@ -97,6 +98,12 @@ class RecentTransfersWidget extends ConsumerWidget {
     }
   }
 
+  /// Icon color: text → primary, file → green, failed → red.
+  Color _getIconColor(TransferRecord t, BuildContext context) {
+    if (t.status == TransferStatus.failed) return Colors.red;
+    return _isTextTransfer(t) ? context.colorScheme.primary : Colors.green;
+  }
+
   Color _getStatusColor(TransferStatus status, BuildContext context) {
     switch (status) {
       case TransferStatus.completed:
@@ -108,5 +115,11 @@ class RecentTransfersWidget extends ConsumerWidget {
       default:
         return context.colorScheme.onSurfaceVariant;
     }
+  }
+
+  bool _isTextTransfer(TransferRecord t) {
+    return t.files.length == 1 &&
+        !t.files.first.name.contains('.') &&
+        t.files.first.path.isEmpty;
   }
 }

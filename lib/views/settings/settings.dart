@@ -309,6 +309,19 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   child: _HueSlider(),
                 ),
               ),
+              ListItem.switchItem(
+                leading: const Icon(Icons.featured_video_outlined),
+                title: Text(l10n.noTextMode),
+                subtitle: Text(l10n.noTextModeDesc),
+                delegate: SwitchDelegate(
+                  value: appSettings.noTextMode,
+                  onChanged: (v) {
+                    ref.read(appSettingProvider.notifier).update(
+                          (s) => s.copyWith(noTextMode: v),
+                        );
+                  },
+                ),
+              ),
             ],
           ),
 

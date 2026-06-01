@@ -90,6 +90,7 @@
   "availableWidgets": "Available Widgets",
 
   "_comment_send": "══════════ Send ══════════",
+  "dropToAdd": "Release to add",
   "codePhrase": "Code Phrase",
   "enterCodePhrase": "Enter Code Phrase",
   "phraseHintCroc": "Managed by Croc",
@@ -152,8 +153,12 @@
   "system": "System",
   "language": "Language",
   "autoLanguage": "Auto",
-  "pureBlackMode": "Pure Black",
+  "pureBlackMode": "OLED Dark",
   "colorPalette": "Color Palette",
+
+  "_comment_nav": "── Navigation ──",
+  "noTextMode": "Icon-only mode",
+  "noTextModeDesc": "Show only icons in the navigation bar",
 
   "_comment_reset": "── Reset ──",
   "reset": "Reset",

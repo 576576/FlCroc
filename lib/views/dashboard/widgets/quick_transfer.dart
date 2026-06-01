@@ -120,6 +120,38 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   void _clearText() => _textCtrl.clear();
   void _removeFile(int index) => setState(() => _selectedFiles.removeAt(index));
 
+  void _onTextDrop(List<File> files) {
+    for (final f in files) {
+      if (!FileSystemEntity.isDirectorySync(f.path)) {
+        try {
+          _textCtrl.text = f.readAsStringSync();
+          _textCtrl.selection = TextSelection.collapsed(offset: _textCtrl.text.length);
+          return;
+        } catch (_) {}
+      }
+    }
+  }
+
+  void _onFileDrop(List<File> files) {
+    final newFiles = <PlatformFile>[];
+    for (final f in files) {
+      if (FileSystemEntity.isDirectorySync(f.path)) {
+        setState(() {
+          _selectedFolder = f.path;
+          _selectedFiles.clear();
+        });
+        return;
+      }
+    }
+    for (final f in files) {
+      if (!FileSystemEntity.isDirectorySync(f.path) &&
+          !_selectedFiles.any((s) => s.path == f.path)) {
+        newFiles.add(PlatformFile(name: f.path.split(Platform.pathSeparator).last, path: f.path, size: f.lengthSync()));
+      }
+    }
+    if (newFiles.isNotEmpty) setState(() => _selectedFiles.addAll(newFiles));
+  }
+
   Future<void> _pickFolder() async {
     final path = await FilePicker.platform.getDirectoryPath();
     if (path != null) {
@@ -596,7 +628,11 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
             ),
             const SizedBox(height: 8),
             if (_isTextMode)
-              TextField(
+              FileDropTarget(
+                enabled: isDesktop,
+                onFilesDropped: _onTextDrop,
+                hintText: l10n.dropToAdd,
+                child: TextField(
                 controller: _textCtrl,
                 maxLines: 2,
                 style: const TextStyle(fontSize: 13),
@@ -626,8 +662,14 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
                     ],
                   ),
                 ),
+              ),
               )
             else ...[
+              FileDropTarget(
+                enabled: isDesktop,
+                onFilesDropped: _onFileDrop,
+                hintText: l10n.dropToAdd,
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
               if (_selectedFolder != null)
                 ListTile(
                   dense: true,
@@ -693,6 +735,8 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
                     contentPadding: EdgeInsets.zero,
                   );
                 }),
+                ]),  // Column
+              ),  // FileDropTarget
               LayoutBuilder(builder: (_, constraints) {
                 final w = constraints.maxWidth;
                 // Measure label widths so thresholds adapt to locale.

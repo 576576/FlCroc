@@ -110,8 +110,14 @@ class AppLocalizations {
     'theme', 'themeMode', 'light', 'dark', 'system',
     'language', 'autoLanguage', 'pureBlackMode', 'colorPalette',
 
+    // ── Settings: Navigation ──
+    'noTextMode', 'noTextModeDesc',
+
     // ── Settings: Reset ──
     'reset', 'resetAllSettings', 'resetAllConfirm', 'settingsReset',
+
+    // ── Send ──
+    'dragHere', 'dropToAdd',
 
     // ── Settings: Debug ──
     'debug', 'debugLog', 'debugModeOn', 'debugModeOff',
@@ -293,11 +299,18 @@ class AppLocalizations {
   String get pureBlackMode => _('pureBlackMode');
   String get colorPalette => _('colorPalette');
 
+  // ── Settings: Navigation ──
+  String get noTextMode => _('noTextMode');
+  String get noTextModeDesc => _('noTextModeDesc');
+
   // ── Settings: Reset ──
   String get reset => _('reset');
   String get resetAllSettings => _('resetAllSettings');
   String get resetAllConfirm => _('resetAllConfirm');
   String get settingsReset => _('settingsReset');
+
+  // ── Send ──
+  String get dropToAdd => _('dropToAdd');
 
   // ── Settings: Debug ──
   String get debug => _('debug');

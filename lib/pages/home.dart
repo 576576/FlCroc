@@ -18,6 +18,7 @@ class HomePage extends StatelessWidget {
             navigationItems.indexWhere((item) => item.label == currentLabel);
         final safeIndex = currentIndex >= 0 ? currentIndex : 0;
         final isNarrow = MediaQuery.of(context).size.width < maxMobileWidth;
+        final noTextMode = ref.watch(appSettingProvider.select((s) => s.noTextMode));
 
         // ── Shared body: page content area ──
         Widget pageBody = IndexedStack(
@@ -32,12 +33,13 @@ class HomePage extends StatelessWidget {
           );
           final screenHeight = MediaQuery.of(context).size.height;
           final showLogo = screenHeight >= 500; // hide logo when height is tight (e.g. landscape)
+          final label = (String text) => noTextMode ? const Text('') : Text(text, overflow: TextOverflow.ellipsis);
 
           final rail = Material(
             color: context.colorScheme.surfaceContainer,
             child: SafeArea(
               child: SizedBox(
-                width: 88,
+                width: noTextMode ? 72 : 88,
                 child: Column(
                   children: [
                     if (showLogo) ...[
@@ -68,12 +70,12 @@ class HomePage extends StatelessWidget {
                         destinations: navigationItems
                             .map((e) => NavigationRailDestination(
                                   icon: e.icon,
-                                  label: Text(context.appLocalizations.pageLabel(e.label), overflow: TextOverflow.ellipsis),
+                                  label: label(context.appLocalizations.pageLabel(e.label)),
                                 ))
                             .toList(),
                         onDestinationSelected: (index) => appController.toPage(navigationItems[index].label),
                         selectedIndex: safeIndex,
-                        labelType: NavigationRailLabelType.all,
+                        labelType: noTextMode ? NavigationRailLabelType.none : NavigationRailLabelType.all,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -99,19 +101,20 @@ class HomePage extends StatelessWidget {
         final navBar = Theme(
           data: Theme.of(context).copyWith(
             navigationBarTheme: NavigationBarTheme.of(context).copyWith(
-              height: 64,
+              height: noTextMode ? 56 : 64,
             ),
           ),
           child: NavigationBar(
           destinations: navigationItems
               .map((e) => NavigationDestination(
                     icon: e.icon,
-                    label: context.appLocalizations.pageLabel(e.label),
+                    label: noTextMode ? '' : context.appLocalizations.pageLabel(e.label),
                   ))
               .toList(),
           onDestinationSelected: (index) =>
               appController.toPage(navigationItems[index].label),
           selectedIndex: safeIndex,
+          labelBehavior: noTextMode ? NavigationDestinationLabelBehavior.alwaysHide : NavigationDestinationLabelBehavior.alwaysShow,
           ),
         );
         if (isDesktop) {

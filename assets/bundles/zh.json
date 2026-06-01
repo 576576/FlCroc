@@ -90,6 +90,7 @@
   "availableWidgets": "可用组件",
 
   "_comment_send": "══════════ 发送 ══════════",
+  "dropToAdd": "松开以添加",
   "codePhrase": "代码短语",
   "enterCodePhrase": "输入代码短语",
   "phraseHintCroc": "短语由Croc管理",
@@ -152,8 +153,12 @@
   "system": "系统",
   "language": "语言",
   "autoLanguage": "自动",
-  "pureBlackMode": "纯黑模式",
+  "pureBlackMode": "纯黑深色模式",
   "colorPalette": "配色方案",
+
+  "_comment_nav": "── 导航 ──",
+  "noTextMode": "无字模式",
+  "noTextModeDesc": "菜单栏仅显示图标",
 
   "_comment_reset": "── 重置 ──",
   "reset": "重置",

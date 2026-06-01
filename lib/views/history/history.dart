@@ -52,7 +52,7 @@ class HistoryView extends ConsumerWidget {
                 return ListTile(
                   leading: Icon(
                     isSent ? Icons.upload : Icons.download,
-                    color: isSent ? Colors.blue : Colors.green,
+                    color: _getIconColor(transfer, context),
                   ),
                   title: Text(
                     _formatTransferTitle(transfer),
@@ -95,6 +95,18 @@ class HistoryView extends ConsumerWidget {
     return joined;
   }
 
+  /// Icon color: text → primary, file → green, failed → red.
+  Color _getIconColor(TransferRecord t, BuildContext context) {
+    if (t.status == TransferStatus.failed) return Colors.red;
+    return _isTextTransfer(t) ? context.colorScheme.primary : Colors.green;
+  }
+
+  bool _isTextTransfer(TransferRecord t) {
+    return t.files.length == 1 &&
+        !t.files.first.name.contains('.') &&
+        t.files.first.path.isEmpty;
+  }
+
   Widget _buildStatusChip(TransferStatus status, BuildContext context) {
     final l10n = context.appLocalizations;
     Color color;
@@ -109,7 +121,7 @@ class HistoryView extends ConsumerWidget {
         label = l10n.failed;
         break;
       case TransferStatus.cancelled:
-        color = Colors.orange;
+        color = context.colorScheme.onSurfaceVariant;
         label = l10n.cancelled;
         break;
       default:

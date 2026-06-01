@@ -26,6 +26,7 @@ abstract class AppSettingProps with _$AppSettingProps {
     @Default(ColorSchemeType.fidelity) ColorSchemeType colorSchemeType,
     @Default(FontFamily.system) FontFamily fontFamily,
     @Default(false) bool pureBlackMode,
+    @Default(false) bool noTextMode,
     @Default(false) bool developerMode,
     @Default(false) bool autoCheckUpdate,
     @Default(RelayConfig()) RelayConfig relayConfig,
