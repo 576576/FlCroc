@@ -125,21 +125,18 @@ class QrScannerView(
         }
 
         val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-        // Unwrap to find the Activity for lifecycle binding
         val lifecycleOwner = findActivity() as? LifecycleOwner
 
+        if (lifecycleOwner == null) {
+            channel.invokeMethod("onError", mapOf(
+                "errorCode" to "cameraError",
+                "message" to "Cannot find Activity lifecycle"
+            ))
+            return
+        }
+
         try {
-            if (lifecycleOwner != null) {
-                provider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, imageAnalysis)
-            } else {
-                // Fallback: bind without lifecycle (stays active until unbindAll)
-                provider.bindToLifecycle(
-                    androidx.lifecycle.LifecycleRegistry(lifecycleOwner ?: return).also {
-                        it.currentState = androidx.lifecycle.Lifecycle.State.RESUMED
-                    },
-                    cameraSelector, preview, imageAnalysis
-                )
-            }
+            provider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, imageAnalysis)
         } catch (e: Exception) {
             e.printStackTrace()
             channel.invokeMethod("onError", mapOf(
