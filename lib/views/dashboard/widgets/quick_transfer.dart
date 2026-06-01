@@ -117,7 +117,10 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   }
 
   void _clearFiles() => setState(() { _selectedFiles.clear(); _selectedFolder = null; });
-  void _clearText() => _textCtrl.clear();
+  void _clearText() {
+    _textCtrl.clear();
+    if (mounted) context.showSnackBar(context.appLocalizations.cleared);
+  }
   void _removeFile(int index) => setState(() => _selectedFiles.removeAt(index));
 
   void _onTextDrop(List<File> files) {
@@ -172,6 +175,7 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
     if (data?.text != null && data!.text!.isNotEmpty) {
       _textCtrl.text = data.text!;
       _textCtrl.selection = TextSelection.collapsed(offset: _textCtrl.text.length);
+      if (mounted) context.showSnackBar(context.appLocalizations.pasted);
     }
   }
 
@@ -195,6 +199,7 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   Future<void> _copyText() async {
     if (_textCtrl.text.isNotEmpty) {
       await Clipboard.setData(ClipboardData(text: _textCtrl.text));
+      if (mounted) context.showSnackBar(context.appLocalizations.copied);
     }
   }
 

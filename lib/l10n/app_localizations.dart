@@ -74,6 +74,7 @@ class AppLocalizations {
     // ── Common: Update ──
     'checkUpdate', 'alreadyLatest', 'newVersionAvailable',
     'latestVersion', 'currentVersion', 'update',
+    'updateChannel', 'releaseChannel', 'nightlyChannel', 'autoCheckUpdate',
 
     // ── Dashboard ──
     'transferSpeed', 'transferStatsName', 'totalTransferred', 'quickTransfer',
@@ -188,6 +189,11 @@ class AppLocalizations {
   String get failed => _('failed');
   String get cancelled => _('cancelled');
   String get codeCopied => _('codeCopied');
+  String get codePasted => _('codePasted');
+  String get copied => _('copied');
+  String get pasted => _('pasted');
+  String get cleared => _('cleared');
+  String get historyCleared => _('historyCleared');
   String get defaultLabel => _('default');
   String get custom => _('custom');
 
@@ -217,6 +223,10 @@ class AppLocalizations {
   String get latestVersion => _('latestVersion');
   String get currentVersion => _('currentVersion');
   String get update => _('update');
+  String get updateChannel => _('updateChannel');
+  String get releaseChannel => _('releaseChannel');
+  String get nightlyChannel => _('nightlyChannel');
+  String get autoCheckUpdate => _('autoCheckUpdate');
 
   // ── Dashboard ──
   String get transferSpeed => _('transferSpeed');

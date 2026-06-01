@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
@@ -24,7 +27,82 @@ class _ApplicationState extends ConsumerState<Application> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       appController.attach(context, ref);
+      _autoCheckUpdate();
     });
+  }
+
+  Future<void> _autoCheckUpdate() async {
+    final settings = ref.read(appSettingProvider);
+    if (!settings.autoCheckUpdate) return;
+    final currentVer = globalState.packageInfo.version;
+    final currentBuild = globalState.packageInfo.buildNumber;
+    final channel = settings.updateChannel;
+    try {
+      final client = HttpClient();
+      try {
+        final tag = channel == UpdateChannel.nightly ? 'tags/nightly' : 'releases/latest';
+        final uri = Uri.https('api.github.com', '/repos/$repository/$tag');
+        final request = await client.getUrl(uri);
+        request.headers.set('User-Agent', 'FlCroc');
+        request.headers.set('Accept', 'application/vnd.github+json');
+        final response = await request.close();
+        if (response.statusCode != 200) return;
+        final body = await response.transform(utf8.decoder).join();
+        final data = jsonDecode(body) as Map<String, dynamic>;
+        final latestTag = (data['tag_name'] as String?)?.replaceFirst(RegExp(r'^v'), '') ?? '';
+        if (channel == UpdateChannel.nightly) {
+          final title = (data['name'] as String?) ?? '';
+          final buildMatch = RegExp(r'\+(\d+)').firstMatch(title);
+          final nightlyBuild = buildMatch != null ? int.tryParse(buildMatch.group(1)!) ?? 0 : 0;
+          final curBuild = int.tryParse(currentBuild) ?? 0;
+          if (nightlyBuild <= curBuild) return;
+        } else {
+          if (latestTag.isEmpty || _isVersionSameOrOlder(latestTag, currentVer)) return;
+        }
+        if (!mounted) return;
+        final ctx = globalState.navigatorKey.currentContext;
+        if (ctx == null) return;
+        showDialog(
+          context: ctx,
+          builder: (ctx2) => AlertDialog(
+            title: Text(AppLocalizations.of(ctx)!.newVersionAvailable),
+            content: Text('${AppLocalizations.of(ctx)!.latestVersion}: $latestTag\n${AppLocalizations.of(ctx)!.currentVersion}: $currentVer'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx2),
+                child: Text(AppLocalizations.of(ctx)!.cancel),
+              ),
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx2);
+                  globalState.openUrl('https://github.com/$repository/releases');
+                },
+                icon: const Icon(Icons.open_in_new, size: 18),
+                label: Text(AppLocalizations.of(ctx)!.update),
+              ),
+            ],
+          ),
+        );
+      } finally {
+        client.close();
+      }
+    } catch (_) {}
+  }
+
+  /// Returns true if [latest] is the same base version as [current] or older.
+  static bool _isVersionSameOrOlder(String latest, String current) {
+    final latestBase = latest.split(RegExp(r'[-+]')).first;
+    final currentBase = current.split(RegExp(r'[-+]')).first;
+    final latestParts = latestBase.split('.').map(int.tryParse).toList();
+    final currentParts = currentBase.split('.').map(int.tryParse).toList();
+    final len = latestParts.length > currentParts.length ? latestParts.length : currentParts.length;
+    for (int i = 0; i < len; i++) {
+      final l = i < latestParts.length ? (latestParts[i] ?? 0) : 0;
+      final c = i < currentParts.length ? (currentParts[i] ?? 0) : 0;
+      if (l > c) return false;
+      if (l < c) return true;
+    }
+    return true;
   }
 
   @override

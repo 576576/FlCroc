@@ -51,6 +51,11 @@
   "failed": "Failed",
   "cancelled": "Cancelled",
   "codeCopied": "Code copied",
+  "codePasted": "Code pasted",
+  "copied": "Copied",
+  "pasted": "Pasted",
+  "cleared": "Cleared",
+  "historyCleared": "History cleared",
   "default": "Default",
   "custom": "Custom",
 
@@ -69,6 +74,10 @@
   "latestVersion": "Latest version",
   "currentVersion": "Current version",
   "update": "Update",
+  "updateChannel": "Update Channel",
+  "releaseChannel": "Release",
+  "nightlyChannel": "Nightly",
+  "autoCheckUpdate": "Check update on startup",
 
   "_comment_dashboard": "══════════ Dashboard ══════════",
   "transferSpeed": "Transfer Speed",

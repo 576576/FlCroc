@@ -32,6 +32,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   bool _isTextMode = false;
   bool _dragOverFile = false;
   bool _dragOverText = false;
+  bool _isPhrasePasteMode = true; // phrase field: default paste
   PhraseMode _phraseMode = PhraseMode.defaultMode;
   SendPhase _phase = SendPhase.idle;
 
@@ -99,6 +100,9 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   late Animation<double> _shakeAnim;
   int _shakeTarget = -1; // -1:none, 0:files, 1:text, 2:phrase
 
+  // Persist code phrase across page switches
+  static String _savedCodePhrase = '';
+
   @override
   void initState() {
     super.initState();
@@ -108,6 +112,9 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     );
     _loadSendPrefs();
     _textController.addListener(_enforceTextLimit);
+    if (_savedCodePhrase.isNotEmpty) {
+      _codeController.text = _savedCodePhrase;
+    }
     _pickUpSharedFiles();
   }
 
@@ -161,6 +168,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
   @override
   void dispose() {
+    _savedCodePhrase = _codeController.text;
     _progressTimer?.cancel();
     _saveSendPrefs();
     _sendSubscription?.cancel();
@@ -202,12 +210,19 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   }
 
   void _removeFile(int index) => setState(() => _selectedFiles.removeAt(index));
-  void _clearFiles() => setState(() { _selectedFiles.clear(); _selectedFolder = null; });
-  void _clearText() => _textController.clear();
+  void _clearFiles() {
+    setState(() { _selectedFiles.clear(); _selectedFolder = null; });
+    if (mounted) context.showSnackBar(context.appLocalizations.cleared);
+  }
+  void _clearText() {
+    _textController.clear();
+    if (mounted) context.showSnackBar(context.appLocalizations.cleared);
+  }
 
   void _copyText() {
     if (_textController.text.isNotEmpty) {
       Clipboard.setData(ClipboardData(text: _textController.text));
+      if (mounted) context.showSnackBar(context.appLocalizations.copied);
     }
   }
 
@@ -215,6 +230,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     if (data?.text != null && data!.text!.isNotEmpty) {
       _textController.text = data.text!;
+      if (mounted) context.showSnackBar(context.appLocalizations.pasted);
     }
   }
 
@@ -277,6 +293,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     if (data?.text != null && data!.text!.isNotEmpty) {
       _codeController.text = data.text!;
+      if (mounted) context.showSnackBar(context.appLocalizations.codePasted);
     }
   }
 
@@ -626,8 +643,15 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.qr_code, size: 16), onPressed: _showQRCode, padding: EdgeInsets.zero, tooltip: l10n.generateQRCode)),
-                  SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.copy, size: 16), onPressed: _copyPhrase, padding: EdgeInsets.zero, tooltip: l10n.copy)),
-                  SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.paste, size: 16), onPressed: _pastePhrase, padding: EdgeInsets.zero, tooltip: l10n.paste)),
+                  SizedBox(
+                    width: 28, height: 28,
+                    child: _ClipboardToggleButton(
+                      isPasteMode: _isPhrasePasteMode,
+                      isActive: false,
+                      onTap: _isPhrasePasteMode ? _pastePhrase : _copyPhrase,
+                      onLongPress: () => setState(() => _isPhrasePasteMode = !_isPhrasePasteMode),
+                    ),
+                  ),
                 ],
               ),
             ),

@@ -35,6 +35,7 @@ mixin _$AppSettingProps {
   bool get noTextMode => throw _privateConstructorUsedError;
   bool get developerMode => throw _privateConstructorUsedError;
   bool get autoCheckUpdate => throw _privateConstructorUsedError;
+  UpdateChannel get updateChannel => throw _privateConstructorUsedError;
   RelayConfig get relayConfig => throw _privateConstructorUsedError;
   String get defaultSavePath => throw _privateConstructorUsedError;
 
@@ -68,6 +69,7 @@ abstract class $AppSettingPropsCopyWith<$Res> {
     bool noTextMode,
     bool developerMode,
     bool autoCheckUpdate,
+    UpdateChannel updateChannel,
     RelayConfig relayConfig,
     String defaultSavePath,
   });
@@ -102,6 +104,7 @@ class _$AppSettingPropsCopyWithImpl<$Res, $Val extends AppSettingProps>
     Object? noTextMode = null,
     Object? developerMode = null,
     Object? autoCheckUpdate = null,
+    Object? updateChannel = null,
     Object? relayConfig = null,
     Object? defaultSavePath = null,
   }) {
@@ -155,6 +158,10 @@ class _$AppSettingPropsCopyWithImpl<$Res, $Val extends AppSettingProps>
                 ? _value.autoCheckUpdate
                 : autoCheckUpdate // ignore: cast_nullable_to_non_nullable
                       as bool,
+            updateChannel: null == updateChannel
+                ? _value.updateChannel
+                : updateChannel // ignore: cast_nullable_to_non_nullable
+                      as UpdateChannel,
             relayConfig: null == relayConfig
                 ? _value.relayConfig
                 : relayConfig // ignore: cast_nullable_to_non_nullable
@@ -201,6 +208,7 @@ abstract class _$$AppSettingPropsImplCopyWith<$Res>
     bool noTextMode,
     bool developerMode,
     bool autoCheckUpdate,
+    UpdateChannel updateChannel,
     RelayConfig relayConfig,
     String defaultSavePath,
   });
@@ -235,6 +243,7 @@ class __$$AppSettingPropsImplCopyWithImpl<$Res>
     Object? noTextMode = null,
     Object? developerMode = null,
     Object? autoCheckUpdate = null,
+    Object? updateChannel = null,
     Object? relayConfig = null,
     Object? defaultSavePath = null,
   }) {
@@ -288,6 +297,10 @@ class __$$AppSettingPropsImplCopyWithImpl<$Res>
             ? _value.autoCheckUpdate
             : autoCheckUpdate // ignore: cast_nullable_to_non_nullable
                   as bool,
+        updateChannel: null == updateChannel
+            ? _value.updateChannel
+            : updateChannel // ignore: cast_nullable_to_non_nullable
+                  as UpdateChannel,
         relayConfig: null == relayConfig
             ? _value.relayConfig
             : relayConfig // ignore: cast_nullable_to_non_nullable
@@ -318,6 +331,7 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
     this.noTextMode = false,
     this.developerMode = false,
     this.autoCheckUpdate = false,
+    this.updateChannel = UpdateChannel.release,
     this.relayConfig = const RelayConfig(),
     this.defaultSavePath = '',
   }) : _dashboardWidgets = dashboardWidgets;
@@ -370,6 +384,9 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
   final bool autoCheckUpdate;
   @override
   @JsonKey()
+  final UpdateChannel updateChannel;
+  @override
+  @JsonKey()
   final RelayConfig relayConfig;
   @override
   @JsonKey()
@@ -377,7 +394,7 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
 
   @override
   String toString() {
-    return 'AppSettingProps(locale: $locale, dashboardWidgets: $dashboardWidgets, autoLaunch: $autoLaunch, silentLaunch: $silentLaunch, minimizeOnExit: $minimizeOnExit, themeMode: $themeMode, colorSchemeType: $colorSchemeType, fontFamily: $fontFamily, pureBlackMode: $pureBlackMode, noTextMode: $noTextMode, developerMode: $developerMode, autoCheckUpdate: $autoCheckUpdate, relayConfig: $relayConfig, defaultSavePath: $defaultSavePath)';
+    return 'AppSettingProps(locale: $locale, dashboardWidgets: $dashboardWidgets, autoLaunch: $autoLaunch, silentLaunch: $silentLaunch, minimizeOnExit: $minimizeOnExit, themeMode: $themeMode, colorSchemeType: $colorSchemeType, fontFamily: $fontFamily, pureBlackMode: $pureBlackMode, noTextMode: $noTextMode, developerMode: $developerMode, autoCheckUpdate: $autoCheckUpdate, updateChannel: $updateChannel, relayConfig: $relayConfig, defaultSavePath: $defaultSavePath)';
   }
 
   @override
@@ -410,6 +427,8 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
                 other.developerMode == developerMode) &&
             (identical(other.autoCheckUpdate, autoCheckUpdate) ||
                 other.autoCheckUpdate == autoCheckUpdate) &&
+            (identical(other.updateChannel, updateChannel) ||
+                other.updateChannel == updateChannel) &&
             (identical(other.relayConfig, relayConfig) ||
                 other.relayConfig == relayConfig) &&
             (identical(other.defaultSavePath, defaultSavePath) ||
@@ -432,6 +451,7 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
     noTextMode,
     developerMode,
     autoCheckUpdate,
+    updateChannel,
     relayConfig,
     defaultSavePath,
   );
@@ -468,6 +488,7 @@ abstract class _AppSettingProps implements AppSettingProps {
     final bool noTextMode,
     final bool developerMode,
     final bool autoCheckUpdate,
+    final UpdateChannel updateChannel,
     final RelayConfig relayConfig,
     final String defaultSavePath,
   }) = _$AppSettingPropsImpl;
@@ -500,6 +521,8 @@ abstract class _AppSettingProps implements AppSettingProps {
   bool get developerMode;
   @override
   bool get autoCheckUpdate;
+  @override
+  UpdateChannel get updateChannel;
   @override
   RelayConfig get relayConfig;
   @override

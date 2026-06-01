@@ -30,7 +30,10 @@ class RecentTransfersWidget extends ConsumerWidget {
         icon: const Icon(Icons.delete_sweep_outlined, size: 18),
         tooltip: l10n.clear,
         visualDensity: VisualDensity.compact,
-        onPressed: () => appController.clearHistory(),
+        onPressed: () {
+          appController.clearHistory();
+          context.showSnackBar(context.appLocalizations.historyCleared);
+        },
       ),
       child: top3.isEmpty
             ? Center(

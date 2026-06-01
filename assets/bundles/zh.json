@@ -51,6 +51,11 @@
   "failed": "失败",
   "cancelled": "已取消",
   "codeCopied": "代码已复制",
+  "codePasted": "代码已粘贴",
+  "copied": "已复制",
+  "pasted": "已粘贴",
+  "cleared": "已清除",
+  "historyCleared": "历史记录已清除",
   "default": "默认",
   "custom": "自定义",
 
@@ -69,6 +74,10 @@
   "latestVersion": "最新版本",
   "currentVersion": "当前版本",
   "update": "更新",
+  "updateChannel": "更新通道",
+  "releaseChannel": "稳定版",
+  "nightlyChannel": "最新构建",
+  "autoCheckUpdate": "启动时检查更新",
 
   "_comment_dashboard": "══════════ 仪表盘 ══════════",
   "transferSpeed": "传输速度",

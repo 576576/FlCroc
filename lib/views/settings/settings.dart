@@ -23,12 +23,20 @@ class SettingsView extends ConsumerStatefulWidget {
   ConsumerState<SettingsView> createState() => _SettingsViewState();
 }
 
-class _SettingsViewState extends ConsumerState<SettingsView> {
+class _SettingsViewState extends ConsumerState<SettingsView>
+    with TickerProviderStateMixin {
   String _crocVersion = '...';
   bool _debugMode = false;
   int _versionTaps = 0;
   DateTime? _lastVersionTap;
   bool _autoClearLog = true;
+
+  // ── Reset long-press animation (6s) ──
+  late final AnimationController _resetAnimCtrl = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 6),
+  );
+  bool _showResetUI = false;
 
   late final _relayAddrCtrl = TextEditingController();
   late final _relayPortCtrl = TextEditingController();
@@ -38,6 +46,14 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   void initState() {
     super.initState();
     _debugMode = LogBuffer.debugMode;
+    _resetAnimCtrl.addListener(_onResetAnimTick);
+    _resetAnimCtrl.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _resetAnimCtrl.reset();
+        _showResetUI = false;
+        _resetAllSettings(context);
+      }
+    });
     // Delay version check until after core controller initializes (post first frame)
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadCrocVersion());
     final relay = ref.read(appSettingProvider).relayConfig;
@@ -48,6 +64,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
   @override
   void dispose() {
+    _resetAnimCtrl.dispose();
     _relayAddrCtrl.dispose();
     _relayPortCtrl.dispose();
     _relayPassCtrl.dispose();
@@ -66,11 +83,14 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   Future<void> _checkForUpdate(BuildContext context) async {
     final l10n = context.appLocalizations;
     final currentVer = globalState.packageInfo.version;
+    final currentBuild = globalState.packageInfo.buildNumber;
+    final channel = ref.read(appSettingProvider).updateChannel;
 
     try {
       final client = HttpClient();
       try {
-        final uri = Uri.https('api.github.com', '/repos/$repository/releases/latest');
+        final tag = channel == UpdateChannel.nightly ? 'tags/nightly' : 'releases/latest';
+        final uri = Uri.https('api.github.com', '/repos/$repository/$tag');
         final request = await client.getUrl(uri);
         request.headers.set('User-Agent', 'FlCroc');
         request.headers.set('Accept', 'application/vnd.github+json');
@@ -83,8 +103,21 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         final data = jsonDecode(body) as Map<String, dynamic>;
         final latestTag = (data['tag_name'] as String?)?.replaceFirst(RegExp(r'^v'), '') ?? '';
 
-        // Compare versions semantically — a pre-release of the same base version
-        // (e.g. 1.2.2-beta vs 1.2.2) should be treated as "already latest".
+        // Nightly channel: compare build number from release title
+        if (channel == UpdateChannel.nightly) {
+          final title = (data['name'] as String?) ?? '';
+          final nightlyBuild = _parseBuildFromTitle(title);
+          final curBuild = int.tryParse(currentBuild) ?? 0;
+          if (nightlyBuild <= curBuild) {
+            if (mounted) context.showSnackBar(l10n.alreadyLatest);
+            return;
+          }
+          final displayVer = _parseVersionFromTitle(title) ?? latestTag;
+          if (mounted) _showUpdateDialog(context, l10n, displayVer, currentVer, nightlyBuild, curBuild);
+          return;
+        }
+
+        // Release channel: compare base version
         if (latestTag.isEmpty || _isSameOrOlder(latestTag, currentVer)) {
           if (mounted) context.showSnackBar(l10n.alreadyLatest);
           return;
@@ -108,12 +141,13 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   onPressed: () => Navigator.pop(ctx),
                   child: Text(l10n.cancel),
                 ),
-                FilledButton(
+                FilledButton.icon(
                   onPressed: () {
                     Navigator.pop(ctx);
                     globalState.openUrl('https://github.com/$repository/releases');
                   },
-                  child: Text(l10n.update),
+                  icon: const Icon(Icons.open_in_new, size: 18),
+                  label: Text(l10n.update),
                 ),
               ],
             ),
@@ -145,6 +179,51 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       if (l < c) return true;  // latest is older
     }
     return true; // same base version — consider already latest
+  }
+
+  /// Extract build number from nightly title like "Nightly 1.2.2+63 2026-06-01".
+  int _parseBuildFromTitle(String title) {
+    final match = RegExp(r'\+(\d+)').firstMatch(title);
+    return match != null ? int.tryParse(match.group(1)!) ?? 0 : 0;
+  }
+
+  /// Extract version from nightly title like "Nightly 1.2.2+63 2026-06-01".
+  String? _parseVersionFromTitle(String title) {
+    final match = RegExp(r'(\d+\.\d+\.\d+)').firstMatch(title);
+    return match?.group(1);
+  }
+
+  void _showUpdateDialog(BuildContext context, AppLocalizations l10n,
+      String latestVer, String currentVer, int latestBuild, int currentBuild) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.newVersionAvailable),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${l10n.latestVersion}: $latestVer+$latestBuild'),
+            const SizedBox(height: 4),
+            Text('${l10n.currentVersion}: $currentVer+$currentBuild'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              globalState.openUrl('https://github.com/$repository/releases');
+            },
+            icon: const Icon(Icons.open_in_new, size: 18),
+            label: Text(l10n.update),
+          ),
+        ],
+      ),
+    );
   }
 
   String _defaultDownloadPath() => AppPaths.savePathSync;
@@ -193,6 +272,22 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     await ref.read(appSettingProvider.notifier).resetAll();
     ref.read(themeSettingProvider.notifier).resetToDefault();
     if (mounted) context.showSnackBar(l10n.settingsReset);
+  }
+
+  void _onResetAnimTick() {
+    if (_resetAnimCtrl.value >= 4 / 6) {
+      if (!_showResetUI) setState(() => _showResetUI = true);
+    }
+  }
+
+  void _startResetLongPress() {
+    _showResetUI = false;
+    _resetAnimCtrl.forward();
+  }
+
+  void _cancelResetLongPress() {
+    _resetAnimCtrl.reset();
+    if (_showResetUI) setState(() => _showResetUI = false);
   }
 
   @override
@@ -398,11 +493,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   ],
                 ),
               ),
-              ListItem(
-                leading: const Icon(Icons.restart_alt, color: Colors.red),
-                title: Text(l10n.resetAllSettings, style: const TextStyle(color: Colors.red)),
-                onTap: () => _resetAllSettings(context),
-              ),
             ],
           ),
 
@@ -411,45 +501,77 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             title: l10n.about,
             separated: false,
             items: [
-              ListItem(
-                leading: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset('assets/images/icon.png', width: 24, height: 24),
-                ),
-                title: Text(l10n.appVersion),
-                subtitle: Text(_debugMode
-                    ? '${globalState.packageInfo.version}+${globalState.packageInfo.buildNumber}'
-                    : globalState.packageInfo.version),
-                trailing: IconButton(
-                  icon: const Icon(Icons.open_in_new, size: 18),
-                  tooltip: l10n.open,
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () => globalState.openUrl('https://github.com/$repository'),
-                ),
-                onTap: () {
-                  final now = DateTime.now();
-                  if (_lastVersionTap != null &&
-                      now.difference(_lastVersionTap!).inSeconds >= 3) {
-                    _versionTaps = 0;
-                  }
-                  _lastVersionTap = now;
-                  _versionTaps++;
-                  if (_versionTaps >= 5) {
-                    _versionTaps = 0;
-                    _lastVersionTap = null;
-                    setState(() => _debugMode = !_debugMode);
-                    LogBuffer.debugMode = _debugMode;
-                    if (_autoClearLog) LogBuffer.clear();
-                    final l10n = context.appLocalizations;
-                    context.showSnackBar(_debugMode ? l10n.debugModeOn : l10n.debugModeOff);
-                  } else if (_versionTaps >= 2) {
-                    final remaining = 5 - _versionTaps;
-                    final enable = !_debugMode;
-                    context.showSnackBar(
-                      context.appLocalizations.debugTapHint(remaining, enable: enable),
+              GestureDetector(
+                onLongPressStart: (_) => _startResetLongPress(),
+                onLongPressEnd: (_) => _cancelResetLongPress(),
+                onLongPressCancel: () => _cancelResetLongPress(),
+                child: AnimatedBuilder(
+                  animation: _resetAnimCtrl,
+                  builder: (context, child) {
+                    final progress = _resetAnimCtrl.value;
+                    return ListItem(
+                      padding: EdgeInsets.zero,
+                      minVerticalPadding: 0,
+                      leading: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: _showResetUI
+                            ? Icon(Icons.restart_alt, color: Colors.red.withAlpha((180 + 75 * progress).round().clamp(0, 255)))
+                            : Image.asset('assets/images/icon.png', width: 24, height: 24),
+                      ),
+                      title: _showResetUI
+                          ? Text(l10n.resetAllSettings, style: TextStyle(color: Colors.red.withAlpha(255)))
+                          : Text(l10n.appVersion),
+                      subtitle: _showResetUI
+                          ? null
+                          : Text(_debugMode
+                              ? '${globalState.packageInfo.version}+${globalState.packageInfo.buildNumber}'
+                              : globalState.packageInfo.version),
+                      trailing: _showResetUI
+                          ? null
+                          : Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.system_update_alt, size: 18),
+                                  tooltip: l10n.checkUpdate,
+                                  visualDensity: VisualDensity.compact,
+                                  onPressed: () => _checkForUpdate(context),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.open_in_new, size: 18),
+                                  tooltip: l10n.open,
+                                  visualDensity: VisualDensity.compact,
+                                  onPressed: () => globalState.openUrl('https://github.com/$repository'),
+                                ),
+                              ],
+                            ),
+                      onTap: () {
+                        final now = DateTime.now();
+                        if (_lastVersionTap != null &&
+                            now.difference(_lastVersionTap!).inSeconds >= 3) {
+                          _versionTaps = 0;
+                        }
+                        _lastVersionTap = now;
+                        _versionTaps++;
+                        if (_versionTaps >= 5) {
+                          _versionTaps = 0;
+                          _lastVersionTap = null;
+                          setState(() => _debugMode = !_debugMode);
+                          LogBuffer.debugMode = _debugMode;
+                          if (_autoClearLog) LogBuffer.clear();
+                          final dL10n = context.appLocalizations;
+                          context.showSnackBar(_debugMode ? dL10n.debugModeOn : dL10n.debugModeOff);
+                        } else if (_versionTaps >= 2) {
+                          final remaining = 5 - _versionTaps;
+                          final enable = !_debugMode;
+                          context.showSnackBar(
+                            context.appLocalizations.debugTapHint(remaining, enable: enable),
+                          );
+                        }
+                      },
                     );
-                  }
-                },
+                  },
+                ),
               ),
               ListItem(
                 leading: const Icon(Icons.link),
@@ -467,9 +589,28 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 },
               ),
               ListItem(
-                leading: const Icon(Icons.update),
-                title: Text(l10n.checkUpdate),
-                onTap: () => _checkForUpdate(context),
+                leading: const Icon(Icons.tune),
+                title: Text(l10n.updateChannel),
+                subtitle: Text(ref.watch(appSettingProvider.select((s) => s.updateChannel)) == UpdateChannel.nightly
+                    ? l10n.nightlyChannel
+                    : l10n.releaseChannel),
+                onTap: () {
+                  final current = ref.read(appSettingProvider).updateChannel;
+                  final next = current == UpdateChannel.nightly
+                      ? UpdateChannel.release
+                      : UpdateChannel.nightly;
+                  ref.read(appSettingProvider.notifier).update((s) => s.copyWith(updateChannel: next));
+                },
+              ),
+              ListItem.switchItem(
+                leading: const Icon(Icons.update_disabled),
+                title: Text(l10n.autoCheckUpdate),
+                delegate: SwitchDelegate(
+                  value: ref.watch(appSettingProvider.select((s) => s.autoCheckUpdate)),
+                  onChanged: (v) {
+                    ref.read(appSettingProvider.notifier).update((s) => s.copyWith(autoCheckUpdate: v));
+                  },
+                ),
               ),
             ],
           ),
