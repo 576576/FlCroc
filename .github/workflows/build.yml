@@ -26,6 +26,7 @@ jobs:
       windows_arm64: ${{ steps.platform.outputs.windows_arm64 }}
       linux: ${{ steps.platform.outputs.linux }}
       android: ${{ steps.platform.outputs.android }}
+      arch_all: ${{ steps.platform.outputs.arch_all }}
       is_main: ${{ steps.branch.outputs.is_main }}
       is_tag: ${{ steps.branch.outputs.is_tag }}
       do_release: ${{ steps.ver.outputs.do_release }}
@@ -150,23 +151,28 @@ jobs:
           MSG: ${{ github.event.head_commit.message || '' }}
           IS_TAG: ${{ steps.branch.outputs.is_tag }}
         run: |
-          W='false'; WA='false'; L='false'; A='false'
+          W='false'; WA='false'; L='false'; A='false'; ALL='false'
+          # arch-all flag: build all architectures (Win-ARM64 + Android-AMD64)
+          if echo "$MSG" | grep -qE '\b(arch-all)\b'; then ALL='true'; fi
           if [ "$IS_TAG" = "true" ]; then
-            W='true'; WA='true'; L='true'; A='true'
+            W='true'; WA='true'; L='true'; A='true'; ALL='true'
           else
             case "$MSG" in
               *b-win64*)  W='true' ;;           # amd64 only, no arm64
               *b-win*)    W='true'; WA='true' ;; # both amd64 + arm64
               *b-linux*)  L='true' ;;
               *b-mobile*) A='true' ;;
-              *b-all*)    W='true'; WA='true'; L='true'; A='true' ;;
+              *b-all*)    W='true'; WA='true'; L='true'; A='true'; ALL='true' ;;
             esac
+            # Without arch-all, skip non-primary architectures
+            if [ "$ALL" != 'true' ]; then WA='false'; fi
           fi
           echo "windows=$W" >> $GITHUB_OUTPUT
           echo "windows_arm64=$WA" >> $GITHUB_OUTPUT
           echo "linux=$L" >> $GITHUB_OUTPUT
           echo "android=$A" >> $GITHUB_OUTPUT
-          echo "Platforms → windows:$W arm64:$WA linux:$L android:$A"
+          echo "arch_all=$ALL" >> $GITHUB_OUTPUT
+          echo "Platforms → windows:$W arm64:$WA linux:$L android:$A arch-all:$ALL"
 
   # ── Test ──
   test:
@@ -417,24 +423,11 @@ jobs:
           name: FlCroc-${{ steps.ver.outputs.display_version }}-linux-amd64
           path: FlCroc-${{ steps.ver.outputs.display_version }}-linux-amd64.tar.gz
 
-  # ── Android (ARM64 + AMD64 via matrix) ──
+  # ── Android (ARM64 + AMD64 sequential) ──
   build-android:
     needs: [test, prebuild]
     if: needs.prebuild.outputs.android == 'true'
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - arch: arm64
-            goarch: arm64
-            abi: arm64-v8a
-            target: android-arm64
-            ndk-cc: aarch64-linux-android21-clang
-          - arch: amd64
-            goarch: amd64
-            abi: x86_64
-            target: android-x64
-            ndk-cc: x86_64-linux-android21-clang
     steps:
       - uses: actions/checkout@v4
         with:
@@ -482,21 +475,32 @@ jobs:
           ndk-version: r27c
           add-to-path: false
 
-      - name: Build Go bridge (${{ matrix.arch }})
+      - name: Build Go bridge (arm64 + amd64)
         env:
           ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
         run: |
-          mkdir -p android/app/src/main/jniLibs/${{ matrix.abi }}
           cd go_bridge
           go mod tidy
           export HOST_TAG=linux-x86_64
-          export CC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/${HOST_TAG}/bin/${{ matrix.ndk-cc }}"
-          CGO_ENABLED=1 GOOS=android GOARCH=${{ matrix.goarch }} \
+
+          mkdir -p ../android/app/src/main/jniLibs/arm64-v8a
+          export CC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/${HOST_TAG}/bin/aarch64-linux-android21-clang"
+          CGO_ENABLED=1 GOOS=android GOARCH=arm64 \
             go build -buildmode=c-shared -ldflags="-s -w" \
-            -o ../android/app/src/main/jniLibs/${{ matrix.abi }}/libcroc_bridge.so .
+            -o ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so .
+          echo "✓ Go bridge built for Android ARM64"
+          file ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so
+
+          if [ "${{ needs.prebuild.outputs.arch_all }}" = "true" ]; then
+            mkdir -p ../android/app/src/main/jniLibs/x86_64
+            export CC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/${HOST_TAG}/bin/x86_64-linux-android21-clang"
+            CGO_ENABLED=1 GOOS=android GOARCH=amd64 \
+              go build -buildmode=c-shared -ldflags="-s -w" \
+              -o ../android/app/src/main/jniLibs/x86_64/libcroc_bridge.so .
+            echo "✓ Go bridge built for Android AMD64"
+            file ../android/app/src/main/jniLibs/x86_64/libcroc_bridge.so
+          fi
           cd ..
-          echo "✓ Go bridge built for Android ${{ matrix.arch }}"
-          file android/app/src/main/jniLibs/${{ matrix.abi }}/libcroc_bridge.so
 
       - uses: subosito/flutter-action@v2
         with:
@@ -515,21 +519,37 @@ jobs:
           sed -i 's/catch (Exception e)/catch (Throwable e)/g' "$FILE"
           rm -rf android/app/src/main/kotlin/com
 
-      - name: Build Android (${{ matrix.arch }})
+      - name: Build Android ARM64
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: flutter build apk --release --target-platform ${{ matrix.target }}
+        run: flutter build apk --release --target-platform android-arm64
 
-      - name: Rename artifact
-        run: mv build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.display_version }}-android-${{ matrix.arch }}.apk
+      - name: Save ARM64 APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.display_version }}-android-arm64.apk
+
+      - name: Build Android AMD64
+        if: needs.prebuild.outputs.arch_all == 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: flutter build apk --release --target-platform android-x64
+
+      - name: Save AMD64 APK
+        if: needs.prebuild.outputs.arch_all == 'true'
+        run: cp build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.display_version }}-android-amd64.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FlCroc-${{ steps.ver.outputs.display_version }}-android-${{ matrix.arch }}
-          path: FlCroc-${{ steps.ver.outputs.display_version }}-android-${{ matrix.arch }}.apk
+          name: FlCroc-${{ steps.ver.outputs.display_version }}-android
+          path: |
+            FlCroc-${{ steps.ver.outputs.display_version }}-android-arm64.apk
+            FlCroc-${{ steps.ver.outputs.display_version }}-android-amd64.apk
+        continue-on-error: true
 
   # ── Nightly release (dev branch) ──
   nightly:

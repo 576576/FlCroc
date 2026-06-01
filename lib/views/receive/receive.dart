@@ -125,11 +125,8 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
       return;
     }
     try {
-      final result = await showGeneralDialog<String>(
-        context: context,
-        barrierDismissible: false,
-        barrierLabel: 'Close',
-        pageBuilder: (context, animation, secondaryAnimation) => const _QRScannerDialog(),
+      final result = await Navigator.of(context).push<String>(
+        _QrScannerRoute(builder: (_) => const _QRScannerDialog()),
       );
       if (result != null && mounted) {
         _codeController.text = result;
@@ -653,8 +650,27 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   }
 }
 
-/// QR scanner dialog — uses showGeneralDialog with pageBuilder to
-/// avoid Android platform view rendering issues.
+/// Transparent route that lets the scanner UI show over the previous page.
+class _QrScannerRoute<T> extends PageRoute<T> with MaterialRouteTransitionMixin<T> {
+  _QrScannerRoute({required this.builder});
+  final WidgetBuilder builder;
+
+  @override
+  Widget buildContent(BuildContext context) => builder(context);
+
+  @override
+  bool get maintainState => true;
+  @override
+  Color? get barrierColor => Colors.black87;
+  @override
+  bool get barrierDismissible => false;
+  @override
+  String? get barrierLabel => 'Close';
+  @override
+  Duration get transitionDuration => const Duration(milliseconds: 200);
+}
+
+/// QR scanner dialog — full-screen Scaffold with camera filling the body.
 class _QRScannerDialog extends StatefulWidget {
   const _QRScannerDialog();
 
@@ -663,8 +679,15 @@ class _QRScannerDialog extends StatefulWidget {
 }
 
 class _QRScannerDialogState extends State<_QRScannerDialog> {
-  final MobileScannerController _ctrl = MobileScannerController();
+  late final MobileScannerController _ctrl;
   bool _hasScanned = false;
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = MobileScannerController();
+  }
 
   @override
   void dispose() {
@@ -682,7 +705,10 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
   }
 
   Future<void> _pickImage() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
     if (result == null || result.files.isEmpty) return;
     final path = result.files.first.path;
     if (path == null) return;
@@ -702,51 +728,60 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.appLocalizations;
-    return SafeArea(
-      child: Center(
-        child: Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Scanner area (square)
-                AspectRatio(
-                  aspectRatio: 1,
-                  child: MobileScanner(
-                    controller: _ctrl,
-                    onDetect: _onDetect,
-                    errorBuilder: (context, error, child) {
-                      commonPrint('MobileScanner error: $error');
-                      return child ?? const SizedBox.shrink();
-                    },
-                  ),
-                ),
-                // Bottom buttons
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Camera view
+            MobileScanner(
+              controller: _ctrl,
+              onDetect: _onDetect,
+              errorBuilder: (context, error, child) {
+                commonPrint('MobileScanner error: $error');
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      FilledButton.icon(
-                        onPressed: _pickImage,
-                        icon: const Icon(Icons.image, size: 18),
-                        label: Text(l10n.selectQRImage),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close, size: 18),
-                        label: Text(l10n.cancel),
-                      ),
+                      const Icon(Icons.error_outline, size: 48, color: Colors.white70),
+                      const SizedBox(height: 12),
+                      Text('$error', style: const TextStyle(color: Colors.white70)),
                     ],
                   ),
-                ),
-              ],
+                );
+              },
             ),
-          ),
+            // Bottom buttons
+            Positioned(
+              bottom: 16,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  FilledButton.icon(
+                    onPressed: _pickImage,
+                    icon: const Icon(Icons.image, size: 18),
+                    label: Text(l10n.selectQRImage),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary.withAlpha(200),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, size: 18),
+                    label: Text(l10n.cancel),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white54),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
