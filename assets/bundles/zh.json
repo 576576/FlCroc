@@ -193,6 +193,8 @@
   "_comment_acks": "── 鸣谢 ──",
   "acknowledgments": "鸣谢",
   "openSourceProjects": "开源项目",
-  "flutterDesc": "Google 的开源 UI 工具包，用于构建跨平台原生编译应用。",
-  "crocDesc": "安全、便捷的端到端加密文件传输工具。",
-  "flClashDesc": "基于 Flutter 的 Material Design Clash 客户端。"  "crocAppDesc": "参考了其 CameraX + ZXing 扫码实现。",}
+  "flutterDesc": "本应用在Flutter上跨平台构建。",
+  "crocDesc": "端对端传输的后端内核。",
+  "flClashDesc": "受其ui启发，决定编写本应用。",
+  "crocAppDesc": "参考了其扫码实现。"
+}

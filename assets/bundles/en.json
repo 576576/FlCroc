@@ -195,4 +195,6 @@
   "openSourceProjects": "Open Source Projects",
   "flutterDesc": "Open-source UI toolkit for building natively compiled applications.",
   "crocDesc": "Securely transfer files between computers.",
-  "flClashDesc": "A Material Design Clash client based on Flutter."  "crocAppDesc": "Referenced its CameraX + ZXing QR scanner implementation.",}
+  "flClashDesc": "Inspired by its ui.",
+  "crocAppDesc": "Referenced its QR scanner implementation."
+}
