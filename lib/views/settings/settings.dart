@@ -82,7 +82,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         final body = await response.transform(utf8.decoder).join();
         final data = jsonDecode(body) as Map<String, dynamic>;
         final latestTag = (data['tag_name'] as String?)?.replaceFirst(RegExp(r'^v'), '') ?? '';
-        if (latestTag.isEmpty || latestTag == currentVer) {
+
+        // Compare versions semantically — a pre-release of the same base version
+        // (e.g. 1.2.2-beta vs 1.2.2) should be treated as "already latest".
+        if (latestTag.isEmpty || _isSameOrOlder(latestTag, currentVer)) {
           if (mounted) context.showSnackBar(l10n.alreadyLatest);
           return;
         }
@@ -122,6 +125,26 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     } catch (_) {
       if (mounted) context.showSnackBar(l10n.alreadyLatest);
     }
+  }
+
+  /// Returns true if [latest] is the same base version as [current] or older.
+  /// Strips pre-release suffixes (e.g. -beta, -alpha) before comparing.
+  bool _isSameOrOlder(String latest, String current) {
+    final latestBase = latest.split(RegExp(r'[-+]')).first;
+    final currentBase = current.split(RegExp(r'[-+]')).first;
+    // Parse as integer parts for proper numeric comparison
+    final latestParts = latestBase.split('.').map(int.tryParse).toList();
+    final currentParts = currentBase.split('.').map(int.tryParse).toList();
+    final length = latestParts.length > currentParts.length
+        ? latestParts.length
+        : currentParts.length;
+    for (int i = 0; i < length; i++) {
+      final l = i < latestParts.length ? (latestParts[i] ?? 0) : 0;
+      final c = i < currentParts.length ? (currentParts[i] ?? 0) : 0;
+      if (l > c) return false; // latest is newer
+      if (l < c) return true;  // latest is older
+    }
+    return true; // same base version — consider already latest
   }
 
   String _defaultDownloadPath() => AppPaths.savePathSync;

@@ -349,7 +349,7 @@ jobs:
   build-linux:
     needs: [test, prebuild]
     if: needs.prebuild.outputs.linux == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -698,32 +698,38 @@ jobs:
       - name: List artifacts
         run: find artifacts -type f -ls
 
+      - name: Build release body
+        id: body
+        run: |
+          BODY="## 📦 ${{ steps.version.outputs.release_name }}
+
+          Cross-platform file transfer GUI powered by croc.
+
+          ### Downloads"
+          for f in artifacts/FlCroc-*; do
+            [ -f "$f" ] || continue
+            fname=$(basename "$f")
+            case "$fname" in
+              *windows-arm64*)          icon="🪟 Windows ARM64" ;;
+              *windows*)                icon="🪟 Windows" ;;
+              *linux*)                  icon="🐧 Linux" ;;
+              *android-arm64*)          icon="🤖 Android ARM64" ;;
+              *android*)                icon="🤖 Android" ;;
+              *)                        icon="📦" ;;
+            esac
+            BODY="$BODY"$'\n'"- $icon | \`$fname\`"
+          done
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: ${{ steps.version.outputs.release_name }}
-          body: |
-            ## 📦 ${{ steps.version.outputs.release_name }}
-
-            Cross-platform file transfer GUI powered by croc.
-
-            ### Downloads
-            | Platform | File |
-            |----------|------|
-            | 🪟 Windows x64 | `FlCroc-${{ steps.version.outputs.version }}-windows-amd64.zip` |
-            | 🪟 Windows ARM64 | `FlCroc-${{ steps.version.outputs.version }}-windows-arm64.zip` |
-            | 💿 Windows Installer | `FlCroc-${{ steps.version.outputs.version }}-windows-amd64-installer.exe` |
-            | 🐧 Linux | `FlCroc-${{ steps.version.outputs.version }}-linux-amd64.tar.gz` |
-            | 🤖 Android | `FlCroc-${{ steps.version.outputs.version }}-android-arm64.apk` |
-
-            ### What's Changed
-            (auto-generated release notes below)
+          body: ${{ steps.body.outputs.body }}
           files: |
-            artifacts/FlCroc-*-android-arm64.apk
-            artifacts/FlCroc-*-windows-amd64.zip
-            artifacts/FlCroc-*-windows-arm64.zip
-            artifacts/FlCroc-*-windows-amd64-installer.exe
-            artifacts/FlCroc-*-linux-amd64.tar.gz
+            artifacts/FlCroc-*
           draft: false
           generate_release_notes: true
           make_latest: true
