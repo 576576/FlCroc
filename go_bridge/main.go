@@ -213,9 +213,15 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 	if relayAddr == "" {
 		relayAddr = models.DEFAULT_RELAY
 	}
+	if relayAddr == "" {
+		relayAddr = fallbackRelay
+	}
 	relayAddr6 := opts.RelayAddress6
 	if relayAddr6 == "" {
 		relayAddr6 = models.DEFAULT_RELAY6
+	}
+	if relayAddr6 == "" {
+		relayAddr6 = fallbackRelay6
 	}
 	relayPass := opts.RelayPassword
 	if relayPass == "" {
@@ -300,6 +306,16 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 	if relayAddr == "" {
 		relayAddr = models.DEFAULT_RELAY
 	}
+	if relayAddr == "" {
+		relayAddr = fallbackRelay
+	}
+	relayAddr6 := opts.RelayAddress6
+	if relayAddr6 == "" {
+		relayAddr6 = models.DEFAULT_RELAY6
+	}
+	if relayAddr6 == "" {
+		relayAddr6 = fallbackRelay6
+	}
 	relayPass := opts.RelayPassword
 	if relayPass == "" {
 		relayPass = models.DEFAULT_PASSPHRASE
@@ -321,7 +337,7 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		SharedSecret:  code,
 		Debug:         false,
 		RelayAddress:  relayAddr,
-		RelayAddress6: models.DEFAULT_RELAY6,
+		RelayAddress6: relayAddr6,
 		RelayPorts:    relayPorts,
 		RelayPassword: relayPass,
 		NoPrompt:      true,
@@ -490,5 +506,12 @@ func defaultRelayPorts() []string {
 
 const defaultCurve = "p256"
 const defaultHashAlgo = "xxhash"
+
+// Fallback relay addresses used when models.DEFAULT_RELAY / DEFAULT_RELAY6
+// resolve to empty (e.g. DNS failure during croc's init()).
+// Port is intentionally omitted — croc defaults to DEFAULT_PORT (9009) and
+// the relay banner overrides RelayPorts after connection.
+const fallbackRelay = "croc.schollz.com"
+const fallbackRelay6 = "croc6.schollz.com"
 
 func main() {} // required for c-shared builds
