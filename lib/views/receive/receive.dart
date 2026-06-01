@@ -690,32 +690,34 @@ class _QRScannerDialog extends StatefulWidget {
 }
 
 class _QRScannerDialogState extends State<_QRScannerDialog> {
-  late final MobileScannerController _ctrl;
   bool _hasScanned = false;
-  bool _initialized = false;
+  bool _isDisposed = false;
+  // Only used for analyzeImage (image picker); live scanning uses NativeQrScanner.
+  MobileScannerController? _imageAnalyzer;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = MobileScannerController();
+    _imageAnalyzer = MobileScannerController(
+      formats: const [BarcodeFormat.qrCode],
+    );
   }
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    _isDisposed = true;
+    _imageAnalyzer?.dispose();
     super.dispose();
   }
 
-  void _onDetect(BarcodeCapture capture) {
-    if (_hasScanned) return;
-    final raw = capture.barcodes.firstOrNull?.rawValue;
-    if (raw != null && raw.isNotEmpty) {
-      _hasScanned = true;
-      Navigator.of(context).pop(raw);
-    }
+  void _onDetect(String code) {
+    if (_hasScanned || _isDisposed) return;
+    _hasScanned = true;
+    Navigator.of(context).pop(code);
   }
 
   Future<void> _pickImage() async {
+    if (_hasScanned || _isDisposed) return;
     final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
       allowMultiple: false,
@@ -724,15 +726,35 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
     final path = result.files.first.path;
     if (path == null) return;
     try {
-      final capture = await _ctrl.analyzeImage(path);
-      if (capture != null && capture.barcodes.isNotEmpty && mounted) {
+      final capture = await _imageAnalyzer?.analyzeImage(path);
+      if (_isDisposed || !mounted) return;
+      if (capture != null && capture.barcodes.isNotEmpty) {
         final raw = capture.barcodes.first.rawValue;
         if (raw != null && raw.isNotEmpty) {
+          _hasScanned = true;
           Navigator.of(context).pop(raw);
+          return;
         }
+      }
+      // No QR code found in image (like croc-app catches NotFoundException)
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.appLocalizations.noQRFound),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     } catch (e, st) {
       commonPrint('QR image analyze error: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.appLocalizations.noQRFound),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
@@ -745,34 +767,26 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Camera view
-            MobileScanner(
-              controller: _ctrl,
+            // Camera view — native CameraX+ZXing on Android, mobile_scanner fallback
+            NativeQrScanner(
               onDetect: _onDetect,
-              errorBuilder: (context, error, child) {
-                String message;
-                if (error case MobileScannerException(errorCode: final code)) {
-                  message = switch (code) {
-                    MobileScannerErrorCode.permissionDenied => l10n.cameraPermissionDenied,
-                    MobileScannerErrorCode.unsupported => l10n.cameraUnsupported,
-                    _ => '${l10n.cameraError}: ${code.name}',
-                  };
-                } else {
-                  message = '$error';
-                }
-                commonPrint('MobileScanner error: $message ($error)');
+              errorBuilder: (context, error) {
+                commonPrint('QR scanner error: $error');
                 return Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(Icons.error_outline, size: 48, color: Colors.white70),
                       const SizedBox(height: 12),
-                      Text(message, style: const TextStyle(color: Colors.white70)),
+                      Text(error, style: const TextStyle(color: Colors.white70)),
                     ],
                   ),
                 );
               },
             ),
+            // Scanning overlay — subtle animated indicator
+            if (!_hasScanned)
+              const _ScanOverlay(),
             // Bottom buttons
             Positioned(
               bottom: 16,
@@ -807,6 +821,92 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
       ),
     );
   }
+}
+
+/// Subtle scanning indicator overlay — animated corner brackets.
+class _ScanOverlay extends StatefulWidget {
+  const _ScanOverlay();
+
+  @override
+  State<_ScanOverlay> createState() => _ScanOverlayState();
+}
+
+class _ScanOverlayState extends State<_ScanOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animCtrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat(reverse: true);
+    _anim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _animCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: AnimatedBuilder(
+        animation: _anim,
+        builder: (context, child) {
+          final alpha = (_anim.value * 255).round();
+          final color = Colors.white.withAlpha(alpha.clamp(60, 180));
+          return CustomPaint(
+            size: const Size(220, 220),
+            painter: _ScanFramePainter(color),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Paints animated corner brackets for the scanning frame.
+class _ScanFramePainter extends CustomPainter {
+  _ScanFramePainter(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    const cornerLen = 28.0;
+    final w = size.width;
+    final h = size.height;
+
+    // Top-left corner
+    canvas.drawLine(const Offset(0, cornerLen), Offset.zero, paint);
+    canvas.drawLine(const Offset(cornerLen, 0), Offset.zero, paint);
+
+    // Top-right corner
+    canvas.drawLine(Offset(w - cornerLen, 0), Offset(w, 0), paint);
+    canvas.drawLine(Offset(w, cornerLen), Offset(w, 0), paint);
+
+    // Bottom-left corner
+    canvas.drawLine(Offset(0, h - cornerLen), Offset(0, h), paint);
+    canvas.drawLine(Offset(cornerLen, h), Offset(0, h), paint);
+
+    // Bottom-right corner
+    canvas.drawLine(Offset(w - cornerLen, h), Offset(w, h), paint);
+    canvas.drawLine(Offset(w, h - cornerLen), Offset(w, h), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ScanFramePainter oldDelegate) =>
+      color != oldDelegate.color;
 }
 
 /// Animated clipboard button with press animation and long-press paste/copy toggle.

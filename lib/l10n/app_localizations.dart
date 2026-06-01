@@ -122,6 +122,7 @@ class AppLocalizations {
 
     // ── Settings: Debug ──
     'debug', 'debugLog', 'debugModeOn', 'debugModeOff',
+    'debugTapEnable', 'debugTapDisable',
     'autoClearLog', 'autoClearLogDesc', 'noLogs',
     'exportLog', 'logExported',
 
@@ -131,7 +132,7 @@ class AppLocalizations {
 
     // ── Settings: Acknowledgments ──
     'acknowledgments', 'openSourceProjects',
-    'flutterDesc', 'crocDesc', 'flClashDesc',
+    'flutterDesc', 'crocDesc', 'flClashDesc', 'crocAppDesc',
   };
 
   // ═══════════════════════════════════════════════════════════
@@ -321,6 +322,12 @@ class AppLocalizations {
   String get debugLog => _('debugLog');
   String get debugModeOn => _('debugModeOn');
   String get debugModeOff => _('debugModeOff');
+
+  /// Show countdown hint: "Press N more times to enable/disable debug mode".
+  String debugTapHint(int remaining, {required bool enable}) {
+    final key = enable ? 'debugTapEnable' : 'debugTapDisable';
+    return _(key).replaceAll('{count}', '$remaining');
+  }
   String get autoClearLog => _('autoClearLog');
   String get autoClearLogDesc => _('autoClearLogDesc');
   String get noLogs => _('noLogs');
@@ -341,6 +348,7 @@ class AppLocalizations {
   String get flutterDesc => _('flutterDesc');
   String get crocDesc => _('crocDesc');
   String get flClashDesc => _('flClashDesc');
+  String get crocAppDesc => _('crocAppDesc');
 
   /// Map [PageLabel] to its localized display name.
   String pageLabel(Enum label) {

@@ -37,6 +37,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   @override
   void initState() {
     super.initState();
+    _debugMode = LogBuffer.debugMode;
     // Delay version check until after core controller initializes (post first frame)
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadCrocVersion());
     final relay = ref.read(appSettingProvider).relayConfig;
@@ -418,6 +419,12 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     if (_autoClearLog) LogBuffer.clear();
                     final l10n = context.appLocalizations;
                     context.showSnackBar(_debugMode ? l10n.debugModeOn : l10n.debugModeOff);
+                  } else if (_versionTaps >= 2) {
+                    final remaining = 5 - _versionTaps;
+                    final enable = !_debugMode;
+                    context.showSnackBar(
+                      context.appLocalizations.debugTapHint(remaining, enable: enable),
+                    );
                   }
                 },
               ),

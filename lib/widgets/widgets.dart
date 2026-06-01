@@ -6,6 +6,7 @@ export 'file_drop_target.dart';
 export 'input.dart';
 export 'list.dart';
 export 'loading.dart';
+export 'native_qr_scanner.dart';
 export 'null_status.dart';
 export 'pop_scope.dart';
 export 'scaffold.dart';

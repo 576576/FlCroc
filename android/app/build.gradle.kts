@@ -76,6 +76,16 @@ flutter {
     source = "../.."
 }
 
+// ── Native QR Scanner: CameraX + ZXing ──
+// Replaces mobile_scanner plugin on Android for reliable QR scanning.
+dependencies {
+    val cameraxVersion = "1.4.1"
+    implementation("androidx.camera:camera-camera2:$cameraxVersion")
+    implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
+    implementation("androidx.camera:camera-view:$cameraxVersion")
+    implementation("com.google.zxing:core:3.5.3")
+}
+
 // Auto-patch plugin registrant after flutter pub get regenerates it.
 // Desktop-only plugins (desktop_drop, jni, etc.) register on Android
 // and throw NoClassDefFoundError which is NOT caught by catch(Exception).
