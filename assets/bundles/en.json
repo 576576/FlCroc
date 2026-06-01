@@ -116,6 +116,9 @@
   "flipCamera": "Flip camera",
   "noQRFound": "No QR code found",
   "scanMobileOnly": "Scanning only supported on mobile",
+  "cameraPermissionDenied": "Camera permission denied",
+  "cameraUnsupported": "Scanning not supported on this device",
+  "cameraError": "Camera error",
 
   "_comment_settings": "══════════ Settings ══════════",
   "options": "Options",

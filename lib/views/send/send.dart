@@ -49,6 +49,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   double _simProgress = 0;
   Timer? _progressTimer;
   bool _progressDone = false;
+  bool _isPasteMode = true;
 
   void _startSimProgress() {
     _progressDone = false;
@@ -203,6 +204,12 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   void _removeFile(int index) => setState(() => _selectedFiles.removeAt(index));
   void _clearFiles() => setState(() { _selectedFiles.clear(); _selectedFolder = null; });
   void _clearText() => _textController.clear();
+
+  void _copyText() {
+    if (_textController.text.isNotEmpty) {
+      Clipboard.setData(ClipboardData(text: _textController.text));
+    }
+  }
 
   void _pasteText() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
@@ -673,10 +680,11 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                     decoration: InputDecoration(
                       hintText: l10n.textHint,
                       border: InputBorder.none,
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.paste, size: 20),
-                        onPressed: _pasteText,
-                        tooltip: l10n.paste,
+                      suffixIcon: _ClipboardToggleButton(
+                        isPasteMode: _isPasteMode,
+                        isActive: false,
+                        onTap: _isPasteMode ? _pasteText : _copyText,
+                        onLongPress: () => setState(() => _isPasteMode = !_isPasteMode),
                       ),
                     ),
                   ),
@@ -1039,6 +1047,56 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       ...children,
     ],
   );
+}
+
+/// Animated clipboard button with press animation and long-press paste/copy toggle.
+class _ClipboardToggleButton extends StatefulWidget {
+  const _ClipboardToggleButton({
+    required this.isPasteMode,
+    required this.isActive,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  final bool isPasteMode;
+  final bool isActive;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  @override
+  State<_ClipboardToggleButton> createState() => _ClipboardToggleButtonState();
+}
+
+class _ClipboardToggleButtonState extends State<_ClipboardToggleButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onLongPress: widget.isActive ? null : widget.onLongPress,
+      onTapDown: widget.isActive ? null : (_) => setState(() => _pressed = true),
+      onTapUp: widget.isActive ? null : (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.isActive ? null : () {
+        widget.onTap();
+        setState(() => _pressed = false);
+      },
+      child: AnimatedScale(
+        scale: _pressed ? 0.75 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeInOut,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+          child: Icon(
+            key: ValueKey(widget.isPasteMode),
+            widget.isPasteMode ? Icons.content_paste : Icons.content_copy,
+            size: 20,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 enum SendPhase { idle, pending, sending, success, fail, cancelled }

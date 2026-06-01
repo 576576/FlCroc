@@ -116,6 +116,9 @@
   "flipCamera": "翻转镜头",
   "noQRFound": "未识别到二维码",
   "scanMobileOnly": "扫码只在移动设备上受支持",
+  "cameraPermissionDenied": "相机权限已被拒绝",
+  "cameraUnsupported": "此设备不支持扫码",
+  "cameraError": "相机错误",
 
   "_comment_settings": "══════════ 设置 ══════════",
   "options": "选项",

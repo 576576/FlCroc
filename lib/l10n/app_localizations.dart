@@ -94,6 +94,7 @@ class AppLocalizations {
     // ── Receive ──
     'startReceive', 'scanQRCode', 'generateQRCode', 'whiteBgQR', 'phraseEmpty',
     'selectQRImage', 'flashlight', 'flipCamera', 'noQRFound', 'scanMobileOnly',
+    'cameraPermissionDenied', 'cameraUnsupported', 'cameraError',
 
     // ── Settings: Transfer Options ──
     'options', 'transferOptions', 'encryptionCurve', 'hashAlgorithm',
@@ -261,6 +262,9 @@ class AppLocalizations {
   String get flipCamera => _('flipCamera');
   String get noQRFound => _('noQRFound');
   String get scanMobileOnly => _('scanMobileOnly');
+  String get cameraPermissionDenied => _('cameraPermissionDenied');
+  String get cameraUnsupported => _('cameraUnsupported');
+  String get cameraError => _('cameraError');
 
   // ── Settings: Transfer Options ──
   String get options => _('options');

@@ -64,6 +64,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   // Received content tracking
   final List<FileItem> _receivedFiles = [];
   int _selectedTab = 0; // 0=files, 1=text
+  bool _isPasteMode = false; // receive: default copy
   final _receivedTextController = TextEditingController();
   String _effectiveOutputPath = '';
 
@@ -488,12 +489,22 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                     decoration: InputDecoration(
                       hintText: l10n.textHint,
                       border: InputBorder.none,
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.copy, size: 20),
-                        onPressed: _receivedTextController.text.isNotEmpty
-                            ? () => Clipboard.setData(ClipboardData(text: _receivedTextController.text))
-                            : null,
-                        tooltip: l10n.copy,
+                      suffixIcon: _ClipboardToggleButton(
+                        isPasteMode: _isPasteMode,
+                        isActive: false,
+                        onTap: _isPasteMode
+                            ? () async {
+                                final data = await Clipboard.getData(Clipboard.kTextPlain);
+                                if (data?.text != null && data!.text!.isNotEmpty) {
+                                  setState(() => _receivedTextController.text = data.text!);
+                                }
+                              }
+                            : () {
+                              if (_receivedTextController.text.isNotEmpty) {
+                                Clipboard.setData(ClipboardData(text: _receivedTextController.text));
+                              }
+                            },
+                        onLongPress: () => setState(() => _isPasteMode = !_isPasteMode),
                       ),
                     ),
                   ),
@@ -739,14 +750,24 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
               controller: _ctrl,
               onDetect: _onDetect,
               errorBuilder: (context, error, child) {
-                commonPrint('MobileScanner error: $error');
+                String message;
+                if (error case MobileScannerException(errorCode: final code)) {
+                  message = switch (code) {
+                    MobileScannerErrorCode.permissionDenied => l10n.cameraPermissionDenied,
+                    MobileScannerErrorCode.unsupported => l10n.cameraUnsupported,
+                    _ => '${l10n.cameraError}: ${code.name}',
+                  };
+                } else {
+                  message = '$error';
+                }
+                commonPrint('MobileScanner error: $message ($error)');
                 return Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(Icons.error_outline, size: 48, color: Colors.white70),
                       const SizedBox(height: 12),
-                      Text('$error', style: const TextStyle(color: Colors.white70)),
+                      Text(message, style: const TextStyle(color: Colors.white70)),
                     ],
                   ),
                 );
@@ -782,6 +803,56 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Animated clipboard button with press animation and long-press paste/copy toggle.
+class _ClipboardToggleButton extends StatefulWidget {
+  const _ClipboardToggleButton({
+    required this.isPasteMode,
+    required this.isActive,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  final bool isPasteMode;
+  final bool isActive;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  @override
+  State<_ClipboardToggleButton> createState() => _ClipboardToggleButtonState();
+}
+
+class _ClipboardToggleButtonState extends State<_ClipboardToggleButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onLongPress: widget.isActive ? null : widget.onLongPress,
+      onTapDown: widget.isActive ? null : (_) => setState(() => _pressed = true),
+      onTapUp: widget.isActive ? null : (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.isActive ? null : () {
+        widget.onTap();
+        setState(() => _pressed = false);
+      },
+      child: AnimatedScale(
+        scale: _pressed ? 0.75 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeInOut,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+          child: Icon(
+            key: ValueKey(widget.isPasteMode),
+            widget.isPasteMode ? Icons.content_paste : Icons.content_copy,
+            size: 20,
+          ),
         ),
       ),
     );
