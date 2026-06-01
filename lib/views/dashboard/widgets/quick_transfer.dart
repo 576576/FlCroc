@@ -636,7 +636,6 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
               FileDropTarget(
                 enabled: isDesktop,
                 onFilesDropped: _onTextDrop,
-                hintText: l10n.dropToAdd,
                 child: TextField(
                 controller: _textCtrl,
                 maxLines: 2,
@@ -673,7 +672,6 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
               FileDropTarget(
                 enabled: isDesktop,
                 onFilesDropped: _onFileDrop,
-                hintText: l10n.dropToAdd,
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
               if (_selectedFolder != null)
                 ListTile(

@@ -96,7 +96,7 @@ goto :eof
 REM --- Build ---
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
 if "%PLATFORM%"=="windows" (
-    set "LDFLAGS=-s -w -H windowsgui"
+    set "LDFLAGS=-s -w -H windowsgui -extldflags=-Wl,--subsystem,windows"
 ) else (
     set "LDFLAGS=-s -w"
 )

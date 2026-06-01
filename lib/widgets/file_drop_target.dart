@@ -5,12 +5,15 @@ import 'package:fl_croc/common/common.dart';
 import 'package:flutter/material.dart';
 
 /// Cross-platform file drop target using the [desktop_drop] plugin.
+///
+/// The [onHoverChanged] callback notifies the parent about drag-over state,
+/// allowing custom visual feedback. The widget itself only applies a subtle
+/// tint when files are dragged over.
 class FileDropTarget extends StatefulWidget {
   final Widget child;
   final bool enabled;
   final ValueChanged<List<File>> onFilesDropped;
   final ValueChanged<bool>? onHoverChanged;
-  final String? hintText;
 
   const FileDropTarget({
     super.key,
@@ -18,7 +21,6 @@ class FileDropTarget extends StatefulWidget {
     this.enabled = true,
     required this.onFilesDropped,
     this.onHoverChanged,
-    this.hintText,
   });
 
   @override
@@ -32,8 +34,6 @@ class _FileDropTargetState extends State<FileDropTarget> {
   Widget build(BuildContext context) {
     if (!widget.enabled) return widget.child;
 
-    final hint = widget.hintText ?? '';
-
     return DropTarget(
       onDragDone: (detail) {
         commonPrint('DropTarget onDragDone: ${detail.files.length} files, paths=${detail.files.map((f) => f.path).toList()}');
@@ -46,36 +46,31 @@ class _FileDropTargetState extends State<FileDropTarget> {
             commonPrint('DropTarget: file not found: ${f.path}');
           }
         }
+        _setOver(false);
         if (files.isNotEmpty) {
           widget.onFilesDropped(files);
         }
-        setState(() => _isOver = false);
       },
-      onDragEntered: (_) => setState(() => _isOver = true),
-      onDragExited: (_) => setState(() => _isOver = false),
+      onDragEntered: (_) => _setOver(true),
+      onDragExited: (_) => _setOver(false),
       child: Stack(
         children: [
           widget.child,
           if (_isOver)
             Positioned.fill(
               child: Container(
-                color: Theme.of(context).colorScheme.primary.withAlpha(40),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.cloud_upload, size: 48),
-                      if (hint.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        Text(hint, style: Theme.of(context).textTheme.titleMedium),
-                      ],
-                    ],
-                  ),
-                ),
+                color: Theme.of(context).colorScheme.primary.withAlpha(25),
               ),
             ),
         ],
       ),
     );
+  }
+
+  void _setOver(bool value) {
+    if (_isOver != value) {
+      setState(() => _isOver = value);
+      widget.onHoverChanged?.call(value);
+    }
   }
 }

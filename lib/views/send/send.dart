@@ -30,6 +30,8 @@ class SendView extends ConsumerStatefulWidget {
 class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMixin {
   final List<PlatformFile> _selectedFiles = [];
   bool _isTextMode = false;
+  bool _dragOverFile = false;
+  bool _dragOverText = false;
   PhraseMode _phraseMode = PhraseMode.defaultMode;
   SendPhase _phase = SendPhase.idle;
 
@@ -665,7 +667,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                 child: FileDropTarget(
                   enabled: isDesktop,
                   onFilesDropped: _onTextDrop,
-                  hintText: l10n.dropToAdd,
+                  onHoverChanged: (over) => setState(() => _dragOverText = over),
                   child: TextField(
                     controller: _textController, maxLines: 5,
                     decoration: InputDecoration(
@@ -701,7 +703,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
               FileDropTarget(
                 enabled: isDesktop,
                 onFilesDropped: _onFileDrop,
-                hintText: l10n.dropToAdd,
+                onHoverChanged: (over) => setState(() => _dragOverFile = over),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
                   if (_selectedFolder != null)
                     ListTile(
@@ -715,7 +717,10 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                       ),
                     )
                   else if (_selectedFiles.isEmpty)
-                    NullStatusWidget(message: l10n.noFiles, icon: Icons.cloud_upload_outlined)
+                    NullStatusWidget(
+                      message: _dragOverFile ? l10n.dropToAdd : l10n.noFiles,
+                      icon: _dragOverFile ? Icons.cloud_upload : Icons.cloud_upload_outlined,
+                    )
                   else
                     ...List.generate(_selectedFiles.length, (i) {
                       final f = _selectedFiles[i];

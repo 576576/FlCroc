@@ -152,20 +152,21 @@ jobs:
           IS_TAG: ${{ steps.branch.outputs.is_tag }}
         run: |
           W='false'; WA='false'; L='false'; A='false'; ALL='false'
-          # arch-all flag: build all architectures (Win-ARM64 + Android-AMD64)
+          # arch-all: include secondary architectures (Win-ARM64, Android-AMD64)
           if echo "$MSG" | grep -qE '\b(arch-all)\b'; then ALL='true'; fi
           if [ "$IS_TAG" = "true" ]; then
             W='true'; WA='true'; L='true'; A='true'; ALL='true'
           else
             case "$MSG" in
-              *b-win64*)  W='true' ;;           # amd64 only, no arm64
-              *b-win*)    W='true'; WA='true' ;; # both amd64 + arm64
+              *b-win*)    W='true' ;;
               *b-linux*)  L='true' ;;
               *b-mobile*) A='true' ;;
-              *b-all*)    W='true'; WA='true'; L='true'; A='true'; ALL='true' ;;
+              *b-all*)    W='true'; L='true'; A='true' ;;
             esac
-            # Without arch-all, skip non-primary architectures
-            if [ "$ALL" != 'true' ]; then WA='false'; fi
+            # Secondary arch: only when arch-all flag is present
+            if [ "$ALL" = 'true' ]; then
+              if [ "$W" = 'true' ]; then WA='true'; fi
+            fi
           fi
           echo "windows=$W" >> $GITHUB_OUTPUT
           echo "windows_arm64=$WA" >> $GITHUB_OUTPUT
@@ -259,7 +260,7 @@ jobs:
           $env:GOOS = "windows"
           $env:GOARCH = "amd64"
           $env:CC = "gcc"
-          go build -buildmode=c-shared -ldflags="-s -w -H windowsgui" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
+          go build -buildmode=c-shared -ldflags="-s -w -H windowsgui -extldflags=-Wl,--subsystem,windows" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
           Pop-Location
 
       - name: "[AMD64] Verify .dll"
@@ -311,7 +312,7 @@ jobs:
           $env:GOARCH = "arm64"
           $env:CC = "zig cc -target aarch64-windows-gnu"
           $env:CXX = "zig c++ -target aarch64-windows-gnu"
-          go build -buildmode=c-shared -ldflags="-s -w -H windowsgui" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge_arm64.dll" .
+          go build -buildmode=c-shared -ldflags="-s -w -H windowsgui -extldflags=-Wl,--subsystem,windows" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge_arm64.dll" .
           Pop-Location
 
       - name: "[ARM64] Verify .dll"

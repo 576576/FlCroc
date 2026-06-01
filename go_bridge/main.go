@@ -76,10 +76,13 @@ func CrocSendFiles(pathsJSON *C.char, optionsJSON *C.char) *C.char {
 		code = utils.GetRandomName()
 	}
 
+	mu.Lock()
 	progressChan = make(chan progressEvent, 100)
+	ch := progressChan
+	mu.Unlock()
 
 	go func() {
-		defer close(progressChan)
+		defer close(ch)
 		doSend(paths, code, opts, transferID)
 	}()
 
@@ -95,11 +98,16 @@ func CrocReceiveFiles(codePhrase *C.char, optionsJSON *C.char) *C.char {
 	}
 
 	transferID := fmt.Sprintf("%d", os.Getpid())
+	code := C.GoString(codePhrase) // copy before goroutine (Dart frees ptr after return)
+
+	mu.Lock()
 	progressChan = make(chan progressEvent, 100)
+	ch := progressChan
+	mu.Unlock()
 
 	go func() {
-		defer close(progressChan)
-		doReceive(C.GoString(codePhrase), opts, transferID)
+		defer close(ch)
+		doReceive(code, opts, transferID)
 	}()
 
 	return marshalResult(transferID, "")
@@ -107,14 +115,21 @@ func CrocReceiveFiles(codePhrase *C.char, optionsJSON *C.char) *C.char {
 
 //export CrocPollProgress
 func CrocPollProgress() *C.char {
-	if progressChan == nil {
+	mu.Lock()
+	ch := progressChan
+	mu.Unlock()
+	if ch == nil {
 		return marshalEvent(nil)
 	}
 	select {
-	case ev, ok := <-progressChan:
+	case ev, ok := <-ch:
 		if !ok {
-			// Channel closed — return completed sentinel.
-			progressChan = nil
+			// Channel closed — clear it.
+			mu.Lock()
+			if progressChan == ch {
+				progressChan = nil
+			}
+			mu.Unlock()
 			closedEvent := progressEvent{Type: 2, TransferID: "closed"}
 			return marshalEvent(&closedEvent)
 		}
