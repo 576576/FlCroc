@@ -157,3 +157,6 @@ submodules/croc/.github
 !**/ios/**/default.perspectivev3
 
 android/key.properties.example
+
+# CI hash cache
+tmp/
