@@ -5,7 +5,7 @@
 <h1 align="center">FlCroc</h1>
 
 <p align="center">
-English &nbsp;|&nbsp; <a href="docs/zh/README.md">中文</a>
+English &nbsp;|&nbsp; <a href="docs/fr/README.md">Français</a> &nbsp;|&nbsp; <a href="docs/ja/README.md">日本語</a> &nbsp;|&nbsp; <a href="docs/zh-Hant/README.md">中文</a> &nbsp;|&nbsp; <a href="docs/zh/README.md">中文</a>
 </p>
 
 <p align="center">
@@ -33,7 +33,7 @@ English &nbsp;|&nbsp; <a href="docs/zh/README.md">中文</a>
 
 ## 🚀 Build
 
-See [docs/BUILD.md](docs/BUILD.md) for build instructions and platform-specific guides.
+See [BUILD.md](docs/BUILD.md) for build instructions and platform-specific guides.
 
 ---
 
