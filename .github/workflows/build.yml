@@ -36,6 +36,7 @@ jobs:
       nightly_version: ${{ steps.ver.outputs.nightly_version }}
       nightly_date: ${{ steps.ver.outputs.nightly_date }}
       synced_version: ${{ steps.ver.outputs.synced_version }}
+      new_build: ${{ steps.ver.outputs.new_build }}
       i18n: ${{ steps.ver.outputs.i18n }}
       readme: ${{ steps.ver.outputs.readme }}
       app_version: ${{ steps.app-ver.outputs.version }}
@@ -109,13 +110,7 @@ jobs:
             echo "release_tag=$TAG" >> $GITHUB_OUTPUT
             echo "release_name=$REL_NAME" >> $GITHUB_OUTPUT
             echo "synced_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-            sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add pubspec.yaml
-            git diff --cached --quiet && exit 0
-            git commit -m "sync-ver: $NEW_VERSION [skip ci]"
-            git push
+            echo "new_build=$NEW_BUILD" >> $GITHUB_OUTPUT
           else
             # ── Non-release: increment build number only if a build will run ──
             if ! echo "$MSG" | grep -qE '\b(b-win|b-linux|b-mobile|b-all)\b'; then
@@ -137,13 +132,7 @@ jobs:
             echo "nightly_version=$NEW_VERSION" >> $GITHUB_OUTPUT
             echo "nightly_date=$NIGHTLY_DATE" >> $GITHUB_OUTPUT
             echo "synced_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-            sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add pubspec.yaml
-            git diff --cached --quiet && exit 0
-            git commit -m "sync-ver: $NEW_VERSION [skip ci]"
-            git push
+            echo "new_build=$NEW_BUILD" >> $GITHUB_OUTPUT
           fi
 
       - name: Update submodule to latest croc
@@ -227,6 +216,7 @@ jobs:
   test:
     needs: prebuild
     if: always() && !failure() && !cancelled() && !needs.prebuild.outputs.skip_all
+    continue-on-error: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -291,17 +281,10 @@ jobs:
           sed -i "s#{{date}}#$NOW#" "$OUTPUT"
           sed -i "s#{{rows}}#$ROWS#" "$OUTPUT"
 
-      - name: Commit i18n.md
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/i18n.md
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Update i18n status [skip ci]"
-            git push
-          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: i18n-md
+          path: docs/i18n.md
 
   # ── README Generation ──
   readme:
@@ -437,21 +420,73 @@ jobs:
           fi
           sed -i "s|](docs/|]($DOC_PREFIX|g" "$OUTPUT"
 
-      - name: Commit README
+      - uses: actions/upload-artifact@v4
+        with:
+          name: readme-md
+          path: README.md
+
+  # ── Commit ──
+  commit:
+    needs: [prebuild, test, i18n, readme]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply version update
+        if: needs.prebuild.outputs.new_build != '' && needs.test.result != 'failure'
+        run: |
+          NEW_VER="${{ needs.prebuild.outputs.synced_version }}"
+          sed -i "s/^version: .*/version: $NEW_VER/" pubspec.yaml
+
+      - name: Download i18n artifact
+        if: needs.prebuild.outputs.i18n == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: i18n-md
+          path: docs/
+
+      - name: Download README artifact
+        if: needs.prebuild.outputs.readme == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: readme-md
+          path: .
+
+      - name: Build commit message
+        id: msg
+        run: |
+          LINES=""
+          if [ -n "${{ needs.prebuild.outputs.new_build }}" ] && [ "${{ needs.test.result }}" != "failure" ]; then
+            LINES="${LINES}- Update build number ${{ needs.prebuild.outputs.new_build }}.\n"
+          fi
+          if [ "${{ needs.prebuild.outputs.i18n }}" == "true" ]; then
+            LINES="${LINES}- Update i18n.\n"
+          fi
+          if [ "${{ needs.prebuild.outputs.readme }}" == "true" ]; then
+            LINES="${LINES}- Update documents.\n"
+          fi
+          MSG="Auto commit by Github Actions:\n${LINES}"
+          echo "message=$MSG" >> $GITHUB_OUTPUT
+
+      - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add README.md
-          if git diff --cached --quiet; then
+          git add pubspec.yaml docs/i18n.md README.md 2>/dev/null || true
+          if git diff --cached --quiet && git diff --quiet; then
             echo "No changes to commit"
-          else
-            git commit -m "Update README [skip ci]"
-            git push
+            exit 0
           fi
+          git commit -m "$(echo -e '${{ steps.msg.outputs.message }}')\n\n[skip ci]"
+          git pull --rebase origin "$GITHUB_REF_NAME" || true
+          git push
 
-  # ── Windows (AMD64 + optional ARM64 via Zig cross-compile) ──
+  # ── Windows ──
   build-windows:
-    needs: [test, prebuild]
+    needs: [commit, prebuild]
     if: needs.prebuild.outputs.windows == 'true' || needs.prebuild.outputs.windows_arm64 == 'true'
     runs-on: windows-latest
     defaults:
@@ -462,11 +497,6 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 0
-
-      - name: Pull latest (include version sync from prebuild)
-        if: needs.prebuild.outputs.is_tag != 'true'
-        run: git pull origin ${{ github.ref_name }}
-
       - name: Get short SHA
         id: sha
         run: echo "sha=$(git rev-parse --short HEAD)" >> $env:GITHUB_OUTPUT
@@ -603,7 +633,7 @@ jobs:
 
   # ── Linux ──
   build-linux:
-    needs: [test, prebuild]
+    needs: [commit, prebuild]
     if: needs.prebuild.outputs.linux == 'true'
     runs-on: ubuntu-22.04
     steps:
@@ -611,11 +641,6 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 0
-
-      - name: Pull latest (include version sync from prebuild)
-        if: needs.prebuild.outputs.is_tag != 'true'
-        run: git pull origin ${{ github.ref_name }}
-
       - name: Get short SHA
         id: sha
         run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
@@ -682,7 +707,7 @@ jobs:
 
   # ── Android (ARM64 + AMD64 sequential) ──
   build-android:
-    needs: [test, prebuild]
+    needs: [commit, prebuild]
     if: needs.prebuild.outputs.android == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -690,11 +715,6 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 0
-
-      - name: Pull latest (include version sync from prebuild)
-        if: needs.prebuild.outputs.is_tag != 'true'
-        run: git pull origin ${{ github.ref_name }}
-
       - name: Get short SHA
         id: sha
         run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
