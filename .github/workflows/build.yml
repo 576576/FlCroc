@@ -221,14 +221,13 @@ jobs:
       - name: Check bundles & docs changes
         id: check
         run: |
-          mkdir -p tmp
           BUNDLES_HASH=$(find assets/bundles -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
           DOCS_HASH=$(find assets/docs -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
 
           OLD_BUNDLES=""; OLD_DOCS=""
-          if [ -f tmp/i18n_status ]; then
-            OLD_BUNDLES=$(sed -n '1p' tmp/i18n_status)
-            OLD_DOCS=$(sed -n '2p' tmp/i18n_status)
+          if [ -f .i18nstatus ]; then
+            OLD_BUNDLES=$(sed -n '1p' .i18nstatus)
+            OLD_DOCS=$(sed -n '2p' .i18nstatus)
           fi
 
           DO_I18N="false"; DO_DOCS="false"
@@ -427,7 +426,7 @@ jobs:
       - name: Save hashes
         if: steps.check.outputs.do_i18n == 'true' || steps.check.outputs.do_docs == 'true'
         run: |
-          printf '%s\n%s\n' "${{ steps.check.outputs.bundles_hash }}" "${{ steps.check.outputs.docs_hash }}" > tmp/i18n_status
+          printf '%s\n%s\n' "${{ steps.check.outputs.bundles_hash }}" "${{ steps.check.outputs.docs_hash }}" > .i18nstatus
 
   # ── Commit ──
   commit:
