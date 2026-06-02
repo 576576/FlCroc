@@ -254,7 +254,7 @@ jobs:
           ACTUAL=$((DEFAULT_TOTAL - HEADER_KEYS))
 
           ROWS=""
-          for f in assets/bundles/*.json; do
+          for f in $(ls assets/bundles/*.json | sort -r); do
             LANG=$(jq -r '.lang' "$f")
             CODE=$(jq -r '.langCode' "$f")
             REGION=$(jq -r '.langRegion' "$f")
@@ -264,16 +264,24 @@ jobs:
             [ "$PCT" -gt 100 ] && PCT=100
 
             # Count localized doc files (en: root-level, others: docs/{code}/)
+            DOCS=0
             if [ "$CODE" = "en" ]; then
               DOCS=$(ls docs/*.md 2>/dev/null | wc -l)
               [ -f README.md ] && DOCS=$((DOCS + 1))
-            else
+            elif [ -d "docs/$CODE" ]; then
               DOCS=$(find "docs/$CODE" -name '*.md' 2>/dev/null | wc -l)
             fi
             HAS_DOC_JSON=""
             [ -f "assets/docs/$CODE.json" ] && HAS_DOC_JSON=" 📄"
 
-            ROWS="$ROWS| $LANG | \`$CODE\` | $REGION | $KEYS/$ACTUAL ($PCT%) | $DOCS$HAS_DOC_JSON |\n"
+            # Link to language README (relative from docs/i18n.md)
+            if [ "$CODE" = "en" ]; then
+              README_LINK="../README.md"
+            else
+              README_LINK="$CODE/README.md"
+            fi
+
+            ROWS="$ROWS| [$LANG]($README_LINK) | \`$CODE\` | $REGION | $KEYS/$ACTUAL ($PCT%) | $DOCS$HAS_DOC_JSON |\n"
           done
 
           cp "$TEMPLATE" "$OUTPUT"
