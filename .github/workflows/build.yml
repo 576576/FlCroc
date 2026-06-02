@@ -41,6 +41,7 @@ jobs:
       app_version: ${{ steps.app-ver.outputs.version }}
       flutter_version: ${{ steps.flutter-ver.outputs.version }}
       croc_version: ${{ steps.croc-ver.outputs.version }}
+      skip_all: ${{ steps.platform.outputs.skip_all }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -95,11 +96,11 @@ jobs:
             case "$PREFIX" in
               beta)
                 TAG="v$VER-beta"
-                REL_NAME="FlCroc Beta $VER"
+                REL_NAME="Beta $VER"
                 ;;
               *)
                 TAG="v$VER"
-                REL_NAME="FlCroc $VER"
+                REL_NAME="$VER"
                 ;;
             esac
             echo "Syncing release version: $NEW_VERSION (build $CUR_BUILD → $NEW_BUILD)"
@@ -187,6 +188,18 @@ jobs:
           IS_TAG: ${{ steps.branch.outputs.is_tag }}
         run: |
           W='false'; WA='false'; L='false'; A='false'; ALL='false'
+          # b-none: skip all builds and tests
+          if echo "$MSG" | grep -qE '\bb-none\b'; then
+            echo "skip_all=true" >> $GITHUB_OUTPUT
+            echo "windows=false" >> $GITHUB_OUTPUT
+            echo "windows_arm64=false" >> $GITHUB_OUTPUT
+            echo "linux=false" >> $GITHUB_OUTPUT
+            echo "android=false" >> $GITHUB_OUTPUT
+            echo "arch_all=false" >> $GITHUB_OUTPUT
+            echo "Platforms → b-none: skip all"
+            exit 0
+          fi
+          echo "skip_all=false" >> $GITHUB_OUTPUT
           # arch-all: include secondary architectures (Win-ARM64, Android-AMD64)
           if echo "$MSG" | grep -qE '\b(arch-all)\b'; then ALL='true'; fi
           if [ "$IS_TAG" = "true" ]; then
@@ -213,7 +226,7 @@ jobs:
   # ── Test ──
   test:
     needs: prebuild
-    if: always() && !failure() && !cancelled()
+    if: always() && !failure() && !cancelled() && !needs.prebuild.outputs.skip_all
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -275,8 +288,8 @@ jobs:
           done
 
           cp "$TEMPLATE" "$OUTPUT"
-          sed -i "s/{{date}}/$NOW/" "$OUTPUT"
-          sed -i "s/{{rows}}/$ROWS/" "$OUTPUT"
+          sed -i "s#{{date}}#$NOW#" "$OUTPUT"
+          sed -i "s#{{rows}}#$ROWS#" "$OUTPUT"
 
       - name: Commit i18n.md
         run: |
@@ -372,7 +385,7 @@ jobs:
           FEAT_THEME=$(jq -r '.feat_table.theme' "$DATA")
 
           cp "$TEMPLATE" "$OUTPUT"
-          sed -i "s|{{languages}}|$LANGUAGES|" "$OUTPUT"
+          sed -i "s#{{languages}}#$LANGUAGES#" "$OUTPUT"
           sed -i "s|{{title}}|$TITLE|" "$OUTPUT"
           sed -i "s|{{version}}|$VERSION|" "$OUTPUT"
           sed -i "s|{{flutter_version}}|$FLUTTER_VER|" "$OUTPUT"
