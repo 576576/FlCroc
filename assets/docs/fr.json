@@ -1,0 +1,62 @@
+{
+  "_comment_meta": "── Métadonnées ──",
+  "lang": "Français",
+  "langCode": "fr",
+  "langRegion": "France",
+  "langRegionCode": ["FR"],
+  "title": "FlCroc",
+  "tagline_block": "Une interface Flutter pour croc — transférez facilement et en toute sécurité des fichiers entre ordinateurs",
+
+  "_comment_features": "── Fonctionnalités ──",
+  "feat_table": {
+    "platform": "Multi-plateforme (Windows, Linux, Android)",
+    "encryption": "Transfert de fichiers chiffré de bout en bout via croc",
+    "i18n": "Support multilingue natif (voir [i18n.md](docs/i18n.md) pour plus de détails)",
+    "theme": "Interface Flutter moderne avec mise en page adaptative, animations et thèmes personnalisés"
+  },
+
+  "_comment_headings": "── Titres ──",
+  "headings": {
+    "features": "Fonctionnalités",
+    "build": "Compilation",
+    "architecture": "Architecture",
+    "stack": "Stack technique",
+    "i18n": "I18n",
+    "acknowledgments": "Remerciements",
+    "license": "Licence"
+  },
+
+  "_comment_content": "── Contenu ──",
+  "building": "Voir [BUILD.md](docs/BUILD.md) pour les instructions de compilation et les guides spécifiques à chaque plateforme.",
+  "arch_tree": {
+    "lib": "Application Flutter (Riverpod + Material 3)",
+    "go_bridge": "Bibliothèque partagée Go CGO (pont FFI)",
+    "submodules": "Source croc intégrée",
+    "assets": "Icône de l'application, bundles JSON i18n",
+    "platforms": "Android, iOS, Linux, macOS, Windows, Web",
+    "ci": "CI/CD (build.yml)"
+  },
+  "stack_tree": {
+    "col_layer": "Couche",
+    "col_tech": "Technologie",
+    "l_ui": "UI",
+    "l_state": "État",
+    "l_backend": "Backend",
+    "l_i18n": "I18n",
+    "l_ci": "CI/CD",
+    "ui": "Flutter 3.44 · Material 3",
+    "state": "Riverpod · Freezed",
+    "backend": "Go CGO FFI · sous-module croc",
+    "i18n": "Bundles JSON",
+    "ci": "GitHub Actions"
+  },
+  "i18n": "Voir [docs/i18n.md](docs/i18n.md) pour l'état des langues et le guide de contribution.",
+  "ack_tree": {
+    "col_project": "Projet",
+    "col_desc": "Description",
+    "croc": "Moteur de transfert de fichiers backend",
+    "flutter": "Framework UI multiplateforme",
+    "flclash": "Inspiration pour le design UI",
+    "crocapp": "Référence pour l'implémentation du scanner QR"
+  }
+}

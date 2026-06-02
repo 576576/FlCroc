@@ -27,7 +27,7 @@
   },
 
   "_comment_content": "── Content Blocks ──",
-  "building": "See [docs/BUILD.md](docs/BUILD.md) for build instructions and platform-specific guides.",
+  "building": "See [BUILD.md](docs/BUILD.md) for build instructions and platform-specific guides.",
   "arch_tree": {
     "lib": "Flutter app (Riverpod + Material 3)",
     "go_bridge": "Go CGO shared library (FFI bridge)",

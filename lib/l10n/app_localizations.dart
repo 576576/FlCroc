@@ -37,7 +37,7 @@ class AppLocalizations {
   static const List<Locale> supportedLocales = [
     Locale('en'),
     Locale('zh'),
-    Locale('zh', 'Hant'),
+    Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
     Locale('ja'),
     Locale('fr'),
   ];
@@ -425,10 +425,15 @@ class _AppLocalizationsDelegate
         final json = await rootBundle.loadString('assets/bundles/$code.json');
         _cache[code] = Map<String, String>.from(jsonDecode(json) as Map);
       } catch (_) {
-        _cache[code] = {};
+        // bundle doesn't exist (e.g. zh-Hant has no bundle, uses zh fallback)
       }
     }
-    final messages = _cache[code]!.isNotEmpty ? _cache[code]! : (_cache['en'] ?? {});
+    // Prefer exact match, then base language, then English
+    final messages = (_cache[code]?.isNotEmpty == true)
+        ? _cache[code]!
+        : ((_cache[locale.languageCode]?.isNotEmpty == true)
+            ? _cache[locale.languageCode]!
+            : (_cache['en'] ?? {}));
     return AppLocalizations._(locale, messages);
   }
 

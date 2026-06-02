@@ -225,9 +225,12 @@ jobs:
           DOCS_HASH=$(find assets/docs -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
 
           OLD_BUNDLES=""; OLD_DOCS=""
-          if [ -f .i18nstatus ]; then
-            OLD_BUNDLES=$(sed -n '1p' .i18nstatus)
-            OLD_DOCS=$(sed -n '2p' .i18nstatus)
+          if [ -f docs/i18n.md ]; then
+            LAST_LINE=$(tail -1 docs/i18n.md)
+            if echo "$LAST_LINE" | grep -q '^> Related i18n hash:'; then
+              OLD_BUNDLES=$(echo "$LAST_LINE" | awk '{print $5}')
+              OLD_DOCS=$(echo "$LAST_LINE" | awk '{print $6}')
+            fi
           fi
 
           DO_I18N="false"; DO_DOCS="false"
@@ -285,6 +288,7 @@ jobs:
           cp "$TEMPLATE" "$OUTPUT"
           sed -i "s#{{date}}#$NOW#" "$OUTPUT"
           sed -i "s#{{rows}}#$ROWS#" "$OUTPUT"
+          echo "> Related i18n hash: ${{ steps.check.outputs.bundles_hash }} ${{ steps.check.outputs.docs_hash }}" >> "$OUTPUT"
 
       - uses: actions/upload-artifact@v4
         if: steps.check.outputs.do_i18n == 'true'
@@ -422,11 +426,6 @@ jobs:
           path: |
             README.md
             docs/*/README.md
-
-      - name: Save hashes
-        if: steps.check.outputs.do_i18n == 'true' || steps.check.outputs.do_docs == 'true'
-        run: |
-          printf '%s\n%s\n' "${{ steps.check.outputs.bundles_hash }}" "${{ steps.check.outputs.docs_hash }}" > .i18nstatus
 
   # ── Commit ──
   commit:
