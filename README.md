@@ -1,16 +1,16 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/576576/FlCroc/main/assets/images/icon.png" width="80" alt="FlCroc">
+  <img src="assets/images/icon.png" width="64" alt="FlCroc">
 </p>
 
 <h1 align="center">FlCroc</h1>
 
 <p align="center">
-English {{languages}}nbsp;|{{languages}}nbsp; <a href="docs/zh/README.md">中文</a> {{languages}}nbsp;|{{languages}}nbsp; <a href="docs/ja/README.md">日本語</a> {{languages}}nbsp;|{{languages}}nbsp; <a href="docs/fr/README.md">Français</a>
+English &nbsp;|&nbsp; <a href="docs/zh/README.md">中文</a>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux-blue" alt="Platform">
-  <img src="https://img.shields.io/badge/license-GPL3-green" alt="License">
+  <img src="https://img.shields.io/badge/license-GPL v3-green" alt="License">
   <img alt="version" src="https://img.shields.io/badge/version-1.2.2-informational" />
   <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.44.1-02569B?logo=flutter" />
   <img alt="croc" src="https://img.shields.io/badge/croc-10.4.4-blue" />
