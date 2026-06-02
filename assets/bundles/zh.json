@@ -1,8 +1,10 @@
 {
   "lang": "中文",
-  "code": "zh",
+  "langCode": "zh",
+  "langRegion": "简体",
+  "langRegionCode": ["Hans", "CN", "SG"],
 
-  "_comment_common": "══════════ 通用 ══════════",
+  "_comment_common": "── 通用 ──",
   "appName": "FlCroc",
 
   "_comment_nav": "── 导航 ──",
@@ -79,7 +81,7 @@
   "nightlyChannel": "最新构建",
   "autoCheckUpdate": "启动时检查更新",
 
-  "_comment_dashboard": "══════════ 仪表盘 ══════════",
+  "_comment_dashboard": "── 仪表盘 ──",
   "transferSpeed": "传输速度",
   "transferStatsName": "传输状态",
   "totalTransferred": "总计传输",
@@ -98,7 +100,7 @@
   "noHistory": "无历史记录",
   "availableWidgets": "可用组件",
 
-  "_comment_send": "══════════ 发送 ══════════",
+  "_comment_send": "── 发送 ──",
   "dropToAdd": "松开以添加",
   "codePhrase": "代码短语",
   "enterCodePhrase": "输入代码短语",
@@ -114,7 +116,7 @@
   "enterPhraseWarning": "请输入代码短语或选择\"默认\"",
   "enterTextWarning": "请输入文本。",
 
-  "_comment_receive": "══════════ 接收 ══════════",
+  "_comment_receive": "── 接收 ──",
   "startReceive": "开始接收",
   "scanQRCode": "扫描二维码",
   "generateQRCode": "生成二维码",
@@ -129,10 +131,8 @@
   "cameraUnsupported": "此设备不支持扫码",
   "cameraError": "相机错误",
 
-  "_comment_settings": "══════════ 设置 ══════════",
+  "_comment_settings": "── 设置 ──",
   "options": "选项",
-
-  "_comment_transferOpts": "── 传输选项 ──",
   "transferOptions": "传输选项",
   "encryptionCurve": "加密曲线",
   "hashAlgorithm": "哈希算法",
@@ -152,7 +152,7 @@
   "resetRelay": "重置中继",
 
   "_comment_savePath": "── 保存路径 ──",
-  "downloadsFolder": "内部存储/Download",
+  "storageFolder": "内部存储",
   "defaultSavePath": "默认保存路径",
   "selectFolder": "选择文件夹",
   "savePath": "保存路径",
@@ -167,8 +167,6 @@
   "autoLanguage": "自动",
   "pureBlackMode": "纯黑深色模式",
   "colorPalette": "配色方案",
-
-  "_comment_nav": "── 导航 ──",
   "noTextMode": "无字模式",
   "noTextModeDesc": "菜单栏仅显示图标",
 

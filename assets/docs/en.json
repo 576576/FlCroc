@@ -1,0 +1,62 @@
+{
+  "_comment_meta": "── Meta ──",
+  "title": "FlCroc",
+  "tagline_block": "<em>A Flutter GUI for croc — easily and securely transfer files between computers</em>",
+
+  "_comment_features": "── Features ──",
+  "features": [
+    "Cross-platform (Windows, Linux, Android, iOS, macOS)",
+    "End-to-end encrypted file transfer via croc",
+    "QR code scanning & generation for easy code sharing",
+    "Text snippet sending & receiving",
+    "Drag-and-drop file support (desktop)",
+    "Dark mode, OLED black, custom color schemes",
+    "Multi-language support (see [i18n.md](docs/i18n.md) for details)",
+    "Relay customization, transfer history, quick transfer"
+  ],
+
+  "_comment_headings": "── Section Headings ──",
+  "headings": {
+    "features": "Features",
+    "build": "Build",
+    "architecture": "Architecture",
+    "stack": "Tech Stack",
+    "i18n": "I18n",
+    "acknowledgments": "Acknowledgments",
+    "license": "License"
+  },
+
+  "_comment_content": "── Content Blocks ──",
+  "building": "See [docs/BUILD.md](docs/BUILD.md) for build instructions and platform-specific guides.",
+  "arch_tree": {
+    "lib": "Flutter app (Riverpod + Material 3)",
+    "go_bridge": "Go CGO shared library (FFI bridge)",
+    "submodules": "Vendored croc source",
+    "assets": "App icon, I18n JSON bundles",
+    "platforms": "Android, iOS, Linux, macOS, Windows, Web",
+    "ci": "CI/CD (build.yml)"
+  },
+  "stack_tree": {
+    "col_layer": "Layer",
+    "col_tech": "Technology",
+    "l_ui": "UI",
+    "l_state": "State",
+    "l_backend": "Backend",
+    "l_i18n": "I18n",
+    "l_ci": "CI/CD",
+    "ui": "Flutter 3.44 · Material 3",
+    "state": "Riverpod · Freezed",
+    "backend": "Go CGO FFI · croc submodule",
+    "i18n": "JSON bundles",
+    "ci": "GitHub Actions"
+  },
+  "i18n": "See [docs/i18n.md](docs/i18n.md) for language status and contribution guide.",
+  "ack_tree": {
+    "col_project": "Project",
+    "col_desc": "Description",
+    "croc": "Backend file transfer engine",
+    "flutter": "Cross-platform UI framework",
+    "flclash": "UI inspiration",
+    "crocapp": "QR scanner reference"
+  }
+}

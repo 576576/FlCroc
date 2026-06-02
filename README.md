@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="docs/README_zh.md">📖 中文文档</a> &nbsp;|&nbsp;
+  <a href="docs/zh/README.md">📖 中文文档</a> &nbsp;|&nbsp;
   <a href="#-features">Features</a> ·
   <a href="#-getting-started">Getting Started</a> ·
   <a href="#-build">Build</a> ·
@@ -36,82 +36,23 @@
 | 🖥️ **Cross-platform** | Android · Windows · Linux · macOS — single codebase, native performance. |
 | 🌍 **Multi-language** | English, 中文 — extensible via JSON bundles in `assets/bundles/`. |
 
-## 🚀 Getting Started
+## 🚀 Getting Started & Building
 
-### Prerequisites
+See [docs/BUILD.md](docs/BUILD.md) for build instructions, platform-specific guides, and the Go bridge setup.
 
-| Tool | Version |
-|------|---------|
-| Flutter SDK | ≥ 3.12 |
-| Go | ≥ 1.25 |
-
-### Install
-
-```bash
-git clone --recurse-submodules https://github.com/576576/FlCroc.git
-cd FlCroc
-flutter pub get
-dart run build_runner build --delete-conflicting-outputs
-```
-
-### Run
-
-```bash
-flutter run
-```
-
-## 🔨 Build
-
-The Go bridge in `go_bridge/` builds as a CGO shared library (`.so` / `.dll` / `.dylib`) loaded via `dart:ffi`. croc source is vendored at `submodules/croc/`.
-
-### Windows
-
-```bash
-cd go_bridge
-$env:CGO_ENABLED="1"; $env:GOOS="windows"; $env:GOARCH="amd64"
-go build -buildmode=c-shared -ldflags="-s -w -H windowsgui" -o ../windows/runner/libcroc_bridge.dll .
-cd .. && flutter build windows --release
-```
-
-### Linux
-
-```bash
-cd go_bridge
-CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
-  go build -buildmode=c-shared -ldflags="-s -w" -o ../linux/flutter/ephemeral/libcroc_bridge.so .
-cd .. && flutter build linux --release
-```
-
-### macOS
-
-```bash
-cd go_bridge
-CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
-  go build -buildmode=c-shared -ldflags="-s -w" -o ../macos/Runner/libcroc_bridge.dylib .
-cd .. && flutter build macos --release
-```
-
-### Android
-
-```bash
-flutter build apk --release --target-platform android-arm64
-```
-
-> ℹ️ **croc is fully vendored.** The Go FFI bridge calls croc's internal packages directly — no CLI subprocess. The shared library is bundled into every release artifact.
+---
 
 ## 🏗️ Architecture
 
-```
-fl_croc/
-├── lib/                      # Flutter app (Riverpod + Material 3)
-├── go_bridge/                # Go CGO shared library (FFI bridge)
-├── submodules/croc/          # Submodule croc
-├── assets/
-│   ├── images/icon.png       # App icon (source for all platforms)
-│   └── bundles/              # I10n JSON bundles
-├── android/ ios/ linux/ macos/ windows/ web/
-└── .github/workflows/        # CI/CD (build.yml)
-```
+| Directory | Description |
+|-----------|-------------|
+| `lib/` | Flutter app (Riverpod + Material 3) |
+| `go_bridge/` | Go CGO shared library (FFI bridge) |
+| `submodules/croc/` | Vendored croc source |
+| `assets/images/` | App icon |
+| `assets/bundles/` | I10n JSON bundles |
+| `android/` `ios/` `linux/` `macos/` `windows/` `web/` | Platform targets |
+| `.github/workflows/` | CI/CD (build.yml) |
 
 ## 🧰 Tech Stack
 
@@ -122,6 +63,10 @@ fl_croc/
 | Backend | Go 1.25 CGO FFI · croc v10.4.4 |
 | I10n | JSON bundles |
 | CI/CD | GitHub Actions |
+
+## 🌍 I18n
+
+See [docs/i18n.md](docs/i18n.md) for language status and contribution guide.
 
 ## 🌍 I10n Contribution
 

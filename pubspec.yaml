@@ -37,7 +37,6 @@ dependencies:
   defer_pointer: ^0.0.2
   downloadsfolder: ^1.2.0
   open_filex: ^4.7.0
-  mobile_scanner: ^6.0.11
   fluttertoast: ^9.1.0
   share_receiver: ^1.0.2
   desktop_drop: ^0.7.1

@@ -36,6 +36,11 @@ jobs:
       nightly_version: ${{ steps.ver.outputs.nightly_version }}
       nightly_date: ${{ steps.ver.outputs.nightly_date }}
       synced_version: ${{ steps.ver.outputs.synced_version }}
+      i18n: ${{ steps.ver.outputs.i18n }}
+      readme: ${{ steps.ver.outputs.readme }}
+      app_version: ${{ steps.app-ver.outputs.version }}
+      flutter_version: ${{ steps.flutter-ver.outputs.version }}
+      croc_version: ${{ steps.croc-ver.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -67,6 +72,16 @@ jobs:
           SHA=$(git rev-parse --short HEAD)
           CUR_VER=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
           echo "do_release=false" >> $GITHUB_OUTPUT
+          echo "i18n=false" >> $GITHUB_OUTPUT
+          echo "readme=false" >> $GITHUB_OUTPUT
+
+          # Trigger detection
+          if echo "$MSG" | grep -qiE 'i18n|i10n'; then
+            echo "i18n=true" >> $GITHUB_OUTPUT
+          fi
+          if echo "$MSG" | grep -qiE '\breadme\b'; then
+            echo "readme=true" >> $GITHUB_OUTPUT
+          fi
 
           if echo "$MSG" | grep -qE '^(r|release|beta)-[0-9]+\.[0-9]+\.[0-9]+'; then
             # ── Release / Beta ──
@@ -102,7 +117,7 @@ jobs:
             git push
           else
             # ── Non-release: increment build number only if a build will run ──
-            if ! echo "$MSG" | grep -qE '\b(b-win64|b-win|b-linux|b-mobile|b-all)\b'; then
+            if ! echo "$MSG" | grep -qE '\b(b-win|b-linux|b-mobile|b-all)\b'; then
               echo "No build trigger in commit message, skip version sync"
               echo "nightly_version=${CUR_VER}" >> $GITHUB_OUTPUT
               echo "nightly_date=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
@@ -144,6 +159,26 @@ jobs:
           fi
           cd ../..
           find submodules/croc -name '*_test.go' -delete
+
+      - name: Detect croc version
+        id: croc-ver
+        run: |
+          cd submodules/croc
+          VER=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+          echo "version=${VER:-unknown}" >> $GITHUB_OUTPUT
+          cd ../..
+
+      - name: Detect Flutter version
+        id: flutter-ver
+        run: |
+          VER=$(curl -sL https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json | jq -r '.releases[] | select(.channel=="stable") | .version' | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          echo "version=${VER:-unknown}" >> $GITHUB_OUTPUT
+
+      - name: Detect app version
+        id: app-ver
+        run: |
+          VER=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
+          echo "version=${VER}" >> $GITHUB_OUTPUT
 
       - name: Determine platforms
         id: platform
@@ -192,6 +227,205 @@ jobs:
         run: flutter pub get
       - name: Run tests
         run: flutter test
+
+  # ── i18n Status ──
+  i18n:
+    needs: prebuild
+    if: needs.prebuild.outputs.i18n == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate i18n status
+        run: |
+          TEMPLATE="assets/templates/i18n.md"
+          OUTPUT="docs/i18n.md"
+          DEFAULT="assets/bundles/en.json"
+          NOW=$(date -u +'%Y-%m-%d %H:%M UTC')
+
+          # Count default keys (exclude comment & header keys)
+          DEFAULT_KEYS=$(grep -c '^\s*"' "$DEFAULT" | awk '{print $1}')
+          HEADER_KEYS=6  # lang, langCode, langRegion, langRegionCode, _comment_*
+          ACTUAL_KEYS=$((DEFAULT_KEYS - HEADER_KEYS))
+
+          ROWS=""
+          for f in assets/bundles/*.json; do
+            BASENAME=$(basename "$f" .json)
+            LANG=$(grep '"lang":' "$f" | sed 's/.*"lang": "\(.*\)".*/\1/')
+            CODE=$(grep '"langCode":' "$f" | sed 's/.*"langCode": "\(.*\)".*/\1/')
+            REGION=$(grep '"langRegion":' "$f" | sed 's/.*"langRegion": "\(.*\)".*/\1/')
+            TOTAL=$(grep -c '^\s*"' "$f" | awk '{print $1}')
+            KEYS=$((TOTAL - HEADER_KEYS))
+            PCT=$((100 * KEYS / ACTUAL_KEYS))
+            if [ "$PCT" -gt 100 ]; then PCT=100; fi
+            if [ "$PCT" -ge 100 ]; then STATUS="✅"
+            elif [ "$PCT" -ge 50 ]; then STATUS="⚠️"
+            else STATUS="❌"
+            fi
+            DOC_DIR="docs/$CODE"
+            DOCS=$(find "$DOC_DIR" -name '*.md' 2>/dev/null | wc -l)
+            ROWS="$ROWS| $LANG | \`$CODE\` | $REGION | $KEYS/$ACTUAL_KEYS ($PCT%) | $DOCS | $STATUS |\n"
+          done
+
+          # Render template
+          cp "$TEMPLATE" "$OUTPUT"
+          sed -i "s/{{date}}/$NOW/" "$OUTPUT"
+          sed -i "s/{{rows}}/$ROWS/" "$OUTPUT"
+
+      - name: Commit i18n.md
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/i18n.md
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update i18n status [skip ci]"
+            git push
+          fi
+
+  # ── README Generation ──
+  readme:
+    needs: prebuild
+    if: needs.prebuild.outputs.readme == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate README from template
+        env:
+          APP_VERSION: ${{ needs.prebuild.outputs.app_version }}
+          FLUTTER_VERSION: ${{ needs.prebuild.outputs.flutter_version }}
+          CROC_VERSION: ${{ needs.prebuild.outputs.croc_version }}
+        run: |
+          TEMPLATE="assets/templates/README.md"
+          DATA="assets/docs/en.json"
+          OUTPUT="README.md"
+
+          # Dynamically build language links: current lang (en) plain, others linked
+          LANG="en"
+          LANGS="en:English:README.md zh:中文:docs/zh/README.md ja:日本語:docs/ja/README.md fr:Français:docs/fr/README.md"
+          LANGUAGES=""
+          for item in $LANGS; do
+            code="${item%%:*}"
+            rest="${item#*:}"
+            label="${rest%%:*}"
+            path="${rest#*:}"
+            [ -n "$LANGUAGES" ] && LANGUAGES="$LANGUAGES &nbsp;|&nbsp; "
+            if [ "$code" = "$LANG" ]; then
+              LANGUAGES="$LANGUAGES$label"
+            else
+              LANGUAGES="$LANGUAGES<a href=\"$path\">$label</a>"
+            fi
+          done
+
+          TITLE=$(jq -r '.title' "$DATA")
+          VERSION="$APP_VERSION"
+          FLUTTER_VER="$FLUTTER_VERSION"
+          CROC_VER="$CROC_VERSION"
+          TAGLINE=$(jq -r '.tagline_block' "$DATA")
+          BUILDING=$(jq -r '.building' "$DATA")
+          H_FEATURES=$(jq -r '.headings.features' "$DATA")
+          H_BUILD=$(jq -r '.headings.build' "$DATA")
+          H_ARCH=$(jq -r '.headings.architecture' "$DATA")
+          H_STACK=$(jq -r '.headings.stack' "$DATA")
+          H_I18N=$(jq -r '.headings.i18n' "$DATA")
+          H_ACKS=$(jq -r '.headings.acknowledgments' "$DATA")
+          H_LICENSE=$(jq -r '.headings.license' "$DATA")
+          ARCH_LIB=$(jq -r '.arch_tree.lib' "$DATA")
+          ARCH_GO=$(jq -r '.arch_tree.go_bridge' "$DATA")
+          ARCH_SUB=$(jq -r '.arch_tree.submodules' "$DATA")
+          ARCH_ASSETS=$(jq -r '.arch_tree.assets' "$DATA")
+          ARCH_PLAT=$(jq -r '.arch_tree.platforms' "$DATA")
+          ARCH_CI=$(jq -r '.arch_tree.ci' "$DATA")
+          STACK_CL=$(jq -r '.stack_tree.col_layer' "$DATA")
+          STACK_CT=$(jq -r '.stack_tree.col_tech' "$DATA")
+          STACK_L_UI=$(jq -r '.stack_tree.l_ui' "$DATA")
+          STACK_L_STATE=$(jq -r '.stack_tree.l_state' "$DATA")
+          STACK_L_BACKEND=$(jq -r '.stack_tree.l_backend' "$DATA")
+          STACK_L_I18N=$(jq -r '.stack_tree.l_i18n' "$DATA")
+          STACK_L_CI=$(jq -r '.stack_tree.l_ci' "$DATA")
+          STACK_UI=$(jq -r '.stack_tree.ui' "$DATA")
+          STACK_STATE=$(jq -r '.stack_tree.state' "$DATA")
+          STACK_BACKEND=$(jq -r '.stack_tree.backend' "$DATA")
+          STACK_I18N=$(jq -r '.stack_tree.i18n' "$DATA")
+          STACK_CI=$(jq -r '.stack_tree.ci' "$DATA")
+          ACK_CP=$(jq -r '.ack_tree.col_project' "$DATA")
+          ACK_CD=$(jq -r '.ack_tree.col_desc' "$DATA")
+          ACK_CROC=$(jq -r '.ack_tree.croc' "$DATA")
+          ACK_FLUTTER=$(jq -r '.ack_tree.flutter' "$DATA")
+          ACK_FLCLASH=$(jq -r '.ack_tree.flclash' "$DATA")
+          ACK_CROCAPP=$(jq -r '.ack_tree.crocapp' "$DATA")
+          I18N=$(jq -r '.i18n' "$DATA")
+
+          # Build features bullet list
+          FEATURES=$(jq -r '.features[] | "- \(.)"' "$DATA")
+
+          cp "$TEMPLATE" "$OUTPUT"
+          sed -i "s|{{languages}}|$LANGUAGES|" "$OUTPUT"
+          sed -i "s|{{title}}|$TITLE|" "$OUTPUT"
+          sed -i "s|{{version}}|$VERSION|" "$OUTPUT"
+          sed -i "s|{{flutter_version}}|$FLUTTER_VER|" "$OUTPUT"
+          sed -i "s|{{croc_version}}|$CROC_VER|" "$OUTPUT"
+          sed -i "s|{{tagline_block}}|$TAGLINE|" "$OUTPUT"
+          sed -i "s|{{heading_features}}|$H_FEATURES|" "$OUTPUT"
+          sed -i "s|{{heading_build}}|$H_BUILD|" "$OUTPUT"
+          sed -i "s|{{heading_architecture}}|$H_ARCH|" "$OUTPUT"
+          sed -i "s|{{heading_stack}}|$H_STACK|" "$OUTPUT"
+          sed -i "s|{{heading_i18n}}|$H_I18N|" "$OUTPUT"
+          sed -i "s|{{heading_acknowledgments}}|$H_ACKS|" "$OUTPUT"
+          sed -i "s|{{heading_license}}|$H_LICENSE|" "$OUTPUT"
+          sed -i "s|{{features}}|$FEATURES|" "$OUTPUT"
+          sed -i "s|{{getting_started}}|$BUILDING|" "$OUTPUT"
+          sed -i "s|{{building}}|$BUILDING|" "$OUTPUT"
+          sed -i "s|{{arch_lib}}|$ARCH_LIB|" "$OUTPUT"
+          sed -i "s|{{arch_go_bridge}}|$ARCH_GO|" "$OUTPUT"
+          sed -i "s|{{arch_submodules}}|$ARCH_SUB|" "$OUTPUT"
+          sed -i "s|{{arch_assets}}|$ARCH_ASSETS|" "$OUTPUT"
+          sed -i "s|{{arch_platforms}}|$ARCH_PLAT|" "$OUTPUT"
+          sed -i "s|{{arch_ci}}|$ARCH_CI|" "$OUTPUT"
+          sed -i "s|{{stack_col_layer}}|$STACK_CL|" "$OUTPUT"
+          sed -i "s|{{stack_col_tech}}|$STACK_CT|" "$OUTPUT"
+          sed -i "s|{{stack_l_ui}}|$STACK_L_UI|" "$OUTPUT"
+          sed -i "s|{{stack_l_state}}|$STACK_L_STATE|" "$OUTPUT"
+          sed -i "s|{{stack_l_backend}}|$STACK_L_BACKEND|" "$OUTPUT"
+          sed -i "s|{{stack_l_i18n}}|$STACK_L_I18N|" "$OUTPUT"
+          sed -i "s|{{stack_l_ci}}|$STACK_L_CI|" "$OUTPUT"
+          sed -i "s|{{stack_ui}}|$STACK_UI|" "$OUTPUT"
+          sed -i "s|{{stack_state}}|$STACK_STATE|" "$OUTPUT"
+          sed -i "s|{{stack_backend}}|$STACK_BACKEND|" "$OUTPUT"
+          sed -i "s|{{stack_i18n}}|$STACK_I18N|" "$OUTPUT"
+          sed -i "s|{{stack_ci}}|$STACK_CI|" "$OUTPUT"
+          sed -i "s|{{i18n}}|$I18N|" "$OUTPUT"
+          sed -i "s|{{ack_col_project}}|$ACK_CP|" "$OUTPUT"
+          sed -i "s|{{ack_col_desc}}|$ACK_CD|" "$OUTPUT"
+          sed -i "s|{{ack_croc}}|$ACK_CROC|" "$OUTPUT"
+          sed -i "s|{{ack_flutter}}|$ACK_FLUTTER|" "$OUTPUT"
+          sed -i "s|{{ack_flclash}}|$ACK_FLCLASH|" "$OUTPUT"
+          sed -i "s|{{ack_crocapp}}|$ACK_CROCAPP|" "$OUTPUT"
+
+          # Fix doc link paths: root README uses docs/*, docs/xx/README uses ../
+          DOC_PREFIX="docs/"
+          if [[ "$OUTPUT" != "README.md" ]]; then
+            DOC_PREFIX="../"
+          fi
+          sed -i "s|](docs/|]($DOC_PREFIX|g" "$OUTPUT"
+
+      - name: Commit README
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update README [skip ci]"
+            git push
+          fi
 
   # ── Windows (AMD64 + optional ARM64 via Zig cross-compile) ──
   build-windows:
@@ -487,7 +721,7 @@ jobs:
           mkdir -p ../android/app/src/main/jniLibs/arm64-v8a
           export CC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/${HOST_TAG}/bin/aarch64-linux-android21-clang"
           CGO_ENABLED=1 GOOS=android GOARCH=arm64 \
-            go build -buildmode=c-shared -ldflags="-s -w" \
+            go build -buildmode=c-shared -ldflags="-s -w -extldflags=-Wl,-z,max-page-size=16384" \
             -o ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so .
           echo "✓ Go bridge built for Android ARM64"
           file ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so
@@ -496,7 +730,7 @@ jobs:
             mkdir -p ../android/app/src/main/jniLibs/x86_64
             export CC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/${HOST_TAG}/bin/x86_64-linux-android21-clang"
             CGO_ENABLED=1 GOOS=android GOARCH=amd64 \
-              go build -buildmode=c-shared -ldflags="-s -w" \
+              go build -buildmode=c-shared -ldflags="-s -w -extldflags=-Wl,-z,max-page-size=16384" \
               -o ../android/app/src/main/jniLibs/x86_64/libcroc_bridge.so .
             echo "✓ Go bridge built for Android AMD64"
             file ../android/app/src/main/jniLibs/x86_64/libcroc_bridge.so

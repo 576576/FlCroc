@@ -15,7 +15,6 @@ import 'package:fl_croc/widgets/native_qr_scanner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 
 class ReceiveView extends ConsumerStatefulWidget {
   const ReceiveView({super.key});
@@ -620,7 +619,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Text(formatPathForDisplay(effectivePath, downloadsLabel: l10n.downloadsFolder), maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textTheme.bodySmall),
+                          Text(formatPathForDisplay(effectivePath, storageLabel: l10n.storageFolder), maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textTheme.bodySmall),
                         ],
                       ),
                     );
@@ -746,19 +745,15 @@ class _QRScannerDialog extends StatefulWidget {
 class _QRScannerDialogState extends State<_QRScannerDialog> {
   bool _hasScanned = false;
   bool _isDisposed = false;
-  // Only used for analyzeImage (image picker); live scanning uses NativeQrScanner.
-  MobileScannerController? _imageAnalyzer;
 
   @override
   void initState() {
     super.initState();
-    _imageAnalyzer = MobileScannerController(formats: const [BarcodeFormat.qrCode]);
   }
 
   @override
   void dispose() {
     _isDisposed = true;
-    _imageAnalyzer?.dispose();
     super.dispose();
   }
 
@@ -766,48 +761,6 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
     if (_hasScanned || _isDisposed) return;
     _hasScanned = true;
     Navigator.of(context).pop(code);
-  }
-
-  Future<void> _pickImage() async {
-    if (_hasScanned || _isDisposed) return;
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
-    );
-    if (result == null || result.files.isEmpty) return;
-    final path = result.files.first.path;
-    if (path == null) return;
-    try {
-      final capture = await _imageAnalyzer?.analyzeImage(path);
-      if (_isDisposed || !mounted) return;
-      if (capture != null && capture.barcodes.isNotEmpty) {
-        final raw = capture.barcodes.first.rawValue;
-        if (raw != null && raw.isNotEmpty) {
-          _hasScanned = true;
-          Navigator.of(context).pop(raw);
-          return;
-        }
-      }
-      // No QR code found in image (like croc-app catches NotFoundException)
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.appLocalizations.noQRFound),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e, st) {
-      commonPrint('QR image analyze error: $e\n$st');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.appLocalizations.noQRFound),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    }
   }
 
   @override
@@ -859,15 +812,6 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  FilledButton.icon(
-                    onPressed: _pickImage,
-                    icon: const Icon(Icons.image, size: 18),
-                    label: Text(l10n.selectQRImage),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary.withAlpha(200),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
                   OutlinedButton.icon(
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close, size: 18),

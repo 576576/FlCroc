@@ -97,6 +97,8 @@ REM --- Build ---
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
 if "%PLATFORM%"=="windows" (
     set "LDFLAGS=-s -w -H windowsgui -extldflags=-Wl,--subsystem,windows"
+) else if "%PLATFORM%"=="android" (
+    set "LDFLAGS=-s -w -extldflags=-Wl,-z,max-page-size=16384"
 ) else (
     set "LDFLAGS=-s -w"
 )

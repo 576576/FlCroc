@@ -23,19 +23,17 @@ class SettingsView extends ConsumerStatefulWidget {
   ConsumerState<SettingsView> createState() => _SettingsViewState();
 }
 
-class _SettingsViewState extends ConsumerState<SettingsView>
-    with TickerProviderStateMixin {
+class _SettingsViewState extends ConsumerState<SettingsView> {
   String _crocVersion = '...';
   bool _debugMode = false;
   int _versionTaps = 0;
   DateTime? _lastVersionTap;
   bool _autoClearLog = true;
 
-  // ── Reset long-press animation (6s) ──
-  late final AnimationController _resetAnimCtrl = AnimationController(
-    vsync: this,
-    duration: const Duration(seconds: 6),
-  );
+  // ── Reset long-press (2s UI change, 3s trigger) ──
+  Timer? _resetTimer;
+  double _resetProgress = 0;
+  bool _resetPressing = false;
   bool _showResetUI = false;
 
   late final _relayAddrCtrl = TextEditingController();
@@ -46,14 +44,6 @@ class _SettingsViewState extends ConsumerState<SettingsView>
   void initState() {
     super.initState();
     _debugMode = LogBuffer.debugMode;
-    _resetAnimCtrl.addListener(_onResetAnimTick);
-    _resetAnimCtrl.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        _resetAnimCtrl.reset();
-        _showResetUI = false;
-        _resetAllSettings(context);
-      }
-    });
     // Delay version check until after core controller initializes (post first frame)
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadCrocVersion());
     final relay = ref.read(appSettingProvider).relayConfig;
@@ -64,7 +54,7 @@ class _SettingsViewState extends ConsumerState<SettingsView>
 
   @override
   void dispose() {
-    _resetAnimCtrl.dispose();
+    _resetTimer?.cancel();
     _relayAddrCtrl.dispose();
     _relayPortCtrl.dispose();
     _relayPassCtrl.dispose();
@@ -274,20 +264,43 @@ class _SettingsViewState extends ConsumerState<SettingsView>
     if (mounted) context.showSnackBar(l10n.settingsReset);
   }
 
-  void _onResetAnimTick() {
-    if (_resetAnimCtrl.value >= 4 / 6) {
-      if (!_showResetUI) setState(() => _showResetUI = true);
-    }
-  }
-
   void _startResetLongPress() {
+    _resetTimer?.cancel();
+    _resetPressing = true;
+    _resetProgress = 0;
     _showResetUI = false;
-    _resetAnimCtrl.forward();
+    const tickMs = 50;
+    _resetTimer = Timer.periodic(const Duration(milliseconds: tickMs), (t) {
+      if (!_resetPressing) {
+        t.cancel();
+        _resetProgress = 0;
+        if (_showResetUI) setState(() => _showResetUI = false);
+        return;
+      }
+      _resetProgress += tickMs / 3000.0;
+      if (_resetProgress >= 2.0 / 3.0 && !_showResetUI) {
+        _showResetUI = true;
+      }
+      if (_resetProgress >= 1.0) {
+        t.cancel();
+        _resetPressing = false;
+        _resetProgress = 0;
+        _showResetUI = false;
+        setState(() {});
+        _resetAllSettings(context);
+        return;
+      }
+      setState(() {});
+    });
+    setState(() {});
   }
 
   void _cancelResetLongPress() {
-    _resetAnimCtrl.reset();
+    _resetPressing = false;
+    _resetTimer?.cancel();
+    _resetProgress = 0;
     if (_showResetUI) setState(() => _showResetUI = false);
+    setState(() {});
   }
 
   @override
@@ -459,7 +472,7 @@ class _SettingsViewState extends ConsumerState<SettingsView>
                 title: Text(l10n.defaultSavePath),
                 subtitle: Text(formatPathForDisplay(
                   appSettings.defaultSavePath.isEmpty ? _defaultDownloadPath() : appSettings.defaultSavePath,
-                  downloadsLabel: l10n.downloadsFolder,
+                  storageLabel: l10n.storageFolder,
                 )),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -505,46 +518,44 @@ class _SettingsViewState extends ConsumerState<SettingsView>
                 onLongPressStart: (_) => _startResetLongPress(),
                 onLongPressEnd: (_) => _cancelResetLongPress(),
                 onLongPressCancel: () => _cancelResetLongPress(),
-                child: AnimatedBuilder(
-                  animation: _resetAnimCtrl,
-                  builder: (context, child) {
-                    final progress = _resetAnimCtrl.value;
-                    return ListItem(
-                      padding: EdgeInsets.zero,
-                      minVerticalPadding: 0,
-                      leading: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: _showResetUI
-                            ? Icon(Icons.restart_alt, color: Colors.red.withAlpha((180 + 75 * progress).round().clamp(0, 255)))
-                            : Image.asset('assets/images/icon.png', width: 24, height: 24),
-                      ),
-                      title: _showResetUI
-                          ? Text(l10n.resetAllSettings, style: TextStyle(color: Colors.red.withAlpha(255)))
-                          : Text(l10n.appVersion),
-                      subtitle: _showResetUI
-                          ? null
-                          : Text(_debugMode
-                              ? '${globalState.packageInfo.version}+${globalState.packageInfo.buildNumber}'
-                              : globalState.packageInfo.version),
-                      trailing: _showResetUI
-                          ? null
-                          : Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.system_update_alt, size: 18),
-                                  tooltip: l10n.checkUpdate,
-                                  visualDensity: VisualDensity.compact,
-                                  onPressed: () => _checkForUpdate(context),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.open_in_new, size: 18),
-                                  tooltip: l10n.open,
-                                  visualDensity: VisualDensity.compact,
-                                  onPressed: () => globalState.openUrl('https://github.com/$repository'),
-                                ),
-                              ],
-                            ),
+                child: Builder(builder: (context) {
+                  final alpha = (_resetProgress * 80).clamp(0.0, 80.0).toInt();
+                  return Container(
+                    color: _resetPressing ? Colors.red.withAlpha(alpha) : Colors.transparent,
+                    child: ListItem(
+                    leading: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: _showResetUI
+                          ? const Icon(Icons.restart_alt, color: Colors.red)
+                          : Image.asset('assets/images/icon.png', width: 24, height: 24),
+                    ),
+                    title: _showResetUI
+                        ? Text(l10n.resetAllSettings, style: const TextStyle(color: Colors.red))
+                        : Text(l10n.appVersion),
+                    subtitle: _showResetUI
+                        ? null
+                        : Text(_debugMode
+                            ? '${globalState.packageInfo.version}+${globalState.packageInfo.buildNumber}'
+                            : globalState.packageInfo.version),
+                    trailing: _showResetUI
+                        ? null
+                        : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.update, size: 18),
+                                tooltip: l10n.checkUpdate,
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () => _checkForUpdate(context),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.open_in_new, size: 18),
+                                tooltip: l10n.open,
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () => globalState.openUrl('https://github.com/$repository'),
+                              ),
+                            ],
+                          ),
                       onTap: () {
                         final now = DateTime.now();
                         if (_lastVersionTap != null &&
@@ -569,9 +580,9 @@ class _SettingsViewState extends ConsumerState<SettingsView>
                           );
                         }
                       },
-                    );
-                  },
-                ),
+                    ),
+                  );
+                }),
               ),
               ListItem(
                 leading: const Icon(Icons.link),
@@ -591,16 +602,8 @@ class _SettingsViewState extends ConsumerState<SettingsView>
               ListItem(
                 leading: const Icon(Icons.tune),
                 title: Text(l10n.updateChannel),
-                subtitle: Text(ref.watch(appSettingProvider.select((s) => s.updateChannel)) == UpdateChannel.nightly
-                    ? l10n.nightlyChannel
-                    : l10n.releaseChannel),
-                onTap: () {
-                  final current = ref.read(appSettingProvider).updateChannel;
-                  final next = current == UpdateChannel.nightly
-                      ? UpdateChannel.release
-                      : UpdateChannel.nightly;
-                  ref.read(appSettingProvider.notifier).update((s) => s.copyWith(updateChannel: next));
-                },
+                subtitle: _buildUpdateChannelChips(
+                  ref.watch(appSettingProvider.select((s) => s.updateChannel)), ref),
               ),
               ListItem.switchItem(
                 leading: const Icon(Icons.update_disabled),
@@ -649,11 +652,43 @@ class _SettingsViewState extends ConsumerState<SettingsView>
     );
   }
 
+  // ── Language variant support ──
+  // Group locales by language code; each entry is (displayName, localeString).
+  // Tapping a selected language cycles through its variants.
+  static final List<({String label, String locale})> _langVariants = [
+    (label: 'English (United States)', locale: 'en'),
+    (label: 'Français (France)', locale: 'fr'),
+    (label: '中文 (简体)', locale: 'zh'),
+    (label: '中文 (繁體)', locale: 'zh-Hant'),
+    (label: '日本語 (日本)', locale: 'ja'),
+  ];
+
+  /// Base language group names (shown on first selection).
+  static const _langGroupNames = <String, String>{
+    'en': 'English',
+    'fr': 'Français',
+    'zh': '中文',
+    'ja': '日本語',
+  };
+
+  /// Languages whose variant name has been revealed (first re-tap done).
+  final _unfoldedLanguages = <String>{};
+
+  /// Cycle to the next variant of the same language group.
+  String _nextLangVariant(String currentLocale) {
+    final group = currentLocale.split('-').first;
+    final variants = _langVariants.where((v) => v.locale.split('-').first == group).toList();
+    if (variants.length <= 1) return currentLocale;
+    final idx = variants.indexWhere((v) => v.locale == currentLocale);
+    final next = (idx + 1) % variants.length;
+    return variants[next].locale;
+  }
+
   Widget _buildLanguageChips(
       BuildContext context, String? currentLocale, WidgetRef ref) {
     final l10n = context.appLocalizations;
-    // locale=null → auto (system), locale='en' → English, locale='zh' → 中文
     final selectedKey = currentLocale ?? 'auto';
+
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Wrap(
@@ -664,34 +699,56 @@ class _SettingsViewState extends ConsumerState<SettingsView>
             selected: selectedKey == 'auto',
             onSelected: (v) {
               if (v) {
+                _unfoldedLanguages.clear();
                 ref.read(appSettingProvider.notifier).update(
                       (s) => s.copyWith(locale: null),
                     );
               }
             },
           ),
-          ChoiceChip(
-            label: Text('English'),
-            selected: selectedKey == 'en',
-            onSelected: (v) {
-              if (v) {
-                ref.read(appSettingProvider.notifier).update(
-                      (s) => s.copyWith(locale: 'en'),
-                    );
-              }
-            },
-          ),
-          ChoiceChip(
-            label: Text('中文'),
-            selected: selectedKey == 'zh',
-            onSelected: (v) {
-              if (v) {
-                ref.read(appSettingProvider.notifier).update(
-                      (s) => s.copyWith(locale: 'zh'),
-                    );
-              }
-            },
-          ),
+          for (final group in const ['en', 'fr', 'zh', 'ja'])
+            ChoiceChip(
+              label: Text(() {
+                if (selectedKey == null || selectedKey.split('-').first != group) {
+                  return _langGroupNames[group]!;
+                }
+                if (!_unfoldedLanguages.contains(group)) {
+                  return _langGroupNames[group]!;
+                }
+                final v = _langVariants.firstWhere((v) => v.locale == selectedKey);
+                return v.label;
+              }()),
+              selected: selectedKey.split('-').first == group,
+              onSelected: (v) {
+                if (!v) return;
+                final current = currentLocale;
+                final groupKey = current != null && current.split('-').first == group
+                    ? current.split('-').first
+                    : group;
+                if (current == null || groupKey != group) {
+                  // First selection: pick first variant
+                  _unfoldedLanguages.remove(group);
+                  final first = _langVariants.firstWhere((v2) => v2.locale.split('-').first == group).locale;
+                  ref.read(appSettingProvider.notifier).update((s) => s.copyWith(locale: first));
+                  setState(() {});
+                  return;
+                }
+                if (!_unfoldedLanguages.contains(group)) {
+                  // First re-tap: just reveal variant name, no locale change
+                  _unfoldedLanguages.add(group);
+                  setState(() {});
+                  final label = _langVariants.firstWhere((v2) => v2.locale == current).label;
+                  if (context.mounted) context.showSnackBar(label);
+                  return;
+                }
+                // Subsequent taps: cycle variants
+                final next = _nextLangVariant(current);
+                ref.read(appSettingProvider.notifier).update((s) => s.copyWith(locale: next));
+                setState(() {});
+                final label = _langVariants.firstWhere((v2) => v2.locale == next).label;
+                if (context.mounted) context.showSnackBar(label);
+              },
+            ),
         ],
       ),
     );
@@ -796,6 +853,32 @@ class _SettingsViewState extends ConsumerState<SettingsView>
               if (v) {
                 ref.read(appSettingProvider.notifier).update(
                       (s) => s.copyWith(themeMode: mode),
+                    );
+              }
+            },
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildUpdateChannelChips(UpdateChannel current, WidgetRef ref) {
+    final l10n = context.appLocalizations;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Wrap(
+        spacing: 8,
+        children: UpdateChannel.values.map((ch) {
+          final selected = ch == current;
+          return ChoiceChip(
+            label: Text(ch == UpdateChannel.nightly
+                ? l10n.nightlyChannel
+                : l10n.releaseChannel),
+            selected: selected,
+            onSelected: (v) {
+              if (v) {
+                ref.read(appSettingProvider.notifier).update(
+                      (s) => s.copyWith(updateChannel: ch),
                     );
               }
             },
@@ -966,7 +1049,7 @@ class _LogViewerPageState extends State<_LogViewerPage> {
     if (!dir.existsSync()) dir.createSync(recursive: true);
     final file = File('${dir.path}${Platform.pathSeparator}FlCroc-debug-$timestamp.log');
     await file.writeAsString(logs.join('\n'));
-    if (mounted) context.showSnackBar(l10n.logExported(file.path));
+    if (mounted) context.showSnackBar(l10n.logExported(formatPathForDisplay(file.path, storageLabel: l10n.storageFolder)));
   }
 
   @override

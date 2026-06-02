@@ -83,7 +83,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     final pages = navigationItems.map((e) => e.builder(context)).toList();
     Widget pageBody = PageView(
       controller: _pageController,
-      physics: isNarrow ? const PageScrollPhysics() : const NeverScrollableScrollPhysics(),
+      scrollDirection: isNarrow ? Axis.horizontal : Axis.vertical,
+      physics: const PageScrollPhysics(),
       onPageChanged: (index) => _onPageChanged(index, navigationItems),
       children: pages,
     );

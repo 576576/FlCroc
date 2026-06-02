@@ -37,6 +37,9 @@ class AppLocalizations {
   static const List<Locale> supportedLocales = [
     Locale('en'),
     Locale('zh'),
+    Locale('zh', 'Hant'),
+    Locale('ja'),
+    Locale('fr'),
   ];
 
   /// Look up a message by key. Falls back to the key itself.
@@ -106,7 +109,7 @@ class AppLocalizations {
     'defaultRelay', 'customRelay', 'noRelay', 'port', 'resetRelay',
 
     // ── Settings: Save Path ──
-    'downloadsFolder', 'defaultSavePath', 'selectFolder', 'savePath',
+    'storageFolder', 'defaultSavePath', 'selectFolder', 'savePath',
 
     // ── Settings: Theme ──
     'theme', 'themeMode', 'light', 'dark', 'system',
@@ -298,7 +301,7 @@ class AppLocalizations {
   String get resetRelay => _('resetRelay');
 
   // ── Settings: Save Path ──
-  String get downloadsFolder => _('downloadsFolder');
+  String get storageFolder => _('storageFolder');
   String get defaultSavePath => _('defaultSavePath');
   String get selectFolder => _('selectFolder');
   String get savePath => _('savePath');
@@ -409,11 +412,14 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) =>
-      AppLocalizations.supportedLocales.any((l) => l.languageCode == locale.languageCode);
+      AppLocalizations.supportedLocales.any((l) =>
+        l.languageCode == locale.languageCode &&
+        (l.scriptCode == null || l.scriptCode == locale.scriptCode));
 
   @override
   Future<AppLocalizations> load(Locale locale) async {
-    final code = locale.languageCode;
+    // Use full language tag for script variants (e.g. zh-Hant), otherwise language code only
+    final code = locale.scriptCode != null ? '${locale.languageCode}-${locale.scriptCode}' : locale.languageCode;
     if (!_cache.containsKey(code)) {
       try {
         final json = await rootBundle.loadString('assets/bundles/$code.json');

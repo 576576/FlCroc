@@ -71,6 +71,7 @@ esac
 mkdir -p "${OUTPUT_DIR}"
 LDFLAGS="-s -w"
 [ "${PLATFORM}" = "windows" ] && LDFLAGS="${LDFLAGS} -H windowsgui"
+[ "${PLATFORM}" = "android" ] && LDFLAGS="${LDFLAGS} -extldflags=-Wl,-z,max-page-size=16384"
 go build -buildmode=c-shared -o "${OUTPUT_DIR}/libcroc_bridge${EXT}" -ldflags="${LDFLAGS}" .
 echo "[OK] Built"
 

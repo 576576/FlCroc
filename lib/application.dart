@@ -151,11 +151,27 @@ class _ApplicationState extends ConsumerState<Application> {
   }
 
   /// Resolve the system locale against supported locales. Defaults to English.
+  /// Matches by scriptCode first, then languageCode + countryCode.
   Locale _resolveSystemLocale() {
     final system = WidgetsBinding.instance.platformDispatcher.locale;
     final supported = AppLocalizations.supportedLocales;
 
-    // Exact match (language + country)
+    // Exact match (language + script + country)
+    for (final loc in supported) {
+      if (loc.languageCode == system.languageCode &&
+          (loc.scriptCode == null || loc.scriptCode == system.scriptCode) &&
+          (loc.countryCode == null || loc.countryCode == system.countryCode)) {
+        return loc;
+      }
+    }
+    // Language + script match
+    for (final loc in supported) {
+      if (loc.languageCode == system.languageCode &&
+          loc.scriptCode != null && loc.scriptCode == system.scriptCode) {
+        return loc;
+      }
+    }
+    // Language + country match
     for (final loc in supported) {
       if (loc.languageCode == system.languageCode &&
           (loc.countryCode == null || loc.countryCode == system.countryCode)) {
@@ -164,7 +180,7 @@ class _ApplicationState extends ConsumerState<Application> {
     }
     // Language-only match
     for (final loc in supported) {
-      if (loc.languageCode == system.languageCode && loc.countryCode == null) {
+      if (loc.languageCode == system.languageCode && loc.countryCode == null && loc.scriptCode == null) {
         return loc;
       }
     }
