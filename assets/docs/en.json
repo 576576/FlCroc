@@ -1,5 +1,9 @@
 {
   "_comment_meta": "── Meta ──",
+  "lang": "English",
+  "langCode": "en",
+  "langRegion": "United States",
+  "langRegionCode": ["US", "GB"],
   "title": "FlCroc",
   "tagline_block": "A Flutter GUI for croc — easily and securely transfer files between computers",
 

@@ -1,5 +1,9 @@
 {
   "_comment_meta": "── 元数据 ──",
+  "lang": "中文",
+  "langCode": "zh",
+  "langRegion": "简体",
+  "langRegionCode": ["Hans", "CN", "SG"],
   "title": "FlCroc",
   "tagline_block": "Croc的Flutter图形界面 — 轻松安全地在计算机之间传输文件",
 

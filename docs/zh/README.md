@@ -1,7 +1,7 @@
 # FlCroc
 
 <p align="center">
-  <img src="../assets/images/icon.png" alt="FlCroc" width="96" />
+  <img src="../../assets/images/icon.png" alt="FlCroc" width="96" />
 </p>
 
 <p align="center">

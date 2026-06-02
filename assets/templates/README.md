@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/576576/FlCroc/main/assets/images/icon.png" width="80" alt="FlCroc">
+  <img src="{{icon_prefix}}assets/images/icon.png" width="64" alt="FlCroc">
 </p>
 
 <h1 align="center">{{title}}</h1>
@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux-blue" alt="Platform">
-  <img src="https://img.shields.io/badge/license-GPL3-green" alt="License">
+  <img src="https://img.shields.io/badge/license-GPL v3-green" alt="License">
   <img alt="version" src="https://img.shields.io/badge/version-{{version}}-informational" />
   <img alt="Flutter" src="https://img.shields.io/badge/Flutter-{{flutter_version}}-02569B?logo=flutter" />
   <img alt="croc" src="https://img.shields.io/badge/croc-{{croc_version}}-blue" />
