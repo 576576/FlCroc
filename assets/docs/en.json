@@ -1,19 +1,15 @@
 {
   "_comment_meta": "── Meta ──",
   "title": "FlCroc",
-  "tagline_block": "<em>A Flutter GUI for croc — easily and securely transfer files between computers</em>",
+  "tagline_block": "A Flutter GUI for croc — easily and securely transfer files between computers",
 
   "_comment_features": "── Features ──",
-  "features": [
-    "Cross-platform (Windows, Linux, Android, iOS, macOS)",
-    "End-to-end encrypted file transfer via croc",
-    "QR code scanning & generation for easy code sharing",
-    "Text snippet sending & receiving",
-    "Drag-and-drop file support (desktop)",
-    "Dark mode, OLED black, custom color schemes",
-    "Multi-language support (see [i18n.md](docs/i18n.md) for details)",
-    "Relay customization, transfer history, quick transfer"
-  ],
+  "feat_table": {
+    "platform": "Cross-platform (Windows, Linux, Android)",
+    "encryption": "End-to-end encrypted file transfer via croc",
+    "i18n": "Native multi-language support (see [i18n.md](docs/i18n.md) for details)",
+    "theme": "Modern Flutter UI with adaptive layout, animations, and custom color schemes"
+  },
 
   "_comment_headings": "── Section Headings ──",
   "headings": {

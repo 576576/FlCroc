@@ -1,19 +1,15 @@
 {
   "_comment_meta": "── 元数据 ──",
   "title": "FlCroc",
-  "tagline_block": "<em>Croc的Flutter图形界面 — 轻松安全地在计算机之间传输文件</em>",
+  "tagline_block": "Croc的Flutter图形界面 — 轻松安全地在计算机之间传输文件",
 
   "_comment_features": "── 功能特性 ──",
-  "features": [
-    "跨平台 (Windows、Linux、Android)",
-    "通过 croc 实现端到端加密文件传输",
-    "二维码扫描与生成，便于代码分享",
-    "文本片段发送与接收",
-    "桌面端拖放文件支持",
-    "深色模式、纯黑模式、自定义配色方案",
-    "多语言支持 (支持情况见[i18n.md](docs/i18n.md))",
-    "中继自定义、传输历史、快速传输"
-  ],
+  "feat_table": {
+    "platform": "跨平台 (Windows、Linux、Android)",
+    "encryption": "通过 croc 实现端到端加密文件传输",
+    "i18n": "原生多语言支持 (详见 [i18n.md](docs/i18n.md))",
+    "theme": "现代的 Flutter UI，具有自适应页面、动画和自定义配色方案"
+  },
 
   "_comment_headings": "── 章节标题 ──",
   "headings": {

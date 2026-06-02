@@ -16,13 +16,18 @@
   <img alt="croc" src="https://img.shields.io/badge/croc-{{croc_version}}-blue" />
 </p>
 
-{{tagline_block}}
+<em>{{tagline_block}}</em>
 
 ---
 
 ## ✨ {{heading_features}}
 
-{{features}}
+| | {{heading_features}} |
+|---|-----|
+| 🖥️ | {{feat_platform}} |
+| 🔒 | {{feat_encryption}} |
+| 🌍 | {{feat_i18n}} |
+| 🌙 | {{feat_theme}} |
 
 ---
 

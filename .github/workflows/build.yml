@@ -245,31 +245,35 @@ jobs:
           DEFAULT="assets/bundles/en.json"
           NOW=$(date -u +'%Y-%m-%d %H:%M UTC')
 
-          # Count default keys (exclude comment & header keys)
-          DEFAULT_KEYS=$(grep -c '^\s*"' "$DEFAULT" | awk '{print $1}')
-          HEADER_KEYS=6  # lang, langCode, langRegion, langRegionCode, _comment_*
-          ACTUAL_KEYS=$((DEFAULT_KEYS - HEADER_KEYS))
+          # Count translatable keys (exclude _comment_* and header keys)
+          HEADER_KEYS=4  # lang, langCode, langRegion, langRegionCode
+          DEFAULT_TOTAL=$(jq '[keys[] | select(startswith("_") | not)] | length' "$DEFAULT")
+          ACTUAL=$((DEFAULT_TOTAL - HEADER_KEYS))
 
           ROWS=""
           for f in assets/bundles/*.json; do
-            BASENAME=$(basename "$f" .json)
-            LANG=$(grep '"lang":' "$f" | sed 's/.*"lang": "\(.*\)".*/\1/')
-            CODE=$(grep '"langCode":' "$f" | sed 's/.*"langCode": "\(.*\)".*/\1/')
-            REGION=$(grep '"langRegion":' "$f" | sed 's/.*"langRegion": "\(.*\)".*/\1/')
-            TOTAL=$(grep -c '^\s*"' "$f" | awk '{print $1}')
+            LANG=$(jq -r '.lang' "$f")
+            CODE=$(jq -r '.langCode' "$f")
+            REGION=$(jq -r '.langRegion' "$f")
+            TOTAL=$(jq '[keys[] | select(startswith("_") | not)] | length' "$f")
             KEYS=$((TOTAL - HEADER_KEYS))
-            PCT=$((100 * KEYS / ACTUAL_KEYS))
-            if [ "$PCT" -gt 100 ]; then PCT=100; fi
-            if [ "$PCT" -ge 100 ]; then STATUS="✅"
-            elif [ "$PCT" -ge 50 ]; then STATUS="⚠️"
+            PCT=$((100 * KEYS / ACTUAL))
+            [ "$PCT" -gt 100 ] && PCT=100
+
+            if   [ "$PCT" -ge 100 ]; then STATUS="✅"
+            elif [ "$PCT" -ge 50  ]; then STATUS="⚠️"
             else STATUS="❌"
             fi
+
+            # Count localized doc files
             DOC_DIR="docs/$CODE"
             DOCS=$(find "$DOC_DIR" -name '*.md' 2>/dev/null | wc -l)
-            ROWS="$ROWS| $LANG | \`$CODE\` | $REGION | $KEYS/$ACTUAL_KEYS ($PCT%) | $DOCS | $STATUS |\n"
+            HAS_DOC_JSON=""
+            [ -f "assets/docs/$CODE.json" ] && HAS_DOC_JSON="📄"
+
+            ROWS="$ROWS| $LANG | \`$CODE\` | $REGION | $KEYS/$ACTUAL ($PCT%) | $DOCS $HAS_DOC_JSON | $STATUS |\n"
           done
 
-          # Render template
           cp "$TEMPLATE" "$OUTPUT"
           sed -i "s/{{date}}/$NOW/" "$OUTPUT"
           sed -i "s/{{rows}}/$ROWS/" "$OUTPUT"
@@ -362,8 +366,10 @@ jobs:
           ACK_CROCAPP=$(jq -r '.ack_tree.crocapp' "$DATA")
           I18N=$(jq -r '.i18n' "$DATA")
 
-          # Build features bullet list
-          FEATURES=$(jq -r '.features[] | "- \(.)"' "$DATA")
+          FEAT_PLATFORM=$(jq -r '.feat_table.platform' "$DATA")
+          FEAT_ENCRYPTION=$(jq -r '.feat_table.encryption' "$DATA")
+          FEAT_I18N=$(jq -r '.feat_table.i18n' "$DATA")
+          FEAT_THEME=$(jq -r '.feat_table.theme' "$DATA")
 
           cp "$TEMPLATE" "$OUTPUT"
           sed -i "s|{{languages}}|$LANGUAGES|" "$OUTPUT"
@@ -379,7 +385,10 @@ jobs:
           sed -i "s|{{heading_i18n}}|$H_I18N|" "$OUTPUT"
           sed -i "s|{{heading_acknowledgments}}|$H_ACKS|" "$OUTPUT"
           sed -i "s|{{heading_license}}|$H_LICENSE|" "$OUTPUT"
-          sed -i "s|{{features}}|$FEATURES|" "$OUTPUT"
+          sed -i "s|{{feat_platform}}|$FEAT_PLATFORM|" "$OUTPUT"
+          sed -i "s|{{feat_encryption}}|$FEAT_ENCRYPTION|" "$OUTPUT"
+          sed -i "s|{{feat_i18n}}|$FEAT_I18N|" "$OUTPUT"
+          sed -i "s|{{feat_theme}}|$FEAT_THEME|" "$OUTPUT"
           sed -i "s|{{getting_started}}|$BUILDING|" "$OUTPUT"
           sed -i "s|{{building}}|$BUILDING|" "$OUTPUT"
           sed -i "s|{{arch_lib}}|$ARCH_LIB|" "$OUTPUT"
