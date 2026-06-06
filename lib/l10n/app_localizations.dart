@@ -1,14 +1,8 @@
 /// FlCroc internationalization (i18n).
 ///
-/// **Architecture** — translations stored in JSON bundles under `assets/bundles/`:
-///   - `en.json` — English
-///   - `zh.json` — Chinese
-///
-/// **Usage tracking** — to find which getters are used:
-///   ```bash
-///   dart run lib/l10n/usage_check.dart   # lists unused getters
-///   ```
-///   Or manually: search for `l10n.<getter>` or `.appLocalizations.<getter>` in `lib/`.
+/// Translations are stored in JSON bundles under `assets/bundles/`.
+/// Script variants (e.g. `zh-Hant`) only need to override keys that differ
+/// from the base language — missing keys fall back automatically.
 library;
 
 import 'dart:convert';
@@ -418,43 +412,34 @@ class _AppLocalizationsDelegate
 
   @override
   Future<AppLocalizations> load(Locale locale) async {
-    // Use full language tag for script variants (e.g. zh-Hant), otherwise language code only
     final code = locale.scriptCode != null
         ? '${locale.languageCode}-${locale.scriptCode}'
         : locale.languageCode;
 
-    Map<String, String>? messages = _cache[code];
-    if (messages == null) {
-      messages = await _tryLoadBundle(code);
-      if (messages != null) _cache[code] = messages;
+    // Load exact match + base language, merge (variant overrides base).
+    // E.g. zh-Hant → zh-Hant.json overlaid on zh.json.
+    Map<String, String> messages = await _loadBundle(code);
+    if (code != locale.languageCode) {
+      final base = await _loadBundle(locale.languageCode);
+      messages = {...base, ...messages};
     }
 
-    // Fall back to base language (e.g. zh) if variant bundle missing
-    if (messages == null && code != locale.languageCode) {
-      messages = _cache[locale.languageCode];
-      if (messages == null) {
-        messages = await _tryLoadBundle(locale.languageCode);
-        if (messages != null) _cache[locale.languageCode] = messages;
-      }
-    }
-
-    // Final fallback to English
-    messages ??= _cache['en'];
-    if (messages == null) {
-      messages = await _tryLoadBundle('en');
-      if (messages != null) _cache['en'] = messages;
-    }
-
-    return AppLocalizations._(locale, messages ?? {});
+    if (messages.isEmpty) messages = await _loadBundle('en');
+    return AppLocalizations._(locale, messages);
   }
 
-  Future<Map<String, String>?> _tryLoadBundle(String code) async {
+  Future<Map<String, String>> _loadBundle(String code) async {
+    if (_cache.containsKey(code)) return _cache[code]!;
     try {
       final json = await rootBundle.loadString('assets/bundles/$code.json');
-      final map = Map<String, String>.from(jsonDecode(json) as Map);
-      return map.isNotEmpty ? map : null;
+      final decoded = jsonDecode(json) as Map<String, dynamic>;
+      final map = <String, String>{};
+      for (final entry in decoded.entries) {
+        if (entry.value is String) map[entry.key] = entry.value as String;
+      }
+      return _cache[code] = map;
     } catch (_) {
-      return null; // bundle missing or malformed
+      return _cache[code] = {};
     }
   }
 

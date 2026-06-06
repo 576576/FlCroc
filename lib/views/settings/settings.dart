@@ -671,16 +671,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     'ja': '日本語',
   };
 
-  /// Cycle to the next variant of the same language group.
-  String _nextLangVariant(String currentLocale) {
-    final group = currentLocale.split('-').first;
-    final variants = _langVariants.where((v) => v.locale.split('-').first == group).toList();
-    if (variants.length <= 1) return currentLocale;
-    final idx = variants.indexWhere((v) => v.locale == currentLocale);
-    final next = (idx + 1) % variants.length;
-    return variants[next].locale;
-  }
-
   Widget _buildLanguageChips(
       BuildContext context, String? currentLocale, WidgetRef ref) {
     final l10n = context.appLocalizations;
@@ -703,35 +693,40 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             },
           ),
           for (final group in const ['en', 'fr', 'zh', 'ja'])
-            ChoiceChip(
-              label: Text(() {
-                if (selectedKey.split('-').first != group) {
-                  return _langGroupNames[group]!;
-                }
-                // Selected: show full variant label
-                final v = _langVariants.firstWhere((v) => v.locale == selectedKey);
-                return v.label;
-              }()),
-              selected: selectedKey.split('-').first == group,
-              onSelected: (v) {
-                if (!v) return;
-                final current = currentLocale;
-                final sameGroup = current != null && current.split('-').first == group;
-                if (!sameGroup) {
-                  // First selection: pick first variant
-                  final first = _langVariants.firstWhere((v2) => v2.locale.split('-').first == group).locale;
-                  ref.read(appSettingProvider.notifier).update((s) => s.copyWith(locale: first));
+            () {
+              final variants = _langVariants.where((v) => v.locale.split('-').first == group).toList();
+              final hasVariants = variants.length > 1;
+              return ChoiceChip(
+                label: Text(() {
+                  if (selectedKey.split('-').first != group) {
+                    return _langGroupNames[group]!;
+                  }
+                  if (!hasVariants) return _langGroupNames[group]!;
+                  final v = _langVariants.firstWhere((v) => v.locale == selectedKey);
+                  return v.label;
+                }()),
+                selected: selectedKey.split('-').first == group,
+                onSelected: (v) {
+                  if (!v) return;
+                  final current = currentLocale;
+                  final sameGroup = current != null && current.split('-').first == group;
+                  if (!sameGroup) {
+                    final first = variants.first.locale;
+                    ref.read(appSettingProvider.notifier).update((s) => s.copyWith(locale: first));
+                    setState(() {});
+                    return;
+                  }
+                  if (!hasVariants) return;
+                  // Cycle to next variant
+                  final idx = variants.indexWhere((v2) => v2.locale == current);
+                  final next = variants[(idx + 1) % variants.length].locale;
+                  ref.read(appSettingProvider.notifier).update((s) => s.copyWith(locale: next));
                   setState(() {});
-                  return;
-                }
-                // Re-tap: cycle to next variant
-                final next = _nextLangVariant(current);
-                ref.read(appSettingProvider.notifier).update((s) => s.copyWith(locale: next));
-                setState(() {});
-                final label = _langVariants.firstWhere((v2) => v2.locale == next).label;
-                if (context.mounted) context.showSnackBar(label);
-              },
-            ),
+                  final label = variants.firstWhere((v2) => v2.locale == next).label;
+                  if (context.mounted) context.showSnackBar(label);
+                },
+              );
+            }(),
         ],
       ),
     );
