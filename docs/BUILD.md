@@ -5,24 +5,29 @@
 Push to `main`/`master`/`dev` with a commit message containing one of the triggers below.
 GitHub Actions will build and upload artifacts automatically.
 
-| Commit Message Tag | Builds |
-|--------------------|--------|
-| `b-all` | Main builds — Windows (amd64), Linux (amd64), Android (arm64) |
-| `b-win` | Windows (amd64) |
-| `b-linux` | Linux (amd64) |
-| `b-mobile` | Android (arm64) |
-| `b-none` | Skip all builds (only prebuild) |
-| `b-doc` | Force regenerate `docs/i18n.md` and all READMEs |
-| `arch-all` | Include secondary architectures — Windows (arm64), Android (amd64). Only works when main architecture enabled. |
+| Build Tags | Win x64 | Win ARM64 | Linux x64 | Android ARM64 | Android x64 |
+|-------------|:-------:|:---------:|:---------:|:-------------:|:-----------:|
+| `b-all` | ✅ | – | ✅ | ✅ | – |
+| `b-all arch-all` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `b-win` | ✅ | – | – | – | – |
+| `b-win arch-all` | ✅ | ✅ | – | – | – |
+| `b-linux` | – | – | ✅ | – | – |
+| `b-mobile` | – | – | – | ✅ | – |
+| `b-mobile arch-all` | – | – | – | ✅ | ✅ |
+| `b-none` | – | – | – | – | – |
 
-Combine with other triggers:
-
-| Additional Tag | Effect |
-|----------------|--------|
+| Release Tag | Effect |
+|-------------|--------|
 | `r-1.2.3` / `release-1.2.3` | Production release |
 | `beta-1.2.3` | Beta release |
 
-> **Note:** `docs/i18n.md` and all README files are regenerated automatically when `assets/bundles/` or `assets/docs/` change — detected via hash comparison. No tag required.
+| Other Tag | Effect |
+|----------------|--------|
+| `b-doc` | Force regenerate `docs/i18n.md` and all READMEs |
+
+> **Nightly** releases are published automatically whenever any build runs on `dev` branch.
+>
+> **Docs:** `docs/i18n.md` and all README files are regenerated automatically when `assets/bundles/` or `assets/docs/` change — detected via hash comparison. Use `b-doc` to force.
 
 ---
 

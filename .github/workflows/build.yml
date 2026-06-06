@@ -451,7 +451,7 @@ jobs:
 
   # ── Commit ──
   commit:
-    needs: [prebuild, test, i18n]
+    needs: [prebuild, test]
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     permissions:
@@ -466,14 +466,14 @@ jobs:
           sed -i "s/^version: .*/version: $NEW_VER/" pubspec.yaml
 
       - name: Download i18n artifact
-        if: needs.i18n.outputs.i18n_changed == 'true'
+        if: needs.prebuild.outputs.i18n_do == 'true'
         uses: actions/download-artifact@v4
         with:
           name: i18n-md
           path: docs/
 
       - name: Download README artifact
-        if: needs.i18n.outputs.docs_changed == 'true'
+        if: needs.prebuild.outputs.docs_do == 'true'
         uses: actions/download-artifact@v4
         with:
           name: readme-md
@@ -486,10 +486,10 @@ jobs:
           if [ -n "${{ needs.prebuild.outputs.new_build }}" ] && [ "${{ needs.test.result }}" != "failure" ]; then
             LINES="${LINES}- Update build number ${{ needs.prebuild.outputs.new_build }}.\n"
           fi
-          if [ "${{ needs.i18n.outputs.i18n_changed }}" == "true" ]; then
+          if [ "${{ needs.prebuild.outputs.i18n_do }}" == "true" ]; then
             LINES="${LINES}- Update i18n.\n"
           fi
-          if [ "${{ needs.i18n.outputs.docs_changed }}" == "true" ]; then
+          if [ "${{ needs.prebuild.outputs.docs_do }}" == "true" ]; then
             LINES="${LINES}- Update documents.\n"
           fi
           MSG="Auto commit by Github Actions:\n${LINES}"
