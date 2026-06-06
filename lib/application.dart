@@ -127,12 +127,13 @@ class _ApplicationState extends ConsumerState<Application> {
           builder: (_, child) {
             return ThemeManager(child: child!);
           },
+          scrollBehavior: const _NaturalScrollBehavior(),
           title: appName,
           locale: locale != null ? Locale(locale) : _resolveSystemLocale(),
           supportedLocales: AppLocalizations.supportedLocales,
           themeMode: _getThemeMode(appSettings.themeMode),
-          theme: _buildLightTheme(themeProps.primaryColor),
-          darkTheme: _buildDarkTheme(themeProps.primaryColor, appSettings.pureBlackMode),
+          theme: _buildLightTheme(themeProps.primaryColor, appSettings.disableAnimations),
+          darkTheme: _buildDarkTheme(themeProps.primaryColor, appSettings.pureBlackMode, appSettings.disableAnimations),
           home: const HomePage(),
         );
       },
@@ -187,34 +188,55 @@ class _ApplicationState extends ConsumerState<Application> {
     return const Locale('en');
   }
 
-  ThemeData _buildLightTheme(int primaryColor) {
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: cachedColorScheme(primaryColor, Brightness.light),
-      fontFamilyFallback: const ['Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC'],
-      pageTransitionsTheme: const PageTransitionsTheme(
-        builders: {
-          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-        },
-      ),
-    );
+  ThemeData _buildLightTheme(int primaryColor, bool disableAnimations) {
+    return _buildBaseTheme(cachedColorScheme(primaryColor, Brightness.light), disableAnimations);
   }
 
-  ThemeData _buildDarkTheme(int primaryColor, bool isPureBlack) {
-    var scheme = cachedColorScheme(primaryColor, Brightness.dark);
-    if (isPureBlack) {
-      scheme = scheme.copyWith(
-        surface: const Color(0xFF0A0A0A),
-        surfaceContainer: const Color(0xFF111111),
-        surfaceContainerHighest: const Color(0xFF181818),
-      );
-    }
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: scheme,
-      fontFamilyFallback: const ['Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC'],
+  ThemeData _buildDarkTheme(int primaryColor, bool isPureBlack, bool disableAnimations) {
+    final scheme = cachedColorScheme(primaryColor, Brightness.dark);
+    return _buildBaseTheme(
+      isPureBlack ? scheme.copyWith(surface: Colors.black) : scheme,
+      disableAnimations,
+    ).copyWith(
       scaffoldBackgroundColor: isPureBlack ? Colors.black : null,
     );
   }
+
+  ThemeData _buildBaseTheme(ColorScheme colorScheme, bool disableAnimations) {
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: colorScheme,
+      fontFamilyFallback: const ['Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC'],
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: disableAnimations
+            ? {for (final p in TargetPlatform.values) p: const _NoTransitionBuilder()}
+            : {for (final p in TargetPlatform.values) p: const CupertinoPageTransitionsBuilder()},
+      ),
+    );
+  }
+}
+
+/// No-op page transition — skips all animations.
+class _NoTransitionBuilder extends PageTransitionsBuilder {
+  const _NoTransitionBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return child;
+  }
+}
+
+/// Smoother, more natural scroll physics on all platforms.
+class _NaturalScrollBehavior extends MaterialScrollBehavior {
+  const _NaturalScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) =>
+      const BouncingScrollPhysics(decelerationRate: ScrollDecelerationRate.normal);
 }

@@ -693,6 +693,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       padding: const EdgeInsets.only(top: 8),
       child: Wrap(
         spacing: 8,
+        runSpacing: 6,
         children: [
           ChoiceChip(
             label: Text(l10n.autoLanguage),
@@ -719,14 +720,16 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   return v.label;
                 }()),
                 selected: selectedKey.split('-').first == group,
-                onSelected: (v) {
-                  if (!v) return;
+                onSelected: (_) {
                   final current = currentLocale;
                   final sameGroup = current != null && current.split('-').first == group;
                   if (!sameGroup) {
+                    // First selection
                     final first = variants.first.locale;
                     ref.read(appSettingProvider.notifier).update((s) => s.copyWith(locale: first));
                     setState(() {});
+                    final label = variants.first.label;
+                    if (context.mounted) context.showSnackBar(label);
                     return;
                   }
                   if (!hasVariants) return;
