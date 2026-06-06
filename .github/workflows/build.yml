@@ -329,13 +329,18 @@ jobs:
             fi
             echo "Generating $OUTPUT from $DATA"
 
+            # Count docs per language group to decide whether to show region
             LANGS_HTML=""
             for doc in $(ls assets/docs/*.json | sort -r); do
               code=$(basename "$doc" .json)
               label=$(jq -r '.lang' "$doc")
               region=$(jq -r '.langRegion' "$doc")
-              # Distinguish variants: 中文 (简体) / 中文 (繁體)
-              label="$label ($region)"
+              base=$(echo "$code" | cut -d- -f1)
+              # Only show region suffix when multiple variants share the same lang field
+              other_count=$(jq -r '.lang' assets/docs/*.json | grep -cFx "$label" || echo 0)
+              if [ "$other_count" -gt 1 ]; then
+                label="$label ($region)"
+              fi
               # Build relative link path from OUTPUT
               if [ "$OUTPUT" = "README.md" ]; then
                 [ "$code" = "en" ] && path="README.md" || path="docs/$code/README.md"
