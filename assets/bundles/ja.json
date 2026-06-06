@@ -169,10 +169,12 @@
   "colorPalette": "カラーパレット",
   "noTextMode": "アイコンのみモード",
   "noTextModeDesc": "ナビゲーションバーにアイコンのみ表示",
+  "disableAnimations": "アニメーションを無効にする",
+  "disableAnimationsDesc": "UIトランジションとエフェクトを無効にして低スペック端末の性能を向上させる",
 
   "_comment_reset": "── 初期化 ──",
   "reset": "初期化",
-  "resetAllSettings": "すべての設定を初期化",
+  "resetAllSettings": "設定を初期化",
   "resetAllConfirm": "すべての設定を初期化しますか？この操作は元に戻せません。",
   "settingsReset": "設定が初期化されました",
 

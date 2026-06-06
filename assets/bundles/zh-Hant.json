@@ -169,6 +169,8 @@
   "colorPalette": "配色方案",
   "noTextMode": "無字模式",
   "noTextModeDesc": "選單列僅顯示圖示",
+  "disableAnimations": "停用動畫",
+  "disableAnimationsDesc": "停用介面過渡與動效以提升低配裝置的效能表現",
 
   "_comment_reset": "── 重設 ──",
   "reset": "重設",

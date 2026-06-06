@@ -33,6 +33,7 @@ mixin _$AppSettingProps {
   FontFamily get fontFamily => throw _privateConstructorUsedError;
   bool get pureBlackMode => throw _privateConstructorUsedError;
   bool get noTextMode => throw _privateConstructorUsedError;
+  bool get disableAnimations => throw _privateConstructorUsedError;
   bool get developerMode => throw _privateConstructorUsedError;
   bool get autoCheckUpdate => throw _privateConstructorUsedError;
   UpdateChannel get updateChannel => throw _privateConstructorUsedError;
@@ -67,6 +68,7 @@ abstract class $AppSettingPropsCopyWith<$Res> {
     FontFamily fontFamily,
     bool pureBlackMode,
     bool noTextMode,
+    bool disableAnimations,
     bool developerMode,
     bool autoCheckUpdate,
     UpdateChannel updateChannel,
@@ -102,6 +104,7 @@ class _$AppSettingPropsCopyWithImpl<$Res, $Val extends AppSettingProps>
     Object? fontFamily = null,
     Object? pureBlackMode = null,
     Object? noTextMode = null,
+    Object? disableAnimations = null,
     Object? developerMode = null,
     Object? autoCheckUpdate = null,
     Object? updateChannel = null,
@@ -149,6 +152,10 @@ class _$AppSettingPropsCopyWithImpl<$Res, $Val extends AppSettingProps>
             noTextMode: null == noTextMode
                 ? _value.noTextMode
                 : noTextMode // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            disableAnimations: null == disableAnimations
+                ? _value.disableAnimations
+                : disableAnimations // ignore: cast_nullable_to_non_nullable
                       as bool,
             developerMode: null == developerMode
                 ? _value.developerMode
@@ -206,6 +213,7 @@ abstract class _$$AppSettingPropsImplCopyWith<$Res>
     FontFamily fontFamily,
     bool pureBlackMode,
     bool noTextMode,
+    bool disableAnimations,
     bool developerMode,
     bool autoCheckUpdate,
     UpdateChannel updateChannel,
@@ -241,6 +249,7 @@ class __$$AppSettingPropsImplCopyWithImpl<$Res>
     Object? fontFamily = null,
     Object? pureBlackMode = null,
     Object? noTextMode = null,
+    Object? disableAnimations = null,
     Object? developerMode = null,
     Object? autoCheckUpdate = null,
     Object? updateChannel = null,
@@ -289,6 +298,10 @@ class __$$AppSettingPropsImplCopyWithImpl<$Res>
             ? _value.noTextMode
             : noTextMode // ignore: cast_nullable_to_non_nullable
                   as bool,
+        disableAnimations: null == disableAnimations
+            ? _value.disableAnimations
+            : disableAnimations // ignore: cast_nullable_to_non_nullable
+                  as bool,
         developerMode: null == developerMode
             ? _value.developerMode
             : developerMode // ignore: cast_nullable_to_non_nullable
@@ -329,6 +342,7 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
     this.fontFamily = FontFamily.system,
     this.pureBlackMode = false,
     this.noTextMode = false,
+    this.disableAnimations = false,
     this.developerMode = false,
     this.autoCheckUpdate = false,
     this.updateChannel = UpdateChannel.release,
@@ -378,6 +392,9 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
   final bool noTextMode;
   @override
   @JsonKey()
+  final bool disableAnimations;
+  @override
+  @JsonKey()
   final bool developerMode;
   @override
   @JsonKey()
@@ -394,7 +411,7 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
 
   @override
   String toString() {
-    return 'AppSettingProps(locale: $locale, dashboardWidgets: $dashboardWidgets, autoLaunch: $autoLaunch, silentLaunch: $silentLaunch, minimizeOnExit: $minimizeOnExit, themeMode: $themeMode, colorSchemeType: $colorSchemeType, fontFamily: $fontFamily, pureBlackMode: $pureBlackMode, noTextMode: $noTextMode, developerMode: $developerMode, autoCheckUpdate: $autoCheckUpdate, updateChannel: $updateChannel, relayConfig: $relayConfig, defaultSavePath: $defaultSavePath)';
+    return 'AppSettingProps(locale: $locale, dashboardWidgets: $dashboardWidgets, autoLaunch: $autoLaunch, silentLaunch: $silentLaunch, minimizeOnExit: $minimizeOnExit, themeMode: $themeMode, colorSchemeType: $colorSchemeType, fontFamily: $fontFamily, pureBlackMode: $pureBlackMode, noTextMode: $noTextMode, disableAnimations: $disableAnimations, developerMode: $developerMode, autoCheckUpdate: $autoCheckUpdate, updateChannel: $updateChannel, relayConfig: $relayConfig, defaultSavePath: $defaultSavePath)';
   }
 
   @override
@@ -423,6 +440,8 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
                 other.pureBlackMode == pureBlackMode) &&
             (identical(other.noTextMode, noTextMode) ||
                 other.noTextMode == noTextMode) &&
+            (identical(other.disableAnimations, disableAnimations) ||
+                other.disableAnimations == disableAnimations) &&
             (identical(other.developerMode, developerMode) ||
                 other.developerMode == developerMode) &&
             (identical(other.autoCheckUpdate, autoCheckUpdate) ||
@@ -449,6 +468,7 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
     fontFamily,
     pureBlackMode,
     noTextMode,
+    disableAnimations,
     developerMode,
     autoCheckUpdate,
     updateChannel,
@@ -486,6 +506,7 @@ abstract class _AppSettingProps implements AppSettingProps {
     final FontFamily fontFamily,
     final bool pureBlackMode,
     final bool noTextMode,
+    final bool disableAnimations,
     final bool developerMode,
     final bool autoCheckUpdate,
     final UpdateChannel updateChannel,
@@ -517,6 +538,8 @@ abstract class _AppSettingProps implements AppSettingProps {
   bool get pureBlackMode;
   @override
   bool get noTextMode;
+  @override
+  bool get disableAnimations;
   @override
   bool get developerMode;
   @override

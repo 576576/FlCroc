@@ -169,6 +169,8 @@
   "colorPalette": "配色方案",
   "noTextMode": "无字模式",
   "noTextModeDesc": "菜单栏仅显示图标",
+  "disableAnimations": "禁用动画",
+  "disableAnimationsDesc": "禁用界面过渡与动效以提升低配设备的性能表现",
 
   "_comment_reset": "── 重置 ──",
   "reset": "重置",

@@ -96,7 +96,9 @@ class _HomePageState extends ConsumerState<HomePage> {
       );
       final screenHeight = MediaQuery.of(context).size.height;
       final showLogo = screenHeight >= 500;
-      Widget label(String text) => noTextMode ? const Text('') : Text(text, overflow: TextOverflow.ellipsis);
+      Widget label(String text) => noTextMode
+          ? const Text('')
+          : Text(text, maxLines: 2, overflow: TextOverflow.visible, textAlign: TextAlign.center);
 
       final rail = Material(
         color: context.colorScheme.surfaceContainer,

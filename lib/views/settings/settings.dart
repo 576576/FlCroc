@@ -454,6 +454,19 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   },
                 ),
               ),
+              ListItem.switchItem(
+                leading: const Icon(Icons.animation),
+                title: Text(l10n.disableAnimations),
+                subtitle: Text(l10n.disableAnimationsDesc),
+                delegate: SwitchDelegate(
+                  value: appSettings.disableAnimations,
+                  onChanged: (v) {
+                    ref.read(appSettingProvider.notifier).update(
+                          (s) => s.copyWith(disableAnimations: v),
+                        );
+                  },
+                ),
+              ),
             ],
           ),
 

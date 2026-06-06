@@ -169,6 +169,8 @@
   "colorPalette": "Color Palette",
   "noTextMode": "Icon-only mode",
   "noTextModeDesc": "Show only icons in the navigation bar",
+  "disableAnimations": "Disable animations",
+  "disableAnimationsDesc": "Improves performance on low-end devices by disabling UI transitions and effects",
 
   "_comment_reset": "── Reset ──",
   "reset": "Reset",

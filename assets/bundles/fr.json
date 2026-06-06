@@ -169,6 +169,8 @@
   "colorPalette": "Palette de couleurs",
   "noTextMode": "Mode icônes seules",
   "noTextModeDesc": "Afficher uniquement les icônes dans la barre de navigation",
+  "disableAnimations": "Désactiver les animations",
+  "disableAnimationsDesc": "Améliore les performances sur les appareils peu puissants en désactivant les transitions et effets UI",
 
   "_comment_reset": "── Réinitialiser ──",
   "reset": "Réinitialiser",

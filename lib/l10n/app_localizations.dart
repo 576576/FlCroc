@@ -111,6 +111,7 @@ class AppLocalizations {
 
     // ── Settings: Navigation ──
     'noTextMode', 'noTextModeDesc',
+    'disableAnimations', 'disableAnimationsDesc',
 
     // ── Settings: Reset ──
     'reset', 'resetAllSettings', 'resetAllConfirm', 'settingsReset',
@@ -314,6 +315,8 @@ class AppLocalizations {
   // ── Settings: Navigation ──
   String get noTextMode => _('noTextMode');
   String get noTextModeDesc => _('noTextModeDesc');
+  String get disableAnimations => _('disableAnimations');
+  String get disableAnimationsDesc => _('disableAnimationsDesc');
 
   // ── Settings: Reset ──
   String get reset => _('reset');
