@@ -195,18 +195,19 @@ jobs:
         env:
           MSG: ${{ github.event.head_commit.message || '' }}
         run: |
+          # Always compute real hashes (b-doc just forces the action)
+          BUNDLES_HASH=$(find assets/bundles -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
+          DOCS_HASH=$(find assets/docs -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
+
           # b-doc: force i18n + docs regeneration
           if echo "$MSG" | grep -qE '\bb-doc\b'; then
             echo "do_i18n=true" >> $GITHUB_OUTPUT
             echo "do_docs=true" >> $GITHUB_OUTPUT
-            echo "bundles_hash=forced" >> $GITHUB_OUTPUT
-            echo "docs_hash=forced" >> $GITHUB_OUTPUT
+            echo "bundles_hash=$BUNDLES_HASH" >> $GITHUB_OUTPUT
+            echo "docs_hash=$DOCS_HASH" >> $GITHUB_OUTPUT
             echo "i18n: true (forced)  docs: true (forced)"
             exit 0
           fi
-
-          BUNDLES_HASH=$(find assets/bundles -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
-          DOCS_HASH=$(find assets/docs -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
 
           OLD_BUNDLES=""; OLD_DOCS=""
           if [ -f docs/i18n.md ]; then
