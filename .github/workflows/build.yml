@@ -38,6 +38,10 @@ jobs:
       flutter_version: ${{ steps.flutter-ver.outputs.version }}
       croc_version: ${{ steps.croc-ver.outputs.version }}
       skip_all: ${{ steps.platform.outputs.skip_all }}
+      i18n_do: ${{ steps.hash-check.outputs.do_i18n }}
+      docs_do: ${{ steps.hash-check.outputs.do_docs }}
+      bundles_hash: ${{ steps.hash-check.outputs.bundles_hash }}
+      docs_hash: ${{ steps.hash-check.outputs.docs_hash }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -186,6 +190,32 @@ jobs:
           echo "arch_all=$ALL" >> $GITHUB_OUTPUT
           echo "Platforms → windows:$W linux:$L android:$A arch-all:$ALL"
 
+      - name: Check i18n & docs changes
+        id: hash-check
+        run: |
+          BUNDLES_HASH=$(find assets/bundles -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
+          DOCS_HASH=$(find assets/docs -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
+
+          OLD_BUNDLES=""; OLD_DOCS=""
+          if [ -f docs/i18n.md ]; then
+            LAST_LINE=$(tail -1 docs/i18n.md)
+            if echo "$LAST_LINE" | grep -q '^> Related i18n hash:'; then
+              OLD_BUNDLES=$(echo "$LAST_LINE" | awk '{print $5}')
+              OLD_DOCS=$(echo "$LAST_LINE" | awk '{print $6}')
+            fi
+          fi
+
+          DO_I18N="false"; DO_DOCS="false"
+          [ "$BUNDLES_HASH" != "$OLD_BUNDLES" ] && DO_I18N="true"
+          [ "$DOCS_HASH" != "$OLD_DOCS" ] && DO_I18N="true"
+          [ "$DOCS_HASH" != "$OLD_DOCS" ] && DO_DOCS="true"
+
+          echo "do_i18n=$DO_I18N" >> $GITHUB_OUTPUT
+          echo "do_docs=$DO_DOCS" >> $GITHUB_OUTPUT
+          echo "bundles_hash=$BUNDLES_HASH" >> $GITHUB_OUTPUT
+          echo "docs_hash=$DOCS_HASH" >> $GITHUB_OUTPUT
+          echo "i18n: $DO_I18N  docs: $DO_DOCS"
+
   # ── Test ──
   test:
     needs: prebuild
@@ -208,46 +238,18 @@ jobs:
   # ── i18n & Docs ──
   i18n:
     needs: prebuild
-    if: always() && !failure() && !cancelled()
+    if: always() && !failure() && !cancelled() && (needs.prebuild.outputs.i18n_do == 'true' || needs.prebuild.outputs.docs_do == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     outputs:
-      i18n_changed: ${{ steps.check.outputs.do_i18n }}
-      docs_changed: ${{ steps.check.outputs.do_docs }}
+      i18n_changed: ${{ needs.prebuild.outputs.i18n_do }}
+      docs_changed: ${{ needs.prebuild.outputs.docs_do }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check bundles & docs changes
-        id: check
-        run: |
-          BUNDLES_HASH=$(find assets/bundles -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
-          DOCS_HASH=$(find assets/docs -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
-
-          OLD_BUNDLES=""; OLD_DOCS=""
-          if [ -f docs/i18n.md ]; then
-            LAST_LINE=$(tail -1 docs/i18n.md)
-            if echo "$LAST_LINE" | grep -q '^> Related i18n hash:'; then
-              OLD_BUNDLES=$(echo "$LAST_LINE" | awk '{print $5}')
-              OLD_DOCS=$(echo "$LAST_LINE" | awk '{print $6}')
-            fi
-          fi
-
-          DO_I18N="false"; DO_DOCS="false"
-          # i18n.md reflects both bundles and docs status
-          [ "$BUNDLES_HASH" != "$OLD_BUNDLES" ] && DO_I18N="true"
-          [ "$DOCS_HASH" != "$OLD_DOCS" ] && DO_I18N="true"
-          # READMEs only when docs change
-          [ "$DOCS_HASH" != "$OLD_DOCS" ] && DO_DOCS="true"
-
-          echo "do_i18n=$DO_I18N" >> $GITHUB_OUTPUT
-          echo "do_docs=$DO_DOCS" >> $GITHUB_OUTPUT
-          echo "bundles_hash=$BUNDLES_HASH" >> $GITHUB_OUTPUT
-          echo "docs_hash=$DOCS_HASH" >> $GITHUB_OUTPUT
-          echo "i18n: $DO_I18N  docs: $DO_DOCS"
-
       - name: Generate i18n status
-        if: steps.check.outputs.do_i18n == 'true'
+        if: needs.prebuild.outputs.i18n_do == 'true'
         run: |
           TEMPLATE="assets/templates/i18n.md"
           OUTPUT="docs/i18n.md"
@@ -288,16 +290,16 @@ jobs:
           cp "$TEMPLATE" "$OUTPUT"
           sed -i "s#{{date}}#$NOW#" "$OUTPUT"
           sed -i "s#{{rows}}#$ROWS#" "$OUTPUT"
-          echo "> Related i18n hash: ${{ steps.check.outputs.bundles_hash }} ${{ steps.check.outputs.docs_hash }}" >> "$OUTPUT"
+          echo "> Related i18n hash: ${{ needs.prebuild.outputs.bundles_hash }} ${{ needs.prebuild.outputs.docs_hash }}" >> "$OUTPUT"
 
       - uses: actions/upload-artifact@v4
-        if: steps.check.outputs.do_i18n == 'true'
+        if: needs.prebuild.outputs.i18n_do == 'true'
         with:
           name: i18n-md
           path: docs/i18n.md
 
       - name: Generate READMEs
-        if: steps.check.outputs.do_docs == 'true'
+        if: needs.prebuild.outputs.docs_do == 'true'
         env:
           APP_VERSION: ${{ needs.prebuild.outputs.app_version }}
           FLUTTER_VERSION: ${{ needs.prebuild.outputs.flutter_version }}
@@ -420,7 +422,7 @@ jobs:
           done
 
       - uses: actions/upload-artifact@v4
-        if: steps.check.outputs.do_docs == 'true'
+        if: needs.prebuild.outputs.docs_do == 'true'
         with:
           name: readme-md
           path: |
