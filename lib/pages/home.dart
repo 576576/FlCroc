@@ -25,21 +25,21 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   // ── Helper: animate to page & sync provider ──
 
-  void _goToPage(int index, List<NavigationItem> items) {
+  void _goToPage(int index, List<NavigationItem> items, bool disableAnimations) {
     if (_isSyncing) return;
     final currentPage = _pageController.page?.round() ?? 0;
     if (currentPage == index) return;
     _isSyncing = true;
-    _pageController.animateToPage(
-      index,
-      duration: commonDuration,
-      curve: Curves.easeInOut,
-    );
+    if (disableAnimations) {
+      _pageController.jumpToPage(index);
+      _isSyncing = false;
+    } else {
+      _pageController.animateToPage(index, duration: commonDuration, curve: Curves.easeInOut);
+      Future.delayed(commonDuration + const Duration(milliseconds: 50), () {
+        if (mounted) _isSyncing = false;
+      });
+    }
     appController.toPage(items[index].label);
-    // reset guard after animation completes
-    Future.delayed(commonDuration + const Duration(milliseconds: 50), () {
-      if (mounted) _isSyncing = false;
-    });
   }
 
   void _onPageChanged(int index, List<NavigationItem> items) {
@@ -62,20 +62,22 @@ class _HomePageState extends ConsumerState<HomePage> {
     final safeIndex = currentIndex >= 0 ? currentIndex : 0;
     final isNarrow = MediaQuery.of(context).size.width < maxMobileWidth;
     final noTextMode = ref.watch(appSettingProvider.select((s) => s.noTextMode));
+    final disableAnimations = ref.watch(appSettingProvider.select((s) => s.disableAnimations));
 
     // Sync PageView when provider changes externally (e.g. share intent)
     if (!_isSyncing && _pageController.hasClients) {
       final currentPage = _pageController.page?.round() ?? 0;
       if (currentPage != safeIndex) {
         _isSyncing = true;
-        _pageController.animateToPage(
-          safeIndex,
-          duration: commonDuration,
-          curve: Curves.easeInOut,
-        );
-        Future.delayed(commonDuration + const Duration(milliseconds: 50), () {
-          if (mounted) _isSyncing = false;
-        });
+        if (disableAnimations) {
+          _pageController.jumpToPage(safeIndex);
+          _isSyncing = false;
+        } else {
+          _pageController.animateToPage(safeIndex, duration: commonDuration, curve: Curves.easeInOut);
+          Future.delayed(commonDuration + const Duration(milliseconds: 50), () {
+            if (mounted) _isSyncing = false;
+          });
+        }
       }
     }
 
@@ -138,7 +140,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                               label: label(context.appLocalizations.pageLabel(e.label)),
                             ))
                         .toList(),
-                    onDestinationSelected: (index) => _goToPage(index, navigationItems),
+                    onDestinationSelected: (index) => _goToPage(index, navigationItems, disableAnimations),
                     selectedIndex: safeIndex,
                     labelType: noTextMode ? NavigationRailLabelType.none : NavigationRailLabelType.all,
                   ),
@@ -176,7 +178,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 label: noTextMode ? '' : context.appLocalizations.pageLabel(e.label),
               ))
           .toList(),
-      onDestinationSelected: (index) => _goToPage(index, navigationItems),
+      onDestinationSelected: (index) => _goToPage(index, navigationItems, disableAnimations),
       selectedIndex: safeIndex,
       labelBehavior: noTextMode ? NavigationDestinationLabelBehavior.alwaysHide : NavigationDestinationLabelBehavior.alwaysShow,
       ),

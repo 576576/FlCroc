@@ -207,11 +207,17 @@ class _ApplicationState extends ConsumerState<Application> {
   }
 
   ThemeData _buildDarkTheme(int primaryColor, bool isPureBlack, bool disableAnimations) {
-    final scheme = cachedColorScheme(primaryColor, Brightness.dark);
-    return _buildBaseTheme(
-      isPureBlack ? scheme.copyWith(surface: Colors.black) : scheme,
-      disableAnimations,
-    ).copyWith(
+    var scheme = cachedColorScheme(primaryColor, Brightness.dark);
+    if (isPureBlack) {
+      scheme = scheme.copyWith(
+        surface: Colors.black,
+        surfaceContainer: const Color(0xFF0A0A0A),
+        surfaceContainerHighest: const Color(0xFF111111),
+        surfaceContainerLow: const Color(0xFF050505),
+        surfaceContainerHigh: const Color(0xFF151515),
+      );
+    }
+    return _buildBaseTheme(scheme, disableAnimations).copyWith(
       scaffoldBackgroundColor: isPureBlack ? Colors.black : null,
     );
   }
