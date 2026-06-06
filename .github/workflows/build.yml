@@ -192,7 +192,19 @@ jobs:
 
       - name: Check i18n & docs changes
         id: hash-check
+        env:
+          MSG: ${{ github.event.head_commit.message || '' }}
         run: |
+          # b-doc: force i18n + docs regeneration
+          if echo "$MSG" | grep -qE '\bb-doc\b'; then
+            echo "do_i18n=true" >> $GITHUB_OUTPUT
+            echo "do_docs=true" >> $GITHUB_OUTPUT
+            echo "bundles_hash=forced" >> $GITHUB_OUTPUT
+            echo "docs_hash=forced" >> $GITHUB_OUTPUT
+            echo "i18n: true (forced)  docs: true (forced)"
+            exit 0
+          fi
+
           BUNDLES_HASH=$(find assets/bundles -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
           DOCS_HASH=$(find assets/docs -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
 
@@ -318,10 +330,18 @@ jobs:
             echo "Generating $OUTPUT from $DATA"
 
             LANGS_HTML=""
-            for doc in assets/docs/*.json; do
+            for doc in $(ls assets/docs/*.json | sort -r); do
               code=$(basename "$doc" .json)
               label=$(jq -r '.lang' "$doc")
-              [ "$code" = "en" ] && path="README.md" || path="docs/$code/README.md"
+              region=$(jq -r '.langRegion' "$doc")
+              # Distinguish variants: 中文 (简体) / 中文 (繁體)
+              label="$label ($region)"
+              # Build relative link path from OUTPUT
+              if [ "$OUTPUT" = "README.md" ]; then
+                [ "$code" = "en" ] && path="README.md" || path="docs/$code/README.md"
+              else
+                [ "$code" = "en" ] && path="../../README.md" || path="../$code/README.md"
+              fi
               [ -n "$LANGS_HTML" ] && LANGS_HTML="$LANGS_HTML &nbsp;|&nbsp; "
               if [ "$code" = "$LANG" ]; then LANGS_HTML="$LANGS_HTML$label"
               else LANGS_HTML="$LANGS_HTML<a href=\"$path\">$label</a>"

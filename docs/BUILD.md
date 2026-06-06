@@ -1,6 +1,34 @@
 # Building FlCroc
 
-## Prerequisites
+## Build with CI/CD
+
+Push to `main`/`master`/`dev` with a commit message containing one of the triggers below.
+GitHub Actions will build and upload artifacts automatically.
+
+| Commit Message Tag | Builds |
+|--------------------|--------|
+| `b-all` | Main builds — Windows (amd64), Linux (amd64), Android (arm64) |
+| `b-win` | Windows (amd64) |
+| `b-linux` | Linux (amd64) |
+| `b-mobile` | Android (arm64) |
+| `b-none` | Skip all builds (only prebuild) |
+| `b-doc` | Force regenerate `docs/i18n.md` and all READMEs |
+| `arch-all` | Include secondary architectures — Windows (arm64), Android (amd64). Only works when main architecture enabled. |
+
+Combine with other triggers:
+
+| Additional Tag | Effect |
+|----------------|--------|
+| `r-1.2.3` / `release-1.2.3` | Production release |
+| `beta-1.2.3` | Beta release |
+
+> **Note:** `docs/i18n.md` and all README files are regenerated automatically when `assets/bundles/` or `assets/docs/` change — detected via hash comparison. No tag required.
+
+---
+
+## Build Locally
+
+### Prerequisites
 
 | Tool | Version |
 |------|---------|
@@ -8,7 +36,7 @@
 | Go | ≥ 1.25 |
 | Android NDK | r27c (for Android) |
 
-## Quick Start
+### Quick Start
 
 ```bash
 git clone --recurse-submodules https://github.com/576576/FlCroc.git
@@ -18,11 +46,11 @@ dart run build_runner build --delete-conflicting-outputs
 flutter run
 ```
 
-## Platform-specific Builds
+### Platform-specific Builds
 
 The Go bridge in `go_bridge/` builds as a CGO shared library (`.so` / `.dll` / `.dylib`) loaded via `dart:ffi`. croc source is vendored at `submodules/croc/`.
 
-### Windows
+#### Windows
 
 ```bash
 cd go_bridge
@@ -30,7 +58,7 @@ build.bat windows amd64    # or: build.bat windows arm64
 cd .. && flutter build windows --release
 ```
 
-### Linux
+#### Linux
 
 ```bash
 cd go_bridge
@@ -39,7 +67,7 @@ sudo apt-get install clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
 cd .. && flutter build linux --release
 ```
 
-### macOS
+#### macOS
 
 ```bash
 cd go_bridge
@@ -47,7 +75,7 @@ cd go_bridge
 cd .. && flutter build macos --release
 ```
 
-### Android
+#### Android
 
 ```bash
 cd go_bridge
