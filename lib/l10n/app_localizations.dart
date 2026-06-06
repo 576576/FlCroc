@@ -419,22 +419,43 @@ class _AppLocalizationsDelegate
   @override
   Future<AppLocalizations> load(Locale locale) async {
     // Use full language tag for script variants (e.g. zh-Hant), otherwise language code only
-    final code = locale.scriptCode != null ? '${locale.languageCode}-${locale.scriptCode}' : locale.languageCode;
-    if (!_cache.containsKey(code)) {
-      try {
-        final json = await rootBundle.loadString('assets/bundles/$code.json');
-        _cache[code] = Map<String, String>.from(jsonDecode(json) as Map);
-      } catch (_) {
-        // bundle doesn't exist (e.g. zh-Hant has no bundle, uses zh fallback)
+    final code = locale.scriptCode != null
+        ? '${locale.languageCode}-${locale.scriptCode}'
+        : locale.languageCode;
+
+    Map<String, String>? messages = _cache[code];
+    if (messages == null) {
+      messages = await _tryLoadBundle(code);
+      if (messages != null) _cache[code] = messages;
+    }
+
+    // Fall back to base language (e.g. zh) if variant bundle missing
+    if (messages == null && code != locale.languageCode) {
+      messages = _cache[locale.languageCode];
+      if (messages == null) {
+        messages = await _tryLoadBundle(locale.languageCode);
+        if (messages != null) _cache[locale.languageCode] = messages;
       }
     }
-    // Prefer exact match, then base language, then English
-    final messages = (_cache[code]?.isNotEmpty == true)
-        ? _cache[code]!
-        : ((_cache[locale.languageCode]?.isNotEmpty == true)
-            ? _cache[locale.languageCode]!
-            : (_cache['en'] ?? {}));
-    return AppLocalizations._(locale, messages);
+
+    // Final fallback to English
+    messages ??= _cache['en'];
+    if (messages == null) {
+      messages = await _tryLoadBundle('en');
+      if (messages != null) _cache['en'] = messages;
+    }
+
+    return AppLocalizations._(locale, messages ?? {});
+  }
+
+  Future<Map<String, String>?> _tryLoadBundle(String code) async {
+    try {
+      final json = await rootBundle.loadString('assets/bundles/$code.json');
+      final map = Map<String, String>.from(jsonDecode(json) as Map);
+      return map.isNotEmpty ? map : null;
+    } catch (_) {
+      return null; // bundle missing or malformed
+    }
   }
 
   @override

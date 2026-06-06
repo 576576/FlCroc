@@ -671,9 +671,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     'ja': '日本語',
   };
 
-  /// Languages whose variant name has been revealed (first re-tap done).
-  final _unfoldedLanguages = <String>{};
-
   /// Cycle to the next variant of the same language group.
   String _nextLangVariant(String currentLocale) {
     final group = currentLocale.split('-').first;
@@ -699,7 +696,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             selected: selectedKey == 'auto',
             onSelected: (v) {
               if (v) {
-                _unfoldedLanguages.clear();
                 ref.read(appSettingProvider.notifier).update(
                       (s) => s.copyWith(locale: null),
                     );
@@ -709,12 +705,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           for (final group in const ['en', 'fr', 'zh', 'ja'])
             ChoiceChip(
               label: Text(() {
-                if (selectedKey == null || selectedKey.split('-').first != group) {
+                if (selectedKey.split('-').first != group) {
                   return _langGroupNames[group]!;
                 }
-                if (!_unfoldedLanguages.contains(group)) {
-                  return _langGroupNames[group]!;
-                }
+                // Selected: show full variant label
                 final v = _langVariants.firstWhere((v) => v.locale == selectedKey);
                 return v.label;
               }()),
@@ -722,26 +716,15 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               onSelected: (v) {
                 if (!v) return;
                 final current = currentLocale;
-                final groupKey = current != null && current.split('-').first == group
-                    ? current.split('-').first
-                    : group;
-                if (current == null || groupKey != group) {
+                final sameGroup = current != null && current.split('-').first == group;
+                if (!sameGroup) {
                   // First selection: pick first variant
-                  _unfoldedLanguages.remove(group);
                   final first = _langVariants.firstWhere((v2) => v2.locale.split('-').first == group).locale;
                   ref.read(appSettingProvider.notifier).update((s) => s.copyWith(locale: first));
                   setState(() {});
                   return;
                 }
-                if (!_unfoldedLanguages.contains(group)) {
-                  // First re-tap: just reveal variant name, no locale change
-                  _unfoldedLanguages.add(group);
-                  setState(() {});
-                  final label = _langVariants.firstWhere((v2) => v2.locale == current).label;
-                  if (context.mounted) context.showSnackBar(label);
-                  return;
-                }
-                // Subsequent taps: cycle variants
+                // Re-tap: cycle to next variant
                 final next = _nextLangVariant(current);
                 ref.read(appSettingProvider.notifier).update((s) => s.copyWith(locale: next));
                 setState(() {});
