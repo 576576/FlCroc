@@ -129,7 +129,7 @@ class _ApplicationState extends ConsumerState<Application> {
           },
           scrollBehavior: const _NaturalScrollBehavior(),
           title: appName,
-          locale: locale != null ? Locale(locale) : _resolveSystemLocale(),
+          locale: locale != null ? _parseLocale(locale!) : _resolveSystemLocale(),
           supportedLocales: AppLocalizations.supportedLocales,
           themeMode: _getThemeMode(appSettings.themeMode),
           theme: _buildLightTheme(themeProps.primaryColor, appSettings.disableAnimations),
@@ -149,6 +149,20 @@ class _ApplicationState extends ConsumerState<Application> {
       case ThemeModeOption.system:
         return ThemeMode.system;
     }
+  }
+
+  /// Parse a locale string like 'zh-Hant' into a proper [Locale] with scriptCode.
+  Locale _parseLocale(String s) {
+    final parts = s.split('-');
+    if (parts.length >= 3) {
+      return Locale.fromSubtags(languageCode: parts[0], scriptCode: parts[1], countryCode: parts[2]);
+    } else if (parts.length == 2) {
+      // Could be script or country — try script (uppercase 4-char = script)
+      return (parts[1].length == 4)
+          ? Locale.fromSubtags(languageCode: parts[0], scriptCode: parts[1])
+          : Locale(parts[0], parts[1]);
+    }
+    return Locale(parts[0]);
   }
 
   /// Resolve the system locale against supported locales. Defaults to English.
