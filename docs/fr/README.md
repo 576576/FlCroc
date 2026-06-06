@@ -5,7 +5,7 @@
 <h1 align="center">FlCroc</h1>
 
 <p align="center">
-<a href="README.md">English</a> &nbsp;|&nbsp; Français &nbsp;|&nbsp; <a href="docs/ja/README.md">日本語</a> &nbsp;|&nbsp; <a href="docs/zh-Hant/README.md">中文</a> &nbsp;|&nbsp; <a href="docs/zh/README.md">中文</a>
+<a href="../zh/README.md">中文 (简体)</a> &nbsp;|&nbsp; <a href="../zh-Hant/README.md">中文 (繁體)</a> &nbsp;|&nbsp; <a href="../ja/README.md">日本語 (日本)</a> &nbsp;|&nbsp; Français (France) &nbsp;|&nbsp; <a href="../../README.md">English (United States)</a>
 </p>
 
 <p align="center">
