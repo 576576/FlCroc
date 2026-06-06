@@ -492,7 +492,7 @@ jobs:
           if [ "${{ needs.prebuild.outputs.docs_do }}" == "true" ]; then
             LINES="${LINES}- Update documents.\n"
           fi
-          MSG="Auto commit by Github Actions:\n${LINES}"
+          MSG="Auto commit by Github Actions\n${LINES}"
           echo "message=$MSG" >> $GITHUB_OUTPUT
 
       - name: Commit and push

@@ -261,6 +261,16 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     if (ok != true) return;
     await ref.read(appSettingProvider.notifier).resetAll();
     ref.read(themeSettingProvider.notifier).resetToDefault();
+    // Clear Quick Transfer saved codes
+    await AppPrefs.remove('quick_send_code');
+    await AppPrefs.remove('quick_receive_code');
+    await AppPrefs.remove('quick_use_same_code');
+    // Clear Send page preferences
+    await AppPrefs.remove('send_autoCopy');
+    await AppPrefs.remove('send_phraseMode');
+    await AppPrefs.remove('send_isTextMode');
+    await AppPrefs.remove('send_textByteLimit');
+    await AppPrefs.remove('send_whiteBgQR');
     if (mounted) context.showSnackBar(l10n.settingsReset);
   }
 

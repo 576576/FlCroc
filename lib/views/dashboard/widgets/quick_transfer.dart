@@ -71,6 +71,9 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   // File picker toggle: long-press to switch file/folder mode
   bool _isFolderPicker = false;
 
+  // Drop hover state for picker button
+  bool _fileHover = false;
+
   static const _defaultCode = 'shimo-kita-1145';
 
   static const _prefQuickSendCode = 'quick_send_code';
@@ -674,10 +677,7 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
               ),
               )
             else ...[
-              FileDropTarget(
-                enabled: isDesktop,
-                onFilesDropped: _onFileDrop,
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Column(mainAxisSize: MainAxisSize.min, children: [
               if (_selectedFolder != null)
                 ListTile(
                   dense: true,
@@ -743,8 +743,7 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
                     contentPadding: EdgeInsets.zero,
                   );
                 }),
-                ]),  // Column
-              ),  // FileDropTarget
+              ]),  // Column
               LayoutBuilder(builder: (_, constraints) {
                 final w = constraints.maxWidth;
                 // Measure label widths so thresholds adapt to locale.
@@ -760,14 +759,21 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
                 final iconPick = w + margin < btnW(wPick) + btnW(wClear);
                 final iconClear  = w + margin < btnW(wClear) + iconW;
                 return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  _PickerToggleButton(
-                    isFolderPicker: _isFolderPicker,
-                    isActive: _isActive,
-                    narrow: iconPick,
-                    onTap: _isFolderPicker ? _pickFolder : _pickFiles,
-                    onLongPress: () => setState(() => _isFolderPicker = !_isFolderPicker),
-                    filesLabel: l10n.selectFiles,
-                    folderLabel: l10n.selectFolder,
+                  FileDropTarget(
+                    enabled: isDesktop && !_isActive,
+                    onFilesDropped: _onFileDrop,
+                    onHoverChanged: (hover) => setState(() => _fileHover = hover),
+                    child: _PickerToggleButton(
+                      isFolderPicker: _isFolderPicker,
+                      isActive: _isActive,
+                      narrow: iconPick,
+                      dropHover: _fileHover,
+                      dropLabel: l10n.dropToAdd,
+                      onTap: _isFolderPicker ? _pickFolder : _pickFiles,
+                      onLongPress: () => setState(() => _isFolderPicker = !_isFolderPicker),
+                      filesLabel: l10n.selectFiles,
+                      folderLabel: l10n.selectFolder,
+                    ),
                   ),
                   if (iconClear)
                     IconButton(
@@ -966,6 +972,8 @@ class _PickerToggleButton extends StatefulWidget {
     required this.isFolderPicker,
     required this.isActive,
     required this.narrow,
+    required this.dropHover,
+    required this.dropLabel,
     required this.onTap,
     required this.onLongPress,
     required this.filesLabel,
@@ -975,6 +983,8 @@ class _PickerToggleButton extends StatefulWidget {
   final bool isFolderPicker;
   final bool isActive;
   final bool narrow;
+  final bool dropHover;
+  final String dropLabel;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
   final String filesLabel;
@@ -990,10 +1000,12 @@ class _PickerToggleButtonState extends State<_PickerToggleButton> {
   @override
   Widget build(BuildContext context) {
     final icon = widget.isFolderPicker ? Icons.create_new_folder : Icons.add;
-    final label = widget.isFolderPicker ? widget.folderLabel : widget.filesLabel;
+    final label = widget.dropHover
+        ? widget.dropLabel
+        : (widget.isFolderPicker ? widget.folderLabel : widget.filesLabel);
     final onPress = widget.isActive ? null : widget.onTap;
-    // Long-press toggles mode — always allowed, even during transfer.
     final onLong = widget.onLongPress;
+    final pressed = _pressed || widget.dropHover;
 
     if (widget.narrow) {
       return GestureDetector(
@@ -1003,7 +1015,7 @@ class _PickerToggleButtonState extends State<_PickerToggleButton> {
         onTapCancel: () => setState(() => _pressed = false),
         onTap: onPress == null ? null : () { onPress(); setState(() => _pressed = false); },
         child: AnimatedScale(
-          scale: _pressed ? 0.75 : 1.0,
+          scale: pressed ? 0.75 : 1.0,
           duration: const Duration(milliseconds: 120),
           curve: Curves.easeInOut,
           child: AnimatedSwitcher(
@@ -1026,7 +1038,7 @@ class _PickerToggleButtonState extends State<_PickerToggleButton> {
       onLongPressUp: () => setState(() => _pressed = false),
       onLongPressCancel: () => setState(() => _pressed = false),
       child: AnimatedScale(
-        scale: _pressed ? 0.75 : 1.0,
+        scale: pressed ? 0.75 : 1.0,
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeInOut,
         child: AnimatedSwitcher(

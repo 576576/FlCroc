@@ -21,12 +21,12 @@ GitHub Actions will build and upload artifacts automatically.
 | `r-1.2.3` / `release-1.2.3` | Production release |
 | `beta-1.2.3` | Beta release |
 
+> **Nightly** releases are published automatically whenever any build runs on `dev` branch.
+
 | Other Tag | Effect |
 |----------------|--------|
 | `b-doc` | Force regenerate `docs/i18n.md` and all READMEs |
 
-> **Nightly** releases are published automatically whenever any build runs on `dev` branch.
->
 > **Docs:** `docs/i18n.md` and all README files are regenerated automatically when `assets/bundles/` or `assets/docs/` change — detected via hash comparison. Use `b-doc` to force.
 
 ---
