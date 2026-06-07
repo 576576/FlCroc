@@ -16,9 +16,6 @@ class CoreLib extends CoreInterface {
   DynamicLibrary? _lib;
   bool _isAvailable = false;
 
-  /// Built-in croc version (synced with submodules/croc vendored source).
-  static const builtinCrocVersion = '10.4.4';
-
   // Cached FFI function for freeing Go-allocated strings
   void Function(Pointer<Utf8>)? _freeGoString;
 

@@ -88,7 +88,7 @@ jobs:
                 ;;
               *)
                 TAG="v$VER"
-                REL_NAME="$VER"
+                REL_NAME="Release $VER"
                 ;;
             esac
             echo "Syncing release version: $NEW_VERSION (build $CUR_BUILD → $NEW_BUILD)"
@@ -518,6 +518,12 @@ jobs:
           git pull --rebase origin "$GITHUB_REF_NAME" || true
           git push
 
+      - uses: actions/upload-artifact@v4
+        if: needs.prebuild.outputs.new_build != '' && needs.test.result != 'failure'
+        with:
+          name: pubspec-synced
+          path: pubspec.yaml
+
   # ── Windows ──
   build-windows:
     needs: [commit, prebuild]
@@ -531,6 +537,11 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: pubspec-synced
+          path: .
+        continue-on-error: true
       - name: Get short SHA
         id: sha
         run: echo "sha=$(git rev-parse --short HEAD)" >> $env:GITHUB_OUTPUT
@@ -675,6 +686,11 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: pubspec-synced
+          path: .
+        continue-on-error: true
       - name: Get short SHA
         id: sha
         run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
@@ -749,6 +765,11 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: pubspec-synced
+          path: .
+        continue-on-error: true
       - name: Get short SHA
         id: sha
         run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
@@ -906,25 +927,29 @@ jobs:
           MSG: ${{ github.event.head_commit.message || '' }}
           TITLE: ${{ steps.ver.outputs.title }}
         run: |
-          BODY="## $TITLE
+          BODY="**Commit**: \`${{ steps.sha.outputs.sha }}\`
 
-          **Commit**: \`${{ steps.sha.outputs.sha }}\`
+          $MSG
 
-          > $MSG
+          > ⚠️ Automated dev-branch build — may be unstable.
 
-          > ⚠️ This is an automated dev-branch build. May be unstable.
+          **Download based on your OS:**
 
-          ### Downloads"
+          <table>
+          <tr><th>Platform</th><th>Download</th></tr>"
           for f in artifacts/FlCroc-*; do
             fname=$(basename "$f")
             case "$fname" in
-              *windows*) icon="🪟 Windows" ;;
-              *linux*)   icon="🐧 Linux" ;;
-              *android*) icon="🤖 Android" ;;
-              *)         icon="📦" ;;
+              *windows-arm64*) label="🪟 Windows ARM64" ; badge="Windows-ARM64-blue"    ; icon="windows" ;;
+              *windows*)       label="🪟 Windows"       ; badge="Windows-x64-blue"      ; icon="windows" ;;
+              *linux*)         label="🐧 Linux"         ; badge="Linux-x64-orange"      ; icon="linux"   ;;
+              *android-arm64*) label="🤖 Android ARM64" ; badge="Android-ARM64-green"   ; icon="android" ;;
+              *android*)       label="🤖 Android"       ; badge="Android-x64-green"     ; icon="android" ;;
+              *)               label="$fname"           ; badge="File-Download-lightgrey" ; icon=""        ;;
             esac
-            BODY="$BODY"$'\n'"- $icon | \`$fname\`"
+            BODY="$BODY<tr><td>$label</td><td><a href=\"https://github.com/\${{ github.repository }}/releases/download/nightly/$fname\"><img src=\"https://img.shields.io/badge/${badge}.svg?logo=${icon}\"></a></td></tr>"
           done
+          BODY="$BODY</table>"
           echo "body<<EOF" >> $GITHUB_OUTPUT
           echo "$BODY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -986,17 +1011,17 @@ jobs:
               VERSION=$(echo "$COMMIT_MSG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
               echo "version=$VERSION" >> $GITHUB_OUTPUT
               echo "tag=v$VERSION" >> $GITHUB_OUTPUT
-              echo "release_name=FlCroc $VERSION" >> $GITHUB_OUTPUT
+              echo "release_name=Release $VERSION" >> $GITHUB_OUTPUT
             elif echo "$COMMIT_MSG" | grep -qE '^beta-[0-9]+\.[0-9]+\.[0-9]+'; then
               VERSION=$(echo "$COMMIT_MSG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
               echo "version=$VERSION" >> $GITHUB_OUTPUT
               echo "tag=v$VERSION-beta" >> $GITHUB_OUTPUT
-              echo "release_name=FlCroc Beta $VERSION" >> $GITHUB_OUTPUT
+              echo "release_name=Beta $VERSION" >> $GITHUB_OUTPUT
             else
               VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
               echo "version=$VERSION" >> $GITHUB_OUTPUT
               echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-              echo "release_name=FlCroc $VERSION" >> $GITHUB_OUTPUT
+              echo "release_name=Release $VERSION" >> $GITHUB_OUTPUT
             fi
           fi
 
@@ -1011,24 +1036,24 @@ jobs:
       - name: Build release body
         id: body
         run: |
-          BODY="## 📦 ${{ steps.version.outputs.release_name }}
+          BODY="**Download based on your OS:**
 
-          Cross-platform file transfer GUI powered by croc.
-
-          ### Downloads"
+          <table>
+          <tr><th>Platform</th><th>Download</th></tr>"
           for f in artifacts/FlCroc-*; do
             [ -f "$f" ] || continue
             fname=$(basename "$f")
             case "$fname" in
-              *windows-arm64*)          icon="🪟 Windows ARM64" ;;
-              *windows*)                icon="🪟 Windows" ;;
-              *linux*)                  icon="🐧 Linux" ;;
-              *android-arm64*)          icon="🤖 Android ARM64" ;;
-              *android*)                icon="🤖 Android" ;;
-              *)                        icon="📦" ;;
+              *windows-arm64*) label="🪟 Windows ARM64" ; badge="Windows-ARM64-blue"    ; icon="windows" ;;
+              *windows*)       label="🪟 Windows"       ; badge="Windows-x64-blue"      ; icon="windows" ;;
+              *linux*)         label="🐧 Linux"         ; badge="Linux-x64-orange"      ; icon="linux"   ;;
+              *android-arm64*) label="🤖 Android ARM64" ; badge="Android-ARM64-green"   ; icon="android" ;;
+              *android*)       label="🤖 Android"       ; badge="Android-x64-green"     ; icon="android" ;;
+              *)               label="$fname"           ; badge="File-Download-lightgrey" ; icon=""        ;;
             esac
-            BODY="$BODY"$'\n'"- $icon | \`$fname\`"
+            BODY="$BODY<tr><td>$label</td><td><a href=\"https://github.com/\${{ github.repository }}/releases/download/\${{ steps.version.outputs.tag }}/$fname\"><img src=\"https://img.shields.io/badge/${badge}.svg?logo=${icon}\"></a></td></tr>"
           done
+          BODY="$BODY</table>"
           echo "body<<EOF" >> $GITHUB_OUTPUT
           echo "$BODY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -1037,7 +1062,7 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: ${{ steps.version.outputs.release_name }}
-          body: ${{ steps.body.outputs.body }}
+          append_body: ${{ steps.body.outputs.body }}
           files: |
             artifacts/FlCroc-*
           draft: false
