@@ -30,6 +30,12 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   DateTime? _lastVersionTap;
   bool _autoClearLog = true;
 
+  // ── Reset long-press (2s UI change, 3s trigger) ──
+  Timer? _resetTimer;
+  double _resetProgress = 0;
+  bool _resetPressing = false;
+  bool _showResetUI = false;
+
   late final _relayAddrCtrl = TextEditingController();
   late final _relayPortCtrl = TextEditingController();
   late final _relayPassCtrl = TextEditingController();
@@ -48,6 +54,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
   @override
   void dispose() {
+    _resetTimer?.cancel();
     _relayAddrCtrl.dispose();
     _relayPortCtrl.dispose();
     _relayPassCtrl.dispose();
@@ -66,11 +73,14 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   Future<void> _checkForUpdate(BuildContext context) async {
     final l10n = context.appLocalizations;
     final currentVer = globalState.packageInfo.version;
+    final currentBuild = globalState.packageInfo.buildNumber;
+    final channel = ref.read(appSettingProvider).updateChannel;
 
     try {
       final client = HttpClient();
       try {
-        final uri = Uri.https('api.github.com', '/repos/$repository/releases/latest');
+        final tag = channel == UpdateChannel.nightly ? 'tags/nightly' : 'releases/latest';
+        final uri = Uri.https('api.github.com', '/repos/$repository/$tag');
         final request = await client.getUrl(uri);
         request.headers.set('User-Agent', 'FlCroc');
         request.headers.set('Accept', 'application/vnd.github+json');
@@ -82,7 +92,23 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         final body = await response.transform(utf8.decoder).join();
         final data = jsonDecode(body) as Map<String, dynamic>;
         final latestTag = (data['tag_name'] as String?)?.replaceFirst(RegExp(r'^v'), '') ?? '';
-        if (latestTag.isEmpty || latestTag == currentVer) {
+
+        // Nightly channel: compare build number from release title
+        if (channel == UpdateChannel.nightly) {
+          final title = (data['name'] as String?) ?? '';
+          final nightlyBuild = _parseBuildFromTitle(title);
+          final curBuild = int.tryParse(currentBuild) ?? 0;
+          if (nightlyBuild <= curBuild) {
+            if (mounted) context.showSnackBar(l10n.alreadyLatest);
+            return;
+          }
+          final displayVer = _parseVersionFromTitle(title) ?? latestTag;
+          if (mounted) _showUpdateDialog(context, l10n, displayVer, currentVer, nightlyBuild, curBuild);
+          return;
+        }
+
+        // Release channel: compare base version
+        if (latestTag.isEmpty || _isSameOrOlder(latestTag, currentVer)) {
           if (mounted) context.showSnackBar(l10n.alreadyLatest);
           return;
         }
@@ -105,12 +131,13 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   onPressed: () => Navigator.pop(ctx),
                   child: Text(l10n.cancel),
                 ),
-                FilledButton(
+                FilledButton.icon(
                   onPressed: () {
                     Navigator.pop(ctx);
                     globalState.openUrl('https://github.com/$repository/releases');
                   },
-                  child: Text(l10n.update),
+                  icon: const Icon(Icons.open_in_new, size: 18),
+                  label: Text(l10n.update),
                 ),
               ],
             ),
@@ -122,6 +149,71 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     } catch (_) {
       if (mounted) context.showSnackBar(l10n.alreadyLatest);
     }
+  }
+
+  /// Returns true if [latest] is the same base version as [current] or older.
+  /// Strips pre-release suffixes (e.g. -beta, -alpha) before comparing.
+  bool _isSameOrOlder(String latest, String current) {
+    final latestBase = latest.split(RegExp(r'[-+]')).first;
+    final currentBase = current.split(RegExp(r'[-+]')).first;
+    // Parse as integer parts for proper numeric comparison
+    final latestParts = latestBase.split('.').map(int.tryParse).toList();
+    final currentParts = currentBase.split('.').map(int.tryParse).toList();
+    final length = latestParts.length > currentParts.length
+        ? latestParts.length
+        : currentParts.length;
+    for (int i = 0; i < length; i++) {
+      final l = i < latestParts.length ? (latestParts[i] ?? 0) : 0;
+      final c = i < currentParts.length ? (currentParts[i] ?? 0) : 0;
+      if (l > c) return false; // latest is newer
+      if (l < c) return true;  // latest is older
+    }
+    return true; // same base version — consider already latest
+  }
+
+  /// Extract build number from nightly title like "Nightly 1.2.2+63 2026-06-01".
+  int _parseBuildFromTitle(String title) {
+    final match = RegExp(r'\+(\d+)').firstMatch(title);
+    return match != null ? int.tryParse(match.group(1)!) ?? 0 : 0;
+  }
+
+  /// Extract version from nightly title like "Nightly 1.2.2+63 2026-06-01".
+  String? _parseVersionFromTitle(String title) {
+    final match = RegExp(r'(\d+\.\d+\.\d+)').firstMatch(title);
+    return match?.group(1);
+  }
+
+  void _showUpdateDialog(BuildContext context, AppLocalizations l10n,
+      String latestVer, String currentVer, int latestBuild, int currentBuild) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.newVersionAvailable),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${l10n.latestVersion}: $latestVer+$latestBuild'),
+            const SizedBox(height: 4),
+            Text('${l10n.currentVersion}: $currentVer+$currentBuild'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              globalState.openUrl('https://github.com/$repository/releases');
+            },
+            icon: const Icon(Icons.open_in_new, size: 18),
+            label: Text(l10n.update),
+          ),
+        ],
+      ),
+    );
   }
 
   String _defaultDownloadPath() => AppPaths.savePathSync;
@@ -169,7 +261,56 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     if (ok != true) return;
     await ref.read(appSettingProvider.notifier).resetAll();
     ref.read(themeSettingProvider.notifier).resetToDefault();
+    // Clear Quick Transfer saved codes
+    await AppPrefs.remove('quick_send_code');
+    await AppPrefs.remove('quick_receive_code');
+    await AppPrefs.remove('quick_use_same_code');
+    // Clear Send page preferences
+    await AppPrefs.remove('send_autoCopy');
+    await AppPrefs.remove('send_phraseMode');
+    await AppPrefs.remove('send_isTextMode');
+    await AppPrefs.remove('send_textByteLimit');
+    await AppPrefs.remove('send_whiteBgQR');
     if (mounted) context.showSnackBar(l10n.settingsReset);
+  }
+
+  void _startResetLongPress() {
+    _resetTimer?.cancel();
+    _resetPressing = true;
+    _resetProgress = 0;
+    _showResetUI = false;
+    const tickMs = 50;
+    _resetTimer = Timer.periodic(const Duration(milliseconds: tickMs), (t) {
+      if (!_resetPressing) {
+        t.cancel();
+        _resetProgress = 0;
+        if (_showResetUI) setState(() => _showResetUI = false);
+        return;
+      }
+      _resetProgress += tickMs / 3000.0;
+      if (_resetProgress >= 2.0 / 3.0 && !_showResetUI) {
+        _showResetUI = true;
+      }
+      if (_resetProgress >= 1.0) {
+        t.cancel();
+        _resetPressing = false;
+        _resetProgress = 0;
+        _showResetUI = false;
+        setState(() {});
+        _resetAllSettings(context);
+        return;
+      }
+      setState(() {});
+    });
+    setState(() {});
+  }
+
+  void _cancelResetLongPress() {
+    _resetPressing = false;
+    _resetTimer?.cancel();
+    _resetProgress = 0;
+    if (_showResetUI) setState(() => _showResetUI = false);
+    setState(() {});
   }
 
   @override
@@ -323,6 +464,19 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   },
                 ),
               ),
+              ListItem.switchItem(
+                leading: const Icon(Icons.animation),
+                title: Text(l10n.disableAnimations),
+                subtitle: Text(l10n.disableAnimationsDesc),
+                delegate: SwitchDelegate(
+                  value: appSettings.disableAnimations,
+                  onChanged: (v) {
+                    ref.read(appSettingProvider.notifier).update(
+                          (s) => s.copyWith(disableAnimations: v),
+                        );
+                  },
+                ),
+              ),
             ],
           ),
 
@@ -341,7 +495,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 title: Text(l10n.defaultSavePath),
                 subtitle: Text(formatPathForDisplay(
                   appSettings.defaultSavePath.isEmpty ? _defaultDownloadPath() : appSettings.defaultSavePath,
-                  downloadsLabel: l10n.downloadsFolder,
+                  storageLabel: l10n.storageFolder,
                 )),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -375,11 +529,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   ],
                 ),
               ),
-              ListItem(
-                leading: const Icon(Icons.restart_alt, color: Colors.red),
-                title: Text(l10n.resetAllSettings, style: const TextStyle(color: Colors.red)),
-                onTap: () => _resetAllSettings(context),
-              ),
             ],
           ),
 
@@ -388,45 +537,75 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             title: l10n.about,
             separated: false,
             items: [
-              ListItem(
-                leading: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset('assets/images/icon.png', width: 24, height: 24),
-                ),
-                title: Text(l10n.appVersion),
-                subtitle: Text(_debugMode
-                    ? '${globalState.packageInfo.version}+${globalState.packageInfo.buildNumber}'
-                    : globalState.packageInfo.version),
-                trailing: IconButton(
-                  icon: const Icon(Icons.open_in_new, size: 18),
-                  tooltip: l10n.open,
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () => globalState.openUrl('https://github.com/$repository'),
-                ),
-                onTap: () {
-                  final now = DateTime.now();
-                  if (_lastVersionTap != null &&
-                      now.difference(_lastVersionTap!).inSeconds >= 3) {
-                    _versionTaps = 0;
-                  }
-                  _lastVersionTap = now;
-                  _versionTaps++;
-                  if (_versionTaps >= 5) {
-                    _versionTaps = 0;
-                    _lastVersionTap = null;
-                    setState(() => _debugMode = !_debugMode);
-                    LogBuffer.debugMode = _debugMode;
-                    if (_autoClearLog) LogBuffer.clear();
-                    final l10n = context.appLocalizations;
-                    context.showSnackBar(_debugMode ? l10n.debugModeOn : l10n.debugModeOff);
-                  } else if (_versionTaps >= 2) {
-                    final remaining = 5 - _versionTaps;
-                    final enable = !_debugMode;
-                    context.showSnackBar(
-                      context.appLocalizations.debugTapHint(remaining, enable: enable),
-                    );
-                  }
-                },
+              GestureDetector(
+                onLongPressStart: (_) => _startResetLongPress(),
+                onLongPressEnd: (_) => _cancelResetLongPress(),
+                onLongPressCancel: () => _cancelResetLongPress(),
+                child: Builder(builder: (context) {
+                  final alpha = (_resetProgress * 80).clamp(0.0, 80.0).toInt();
+                  return Container(
+                    color: _resetPressing ? Colors.red.withAlpha(alpha) : Colors.transparent,
+                    child: ListItem(
+                    leading: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: _showResetUI
+                          ? const Icon(Icons.restart_alt, color: Colors.red)
+                          : Image.asset('assets/images/icon.png', width: 24, height: 24),
+                    ),
+                    title: _showResetUI
+                        ? Text(l10n.resetAllSettings, style: const TextStyle(color: Colors.red))
+                        : Text(l10n.appVersion),
+                    subtitle: _showResetUI
+                        ? null
+                        : Text(_debugMode
+                            ? '${globalState.packageInfo.version}+${globalState.packageInfo.buildNumber}'
+                            : globalState.packageInfo.version),
+                    trailing: _showResetUI
+                        ? null
+                        : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.update, size: 18),
+                                tooltip: l10n.checkUpdate,
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () => _checkForUpdate(context),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.open_in_new, size: 18),
+                                tooltip: l10n.open,
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () => globalState.openUrl('https://github.com/$repository'),
+                              ),
+                            ],
+                          ),
+                      onTap: () {
+                        final now = DateTime.now();
+                        if (_lastVersionTap != null &&
+                            now.difference(_lastVersionTap!).inSeconds >= 3) {
+                          _versionTaps = 0;
+                        }
+                        _lastVersionTap = now;
+                        _versionTaps++;
+                        if (_versionTaps >= 5) {
+                          _versionTaps = 0;
+                          _lastVersionTap = null;
+                          setState(() => _debugMode = !_debugMode);
+                          LogBuffer.debugMode = _debugMode;
+                          if (_autoClearLog) LogBuffer.clear();
+                          final dL10n = context.appLocalizations;
+                          context.showSnackBar(_debugMode ? dL10n.debugModeOn : dL10n.debugModeOff);
+                        } else if (_versionTaps >= 2) {
+                          final remaining = 5 - _versionTaps;
+                          final enable = !_debugMode;
+                          context.showSnackBar(
+                            context.appLocalizations.debugTapHint(remaining, enable: enable),
+                          );
+                        }
+                      },
+                    ),
+                  );
+                }),
               ),
               ListItem(
                 leading: const Icon(Icons.link),
@@ -444,9 +623,20 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 },
               ),
               ListItem(
-                leading: const Icon(Icons.update),
-                title: Text(l10n.checkUpdate),
-                onTap: () => _checkForUpdate(context),
+                leading: const Icon(Icons.tune),
+                title: Text(l10n.updateChannel),
+                subtitle: _buildUpdateChannelChips(
+                  ref.watch(appSettingProvider.select((s) => s.updateChannel)), ref),
+              ),
+              ListItem.switchItem(
+                leading: const Icon(Icons.update_disabled),
+                title: Text(l10n.autoCheckUpdate),
+                delegate: SwitchDelegate(
+                  value: ref.watch(appSettingProvider.select((s) => s.autoCheckUpdate)),
+                  onChanged: (v) {
+                    ref.read(appSettingProvider.notifier).update((s) => s.copyWith(autoCheckUpdate: v));
+                  },
+                ),
               ),
             ],
           ),
@@ -485,15 +675,35 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     );
   }
 
+  // ── Language variant support ──
+  // Group locales by language code; each entry is (displayName, localeString).
+  // Tapping a selected language cycles through its variants.
+  static final List<({String label, String locale})> _langVariants = [
+    (label: 'English (United States)', locale: 'en'),
+    (label: 'Français (France)', locale: 'fr'),
+    (label: '中文 (简体)', locale: 'zh'),
+    (label: '中文 (繁體)', locale: 'zh-Hant'),
+    (label: '日本語 (日本)', locale: 'ja'),
+  ];
+
+  /// Base language group names (shown on first selection).
+  static const _langGroupNames = <String, String>{
+    'en': 'English',
+    'fr': 'Français',
+    'zh': '中文',
+    'ja': '日本語',
+  };
+
   Widget _buildLanguageChips(
       BuildContext context, String? currentLocale, WidgetRef ref) {
     final l10n = context.appLocalizations;
-    // locale=null → auto (system), locale='en' → English, locale='zh' → 中文
     final selectedKey = currentLocale ?? 'auto';
+
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Wrap(
         spacing: 8,
+        runSpacing: 6,
         children: [
           ChoiceChip(
             label: Text(l10n.autoLanguage),
@@ -506,28 +716,43 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               }
             },
           ),
-          ChoiceChip(
-            label: Text('English'),
-            selected: selectedKey == 'en',
-            onSelected: (v) {
-              if (v) {
-                ref.read(appSettingProvider.notifier).update(
-                      (s) => s.copyWith(locale: 'en'),
-                    );
-              }
-            },
-          ),
-          ChoiceChip(
-            label: Text('中文'),
-            selected: selectedKey == 'zh',
-            onSelected: (v) {
-              if (v) {
-                ref.read(appSettingProvider.notifier).update(
-                      (s) => s.copyWith(locale: 'zh'),
-                    );
-              }
-            },
-          ),
+          for (final group in const ['en', 'fr', 'zh', 'ja'])
+            () {
+              final variants = _langVariants.where((v) => v.locale.split('-').first == group).toList();
+              final hasVariants = variants.length > 1;
+              return ChoiceChip(
+                label: Text(() {
+                  if (selectedKey.split('-').first != group) {
+                    return _langGroupNames[group]!;
+                  }
+                  if (!hasVariants) return _langGroupNames[group]!;
+                  final v = _langVariants.firstWhere((v) => v.locale == selectedKey);
+                  return v.label;
+                }()),
+                selected: selectedKey.split('-').first == group,
+                onSelected: (_) {
+                  final current = currentLocale;
+                  final sameGroup = current != null && current.split('-').first == group;
+                  if (!sameGroup) {
+                    // First selection
+                    final first = variants.first.locale;
+                    ref.read(appSettingProvider.notifier).update((s) => s.copyWith(locale: first));
+                    setState(() {});
+                    final label = variants.first.label;
+                    if (context.mounted) context.showSnackBar(label);
+                    return;
+                  }
+                  if (!hasVariants) return;
+                  // Cycle to next variant
+                  final idx = variants.indexWhere((v2) => v2.locale == current);
+                  final next = variants[(idx + 1) % variants.length].locale;
+                  ref.read(appSettingProvider.notifier).update((s) => s.copyWith(locale: next));
+                  setState(() {});
+                  final label = variants.firstWhere((v2) => v2.locale == next).label;
+                  if (context.mounted) context.showSnackBar(label);
+                },
+              );
+            }(),
         ],
       ),
     );
@@ -632,6 +857,32 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               if (v) {
                 ref.read(appSettingProvider.notifier).update(
                       (s) => s.copyWith(themeMode: mode),
+                    );
+              }
+            },
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildUpdateChannelChips(UpdateChannel current, WidgetRef ref) {
+    final l10n = context.appLocalizations;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Wrap(
+        spacing: 8,
+        children: UpdateChannel.values.map((ch) {
+          final selected = ch == current;
+          return ChoiceChip(
+            label: Text(ch == UpdateChannel.nightly
+                ? l10n.nightlyChannel
+                : l10n.releaseChannel),
+            selected: selected,
+            onSelected: (v) {
+              if (v) {
+                ref.read(appSettingProvider.notifier).update(
+                      (s) => s.copyWith(updateChannel: ch),
                     );
               }
             },
@@ -802,7 +1053,7 @@ class _LogViewerPageState extends State<_LogViewerPage> {
     if (!dir.existsSync()) dir.createSync(recursive: true);
     final file = File('${dir.path}${Platform.pathSeparator}FlCroc-debug-$timestamp.log');
     await file.writeAsString(logs.join('\n'));
-    if (mounted) context.showSnackBar(l10n.logExported(file.path));
+    if (mounted) context.showSnackBar(l10n.logExported(formatPathForDisplay(file.path, storageLabel: l10n.storageFolder)));
   }
 
   @override

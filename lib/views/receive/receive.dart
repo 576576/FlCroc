@@ -15,7 +15,6 @@ import 'package:fl_croc/widgets/native_qr_scanner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 
 class ReceiveView extends ConsumerStatefulWidget {
   const ReceiveView({super.key});
@@ -66,13 +65,20 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   final List<FileItem> _receivedFiles = [];
   int _selectedTab = 0; // 0=files, 1=text
   bool _isPasteMode = false; // receive: default copy
+  bool _isPhrasePasteMode = true; // phrase field: default paste
   final _receivedTextController = TextEditingController();
   String _effectiveOutputPath = '';
+
+  // Persist code phrase across page switches
+  static String _savedCodePhrase = '';
 
   @override
   void initState() {
     super.initState();
     _loadReceivePrefs();
+    if (_savedCodePhrase.isNotEmpty) {
+      _codeController.text = _savedCodePhrase;
+    }
   }
 
   // ── Persistence ──
@@ -143,7 +149,15 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     if (data?.text != null && data!.text!.isNotEmpty) {
       _codeController.text = data.text!;
+      if (mounted) context.showSnackBar(context.appLocalizations.codePasted);
     }
+  }
+
+  void _copyPhrase() {
+    final p = _codeController.text.trim();
+    if (p.isEmpty) return;
+    Clipboard.setData(ClipboardData(text: p));
+    if (mounted) context.showSnackBar(context.appLocalizations.codeCopied);
   }
 
   String _defaultDownloadDir() => AppPaths.savePathSync;
@@ -352,6 +366,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
 
   @override
   void dispose() {
+    _savedCodePhrase = _codeController.text;
     _progressTimer?.cancel();
     _receiveSub?.cancel();
     _saveReceivePrefs();
@@ -392,11 +407,11 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                   ),
                   SizedBox(
                     width: 28, height: 28,
-                    child: IconButton(
-                      icon: const Icon(Icons.paste, size: 16),
-                      onPressed: _pastePhrase,
-                      padding: EdgeInsets.zero,
-                      tooltip: l10n.paste,
+                    child: _ClipboardToggleButton(
+                      isPasteMode: _isPhrasePasteMode,
+                      isActive: false,
+                      onTap: _isPhrasePasteMode ? _pastePhrase : _copyPhrase,
+                      onLongPress: () => setState(() => _isPhrasePasteMode = !_isPhrasePasteMode),
                     ),
                   ),
                 ],
@@ -471,7 +486,10 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                     alignment: Alignment.centerRight,
                     child: TextButton.icon(
                       onPressed: _receivedFiles.isNotEmpty
-                          ? () => setState(() => _receivedFiles.clear())
+                          ? () {
+                              setState(() => _receivedFiles.clear());
+                              context.showSnackBar(l10n.cleared);
+                            }
                           : null,
                       icon: const Icon(Icons.clear_all, size: 16),
                       label: Text(l10n.clear),
@@ -498,11 +516,13 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                                 final data = await Clipboard.getData(Clipboard.kTextPlain);
                                 if (data?.text != null && data!.text!.isNotEmpty) {
                                   setState(() => _receivedTextController.text = data.text!);
+                                  if (context.mounted) context.showSnackBar(l10n.pasted);
                                 }
                               }
                             : () {
                               if (_receivedTextController.text.isNotEmpty) {
                                 Clipboard.setData(ClipboardData(text: _receivedTextController.text));
+                                context.showSnackBar(l10n.copied);
                               }
                             },
                         onLongPress: () => setState(() => _isPasteMode = !_isPasteMode),
@@ -516,7 +536,10 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                     const SizedBox(width: 1),
                     TextButton.icon(
                       onPressed: _receivedTextController.text.isNotEmpty
-                          ? () => setState(() => _receivedTextController.clear())
+                          ? () {
+                              setState(() => _receivedTextController.clear());
+                              context.showSnackBar(l10n.cleared);
+                            }
                           : null,
                       icon: const Icon(Icons.clear_all, size: 16),
                       label: Text(l10n.clear),
@@ -596,7 +619,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Text(formatPathForDisplay(effectivePath, downloadsLabel: l10n.downloadsFolder), maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textTheme.bodySmall),
+                          Text(formatPathForDisplay(effectivePath, storageLabel: l10n.storageFolder), maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textTheme.bodySmall),
                         ],
                       ),
                     );
@@ -662,16 +685,13 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   }
 }
 
-/// Transparent route that lets the scanner UI show over the previous page.
-class _QrScannerRoute<T> extends PageRoute<T> with MaterialRouteTransitionMixin<T> {
+/// Transparent route with vertical slide transition.
+/// Scanner slides up from bottom on enter, slides up out of view on exit.
+/// The receive page beneath slides up from below when scanner is dismissed.
+class _QrScannerRoute<T> extends PageRoute<T> {
   _QrScannerRoute({required this.builder});
   final WidgetBuilder builder;
 
-  @override
-  Widget buildContent(BuildContext context) => builder(context);
-
-  @override
-  bool get maintainState => true;
   @override
   Color? get barrierColor => Colors.black87;
   @override
@@ -679,7 +699,39 @@ class _QrScannerRoute<T> extends PageRoute<T> with MaterialRouteTransitionMixin<
   @override
   String? get barrierLabel => 'Close';
   @override
-  Duration get transitionDuration => const Duration(milliseconds: 200);
+  bool get maintainState => true;
+  @override
+  Duration get transitionDuration => const Duration(milliseconds: 300);
+
+  @override
+  Widget buildPage(BuildContext context, Animation<double> animation,
+      Animation<double> secondaryAnimation) {
+    return builder(context);
+  }
+
+  @override
+  Widget buildTransitions(BuildContext context, Animation<double> animation,
+      Animation<double> secondaryAnimation, Widget child) {
+    // Scanner: slide down from top on enter, slide up to top on exit
+    final slideAnim = Tween<Offset>(
+      begin: const Offset(0, -1),
+      end: Offset.zero,
+    ).chain(CurveTween(curve: Curves.easeOutCubic));
+
+    // Receive page beneath: slide up from below when scanner is dismissed
+    final secondarySlide = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).chain(CurveTween(curve: Curves.easeOutCubic));
+
+    return SlideTransition(
+      position: secondarySlide.animate(secondaryAnimation),
+      child: SlideTransition(
+        position: slideAnim.animate(animation),
+        child: child,
+      ),
+    );
+  }
 }
 
 /// QR scanner dialog — full-screen Scaffold with camera filling the body.
@@ -693,22 +745,15 @@ class _QRScannerDialog extends StatefulWidget {
 class _QRScannerDialogState extends State<_QRScannerDialog> {
   bool _hasScanned = false;
   bool _isDisposed = false;
-  // Only used for analyzeImage (image picker); live scanning uses NativeQrScanner.
-  MobileScannerController? _imageAnalyzer;
 
   @override
   void initState() {
     super.initState();
-    _imageAnalyzer = MobileScannerController(
-      autoStart: false,
-      formats: const [BarcodeFormat.qrCode],
-    );
   }
 
   @override
   void dispose() {
     _isDisposed = true;
-    _imageAnalyzer?.dispose();
     super.dispose();
   }
 
@@ -718,54 +763,18 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
     Navigator.of(context).pop(code);
   }
 
-  Future<void> _pickImage() async {
-    if (_hasScanned || _isDisposed) return;
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
-    );
-    if (result == null || result.files.isEmpty) return;
-    final path = result.files.first.path;
-    if (path == null) return;
-    try {
-      final capture = await _imageAnalyzer?.analyzeImage(path);
-      if (_isDisposed || !mounted) return;
-      if (capture != null && capture.barcodes.isNotEmpty) {
-        final raw = capture.barcodes.first.rawValue;
-        if (raw != null && raw.isNotEmpty) {
-          _hasScanned = true;
-          Navigator.of(context).pop(raw);
-          return;
-        }
-      }
-      // No QR code found in image (like croc-app catches NotFoundException)
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.appLocalizations.noQRFound),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e, st) {
-      commonPrint('QR image analyze error: $e\n$st');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.appLocalizations.noQRFound),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = context.appLocalizations;
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
+      body: GestureDetector(
+        onVerticalDragEnd: (details) {
+          if (details.primaryVelocity != null && details.primaryVelocity! < -500) {
+            Navigator.of(context).pop();
+          }
+        },
+        child: SafeArea(
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -803,15 +812,6 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  FilledButton.icon(
-                    onPressed: _pickImage,
-                    icon: const Icon(Icons.image, size: 18),
-                    label: Text(l10n.selectQRImage),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary.withAlpha(200),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
                   OutlinedButton.icon(
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close, size: 18),
@@ -826,6 +826,7 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

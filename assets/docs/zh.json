@@ -1,0 +1,61 @@
+{
+  "_comment_meta": "── 元数据 ──",
+  "lang": "中文",
+  "langCode": "zh",
+  "langRegion": "简体",
+  "langRegionCode": ["Hans", "CN", "SG"],
+  "title": "FlCroc",
+  "tagline_block": "Croc的Flutter图形界面 — 轻松安全地在计算机之间传输文件",
+
+  "_comment_features": "── 功能特性 ──",
+  "feat_table": {
+    "platform": "跨平台 (Windows、Linux、Android)",
+    "encryption": "通过 croc 实现端到端加密文件传输",
+    "i18n": "原生多语言支持 (详见 [i18n.md](docs/i18n.md))",
+    "theme": "现代的 Flutter UI，具有自适应页面、动画和自定义配色方案"
+  },
+
+  "_comment_headings": "── 章节标题 ──",
+  "headings": {
+    "features": "功能特性",
+    "build": "构建",
+    "architecture": "架构",
+    "stack": "技术栈",
+    "i18n": "国际化",
+    "acknowledgments": "鸣谢",
+    "license": "许可证"
+  },
+
+  "_comment_content": "── 内容区块 ──",
+  "building": "请参阅 [BUILD.md](docs/BUILD.md) 了解构建说明和各平台指南。",
+  "arch_tree": {
+    "lib": "Flutter 应用 (Riverpod + Material 3)",
+    "go_bridge": "Go CGO 共享库 (FFI 桥接)",
+    "submodules": "内置 croc 源码",
+    "assets": "应用图标、国际化 JSON 语言包",
+    "ci": "CI/CD (build.yml)"
+  },
+  "stack_tree": {
+    "col_layer": "层级",
+    "col_tech": "技术",
+    "l_ui": "UI",
+    "l_state": "状态管理",
+    "l_backend": "后端",
+    "l_i18n": "国际化",
+    "l_ci": "CI/CD",
+    "ui": "Flutter 3.44 · Material 3",
+    "state": "Riverpod · Freezed",
+    "backend": "Go CGO FFI · croc 子模块",
+    "i18n": "JSON 语言包",
+    "ci": "GitHub Actions"
+  },
+  "i18n": "请参阅 [docs/i18n.md](docs/i18n.md) 了解各语言状态和贡献指南。",
+  "ack_tree": {
+    "col_project": "项目",
+    "col_desc": "说明",
+    "croc": "后端文件传输引擎",
+    "flutter": "跨平台 UI 框架",
+    "flclash": "UI 设计灵感",
+    "crocapp": "扫码实现参考"
+  }
+}

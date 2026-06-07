@@ -1,0 +1,61 @@
+{
+  "_comment_meta": "── Meta ──",
+  "lang": "English",
+  "langCode": "en",
+  "langRegion": "United States",
+  "langRegionCode": ["US", "GB"],
+  "title": "FlCroc",
+  "tagline_block": "A Flutter GUI for croc — easily and securely transfer files between computers",
+
+  "_comment_features": "── Features ──",
+  "feat_table": {
+    "platform": "Cross-platform (Windows, Linux, Android)",
+    "encryption": "End-to-end encrypted file transfer via croc",
+    "i18n": "Native multi-language support (see [i18n.md](docs/i18n.md) for details)",
+    "theme": "Modern Flutter UI with adaptive layout, animations, and custom color schemes"
+  },
+
+  "_comment_headings": "── Section Headings ──",
+  "headings": {
+    "features": "Features",
+    "build": "Build",
+    "architecture": "Architecture",
+    "stack": "Tech Stack",
+    "i18n": "I18n",
+    "acknowledgments": "Acknowledgments",
+    "license": "License"
+  },
+
+  "_comment_content": "── Content Blocks ──",
+  "building": "See [BUILD.md](docs/BUILD.md) for build instructions and platform-specific guides.",
+  "arch_tree": {
+    "lib": "Flutter app (Riverpod + Material 3)",
+    "go_bridge": "Go CGO shared library (FFI bridge)",
+    "submodules": "Vendored croc source",
+    "assets": "App icon, I18n JSON bundles",
+    "ci": "CI/CD (build.yml)"
+  },
+  "stack_tree": {
+    "col_layer": "Layer",
+    "col_tech": "Technology",
+    "l_ui": "UI",
+    "l_state": "State",
+    "l_backend": "Backend",
+    "l_i18n": "I18n",
+    "l_ci": "CI/CD",
+    "ui": "Flutter 3.44 · Material 3",
+    "state": "Riverpod · Freezed",
+    "backend": "Go CGO FFI · croc submodule",
+    "i18n": "JSON bundles",
+    "ci": "GitHub Actions"
+  },
+  "i18n": "See [docs/i18n.md](docs/i18n.md) for language status and contribution guide.",
+  "ack_tree": {
+    "col_project": "Project",
+    "col_desc": "Description",
+    "croc": "Backend file transfer engine",
+    "flutter": "Cross-platform UI framework",
+    "flclash": "UI inspiration",
+    "crocapp": "QR scanner reference"
+  }
+}

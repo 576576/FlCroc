@@ -1,8 +1,10 @@
 {
   "lang": "English",
-  "code": "en",
+  "langCode": "en",
+  "langRegion": "United States",
+  "langRegionCode": ["US", "GB"],
 
-  "_comment_common": "══════════ Common ══════════",
+  "_comment_common": "── Common ──",
   "appName": "FlCroc",
 
   "_comment_nav": "── Navigation ──",
@@ -51,6 +53,11 @@
   "failed": "Failed",
   "cancelled": "Cancelled",
   "codeCopied": "Code copied",
+  "codePasted": "Code pasted",
+  "copied": "Copied",
+  "pasted": "Pasted",
+  "cleared": "Cleared",
+  "historyCleared": "History cleared",
   "default": "Default",
   "custom": "Custom",
 
@@ -69,8 +76,12 @@
   "latestVersion": "Latest version",
   "currentVersion": "Current version",
   "update": "Update",
+  "updateChannel": "Update Channel",
+  "releaseChannel": "Release",
+  "nightlyChannel": "Nightly",
+  "autoCheckUpdate": "Check update on startup",
 
-  "_comment_dashboard": "══════════ Dashboard ══════════",
+  "_comment_dashboard": "── Dashboard ──",
   "transferSpeed": "Transfer Speed",
   "transferStatsName": "Transfer Stats",
   "totalTransferred": "Total Transferred",
@@ -89,7 +100,7 @@
   "noHistory": "No history",
   "availableWidgets": "Available Widgets",
 
-  "_comment_send": "══════════ Send ══════════",
+  "_comment_send": "── Send ──",
   "dropToAdd": "Release to add",
   "codePhrase": "Code Phrase",
   "enterCodePhrase": "Enter Code Phrase",
@@ -105,7 +116,7 @@
   "enterPhraseWarning": "Enter code phrase or use default",
   "enterTextWarning": "Please enter text.",
 
-  "_comment_receive": "══════════ Receive ══════════",
+  "_comment_receive": "── Receive ──",
   "startReceive": "Start Receive",
   "scanQRCode": "Scan QR Code",
   "generateQRCode": "Generate QR code",
@@ -120,10 +131,8 @@
   "cameraUnsupported": "Scanning not supported on this device",
   "cameraError": "Camera error",
 
-  "_comment_settings": "══════════ Settings ══════════",
+  "_comment_settings": "── Settings ──",
   "options": "Options",
-
-  "_comment_transferOpts": "── Transfer Options ──",
   "transferOptions": "Transfer Options",
   "encryptionCurve": "Encryption Curve",
   "hashAlgorithm": "Hash Algorithm",
@@ -143,7 +152,7 @@
   "resetRelay": "Reset relay",
 
   "_comment_savePath": "── Save Path ──",
-  "downloadsFolder": "/storage/emulated/0/Download",
+  "storageFolder": "Internal Storage",
   "defaultSavePath": "Default save path",
   "selectFolder": "Select folder",
   "savePath": "Save path",
@@ -158,10 +167,10 @@
   "autoLanguage": "Auto",
   "pureBlackMode": "OLED Dark",
   "colorPalette": "Color Palette",
-
-  "_comment_nav": "── Navigation ──",
   "noTextMode": "Icon-only mode",
   "noTextModeDesc": "Show only icons in the navigation bar",
+  "disableAnimations": "Disable animations",
+  "disableAnimationsDesc": "Improves performance on low-end devices by disabling UI transitions and effects",
 
   "_comment_reset": "── Reset ──",
   "reset": "Reset",

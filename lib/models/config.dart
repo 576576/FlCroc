@@ -27,8 +27,10 @@ abstract class AppSettingProps with _$AppSettingProps {
     @Default(FontFamily.system) FontFamily fontFamily,
     @Default(false) bool pureBlackMode,
     @Default(false) bool noTextMode,
+    @Default(false) bool disableAnimations,
     @Default(false) bool developerMode,
     @Default(false) bool autoCheckUpdate,
+    @Default(UpdateChannel.release) UpdateChannel updateChannel,
     @Default(RelayConfig()) RelayConfig relayConfig,
     @Default('') String defaultSavePath,
   }) = _AppSettingProps;

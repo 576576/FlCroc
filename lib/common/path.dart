@@ -116,14 +116,18 @@ class AppPaths {
 }
 
 /// 保存路径的 UI 显示标签（接受本地化对象）。
-String formatPathForDisplay(String path, {String? downloadsLabel}) {
-  if (path.isEmpty) return downloadsLabel ?? 'Downloads';
-  // Android app-specific or iOS sandbox path → show friendly label
-  if (Platform.isAndroid && path.contains('/Android/data/')) {
-    return downloadsLabel ?? 'Downloads';
+String formatPathForDisplay(String path, {String? storageLabel}) {
+  if (path.isEmpty) return storageLabel ?? path;
+  if (Platform.isAndroid) {
+    if (path.startsWith('/storage/emulated/0/')) {
+      return '${storageLabel ?? "Storage"}${path.substring("/storage/emulated/0".length)}';
+    }
+    if (path.contains('/Android/data/')) {
+      return storageLabel ?? path;
+    }
   }
   if (Platform.isIOS && path.contains('/Documents')) {
-    return downloadsLabel ?? 'Downloads';
+    return storageLabel ?? path;
   }
   return path;
 }

@@ -1,0 +1,61 @@
+{
+  "_comment_meta": "── メタ ──",
+  "lang": "日本語",
+  "langCode": "ja",
+  "langRegion": "日本",
+  "langRegionCode": ["JP"],
+  "title": "FlCroc",
+  "tagline_block": "croc の Flutter GUI — コンピュータ間で安全にファイルを転送",
+
+  "_comment_features": "── 機能 ──",
+  "feat_table": {
+    "platform": "クロスプラットフォーム (Windows、Linux、Android)",
+    "encryption": "croc によるエンドツーエンド暗号化ファイル転送",
+    "i18n": "ネイティブ多言語サポート (詳細は [i18n.md](docs/i18n.md) を参照)",
+    "theme": "アダプティブレイアウト、アニメーション、カスタム配色を備えたモダンな Flutter UI"
+  },
+
+  "_comment_headings": "── 見出し ──",
+  "headings": {
+    "features": "機能",
+    "build": "ビルド",
+    "architecture": "アーキテクチャ",
+    "stack": "技術スタック",
+    "i18n": "国際化",
+    "acknowledgments": "謝辞",
+    "license": "ライセンス"
+  },
+
+  "_comment_content": "── コンテンツ ──",
+  "building": "ビルド手順とプラットフォーム別ガイドは [BUILD.md](docs/BUILD.md) を参照してください。",
+  "arch_tree": {
+    "lib": "Flutter アプリ (Riverpod + Material 3)",
+    "go_bridge": "Go CGO 共有ライブラリ (FFI ブリッジ)",
+    "submodules": "内蔵 croc ソース",
+    "assets": "アプリアイコン、i18n JSON バンドル",
+    "ci": "CI/CD (build.yml)"
+  },
+  "stack_tree": {
+    "col_layer": "レイヤー",
+    "col_tech": "技術",
+    "l_ui": "UI",
+    "l_state": "状態管理",
+    "l_backend": "バックエンド",
+    "l_i18n": "国際化",
+    "l_ci": "CI/CD",
+    "ui": "Flutter 3.44 · Material 3",
+    "state": "Riverpod · Freezed",
+    "backend": "Go CGO FFI · croc サブモジュール",
+    "i18n": "JSON バンドル",
+    "ci": "GitHub Actions"
+  },
+  "i18n": "各言語の状況と貢献ガイドについては [docs/i18n.md](docs/i18n.md) を参照してください。",
+  "ack_tree": {
+    "col_project": "プロジェクト",
+    "col_desc": "説明",
+    "croc": "バックエンドファイル転送エンジン",
+    "flutter": "クロスプラットフォーム UI フレームワーク",
+    "flclash": "UI デザインのインスピレーション",
+    "crocapp": "QR スキャナ実装の参考"
+  }
+}

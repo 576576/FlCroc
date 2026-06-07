@@ -658,7 +658,6 @@ mixin _$ReceiveOptions {
   String get codePhrase => throw _privateConstructorUsedError;
   bool get overwrite => throw _privateConstructorUsedError;
   bool get onlyLocal => throw _privateConstructorUsedError;
-  bool get disableLocal => throw _privateConstructorUsedError;
   String get outputPath => throw _privateConstructorUsedError;
   String get curve => throw _privateConstructorUsedError;
   String? get relayAddress => throw _privateConstructorUsedError;
@@ -687,7 +686,6 @@ abstract class $ReceiveOptionsCopyWith<$Res> {
     String codePhrase,
     bool overwrite,
     bool onlyLocal,
-    bool disableLocal,
     String outputPath,
     String curve,
     String? relayAddress,
@@ -715,7 +713,6 @@ class _$ReceiveOptionsCopyWithImpl<$Res, $Val extends ReceiveOptions>
     Object? codePhrase = null,
     Object? overwrite = null,
     Object? onlyLocal = null,
-    Object? disableLocal = null,
     Object? outputPath = null,
     Object? curve = null,
     Object? relayAddress = freezed,
@@ -736,10 +733,6 @@ class _$ReceiveOptionsCopyWithImpl<$Res, $Val extends ReceiveOptions>
             onlyLocal: null == onlyLocal
                 ? _value.onlyLocal
                 : onlyLocal // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            disableLocal: null == disableLocal
-                ? _value.disableLocal
-                : disableLocal // ignore: cast_nullable_to_non_nullable
                       as bool,
             outputPath: null == outputPath
                 ? _value.outputPath
@@ -784,7 +777,6 @@ abstract class _$$ReceiveOptionsImplCopyWith<$Res>
     String codePhrase,
     bool overwrite,
     bool onlyLocal,
-    bool disableLocal,
     String outputPath,
     String curve,
     String? relayAddress,
@@ -811,7 +803,6 @@ class __$$ReceiveOptionsImplCopyWithImpl<$Res>
     Object? codePhrase = null,
     Object? overwrite = null,
     Object? onlyLocal = null,
-    Object? disableLocal = null,
     Object? outputPath = null,
     Object? curve = null,
     Object? relayAddress = freezed,
@@ -832,10 +823,6 @@ class __$$ReceiveOptionsImplCopyWithImpl<$Res>
         onlyLocal: null == onlyLocal
             ? _value.onlyLocal
             : onlyLocal // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        disableLocal: null == disableLocal
-            ? _value.disableLocal
-            : disableLocal // ignore: cast_nullable_to_non_nullable
                   as bool,
         outputPath: null == outputPath
             ? _value.outputPath
@@ -873,7 +860,6 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
     required this.codePhrase,
     this.overwrite = false,
     this.onlyLocal = false,
-    this.disableLocal = true,
     this.outputPath = '',
     this.curve = 'p256',
     this.relayAddress,
@@ -895,9 +881,6 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
   final bool onlyLocal;
   @override
   @JsonKey()
-  final bool disableLocal;
-  @override
-  @JsonKey()
   final String outputPath;
   @override
   @JsonKey()
@@ -913,7 +896,7 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
 
   @override
   String toString() {
-    return 'ReceiveOptions(codePhrase: $codePhrase, overwrite: $overwrite, onlyLocal: $onlyLocal, disableLocal: $disableLocal, outputPath: $outputPath, curve: $curve, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword, relayPorts: $relayPorts)';
+    return 'ReceiveOptions(codePhrase: $codePhrase, overwrite: $overwrite, onlyLocal: $onlyLocal, outputPath: $outputPath, curve: $curve, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword, relayPorts: $relayPorts)';
   }
 
   @override
@@ -927,8 +910,6 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
                 other.overwrite == overwrite) &&
             (identical(other.onlyLocal, onlyLocal) ||
                 other.onlyLocal == onlyLocal) &&
-            (identical(other.disableLocal, disableLocal) ||
-                other.disableLocal == disableLocal) &&
             (identical(other.outputPath, outputPath) ||
                 other.outputPath == outputPath) &&
             (identical(other.curve, curve) || other.curve == curve) &&
@@ -949,7 +930,6 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
     codePhrase,
     overwrite,
     onlyLocal,
-    disableLocal,
     outputPath,
     curve,
     relayAddress,
@@ -980,7 +960,6 @@ abstract class _ReceiveOptions implements ReceiveOptions {
     required final String codePhrase,
     final bool overwrite,
     final bool onlyLocal,
-    final bool disableLocal,
     final String outputPath,
     final String curve,
     final String? relayAddress,
@@ -998,8 +977,6 @@ abstract class _ReceiveOptions implements ReceiveOptions {
   bool get overwrite;
   @override
   bool get onlyLocal;
-  @override
-  bool get disableLocal;
   @override
   String get outputPath;
   @override

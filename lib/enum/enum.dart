@@ -14,6 +14,8 @@ enum PageLabel {
 
 enum ThemeModeOption { system, light, dark }
 
+enum UpdateChannel { release, nightly }
+
 enum ColorSchemeType {
   fidelity,
   expressive,

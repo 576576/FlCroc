@@ -1,14 +1,8 @@
 /// FlCroc internationalization (i18n).
 ///
-/// **Architecture** — translations stored in JSON bundles under `assets/bundles/`:
-///   - `en.json` — English
-///   - `zh.json` — Chinese
-///
-/// **Usage tracking** — to find which getters are used:
-///   ```bash
-///   dart run lib/l10n/usage_check.dart   # lists unused getters
-///   ```
-///   Or manually: search for `l10n.<getter>` or `.appLocalizations.<getter>` in `lib/`.
+/// Translations are stored in JSON bundles under `assets/bundles/`.
+/// Script variants (e.g. `zh-Hant`) only need to override keys that differ
+/// from the base language — missing keys fall back automatically.
 library;
 
 import 'dart:convert';
@@ -37,6 +31,9 @@ class AppLocalizations {
   static const List<Locale> supportedLocales = [
     Locale('en'),
     Locale('zh'),
+    Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+    Locale('ja'),
+    Locale('fr'),
   ];
 
   /// Look up a message by key. Falls back to the key itself.
@@ -74,6 +71,7 @@ class AppLocalizations {
     // ── Common: Update ──
     'checkUpdate', 'alreadyLatest', 'newVersionAvailable',
     'latestVersion', 'currentVersion', 'update',
+    'updateChannel', 'releaseChannel', 'nightlyChannel', 'autoCheckUpdate',
 
     // ── Dashboard ──
     'transferSpeed', 'transferStatsName', 'totalTransferred', 'quickTransfer',
@@ -105,7 +103,7 @@ class AppLocalizations {
     'defaultRelay', 'customRelay', 'noRelay', 'port', 'resetRelay',
 
     // ── Settings: Save Path ──
-    'downloadsFolder', 'defaultSavePath', 'selectFolder', 'savePath',
+    'storageFolder', 'defaultSavePath', 'selectFolder', 'savePath',
 
     // ── Settings: Theme ──
     'theme', 'themeMode', 'light', 'dark', 'system',
@@ -113,6 +111,7 @@ class AppLocalizations {
 
     // ── Settings: Navigation ──
     'noTextMode', 'noTextModeDesc',
+    'disableAnimations', 'disableAnimationsDesc',
 
     // ── Settings: Reset ──
     'reset', 'resetAllSettings', 'resetAllConfirm', 'settingsReset',
@@ -188,6 +187,11 @@ class AppLocalizations {
   String get failed => _('failed');
   String get cancelled => _('cancelled');
   String get codeCopied => _('codeCopied');
+  String get codePasted => _('codePasted');
+  String get copied => _('copied');
+  String get pasted => _('pasted');
+  String get cleared => _('cleared');
+  String get historyCleared => _('historyCleared');
   String get defaultLabel => _('default');
   String get custom => _('custom');
 
@@ -217,6 +221,10 @@ class AppLocalizations {
   String get latestVersion => _('latestVersion');
   String get currentVersion => _('currentVersion');
   String get update => _('update');
+  String get updateChannel => _('updateChannel');
+  String get releaseChannel => _('releaseChannel');
+  String get nightlyChannel => _('nightlyChannel');
+  String get autoCheckUpdate => _('autoCheckUpdate');
 
   // ── Dashboard ──
   String get transferSpeed => _('transferSpeed');
@@ -288,7 +296,7 @@ class AppLocalizations {
   String get resetRelay => _('resetRelay');
 
   // ── Settings: Save Path ──
-  String get downloadsFolder => _('downloadsFolder');
+  String get storageFolder => _('storageFolder');
   String get defaultSavePath => _('defaultSavePath');
   String get selectFolder => _('selectFolder');
   String get savePath => _('savePath');
@@ -307,6 +315,8 @@ class AppLocalizations {
   // ── Settings: Navigation ──
   String get noTextMode => _('noTextMode');
   String get noTextModeDesc => _('noTextModeDesc');
+  String get disableAnimations => _('disableAnimations');
+  String get disableAnimationsDesc => _('disableAnimationsDesc');
 
   // ── Settings: Reset ──
   String get reset => _('reset');
@@ -399,21 +409,41 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) =>
-      AppLocalizations.supportedLocales.any((l) => l.languageCode == locale.languageCode);
+      AppLocalizations.supportedLocales.any((l) =>
+        l.languageCode == locale.languageCode &&
+        (l.scriptCode == null || l.scriptCode == locale.scriptCode));
 
   @override
   Future<AppLocalizations> load(Locale locale) async {
-    final code = locale.languageCode;
-    if (!_cache.containsKey(code)) {
-      try {
-        final json = await rootBundle.loadString('assets/bundles/$code.json');
-        _cache[code] = Map<String, String>.from(jsonDecode(json) as Map);
-      } catch (_) {
-        _cache[code] = {};
-      }
+    final code = locale.scriptCode != null
+        ? '${locale.languageCode}-${locale.scriptCode}'
+        : locale.languageCode;
+
+    // Load exact match + base language, merge (variant overrides base).
+    // E.g. zh-Hant → zh-Hant.json overlaid on zh.json.
+    Map<String, String> messages = await _loadBundle(code);
+    if (code != locale.languageCode) {
+      final base = await _loadBundle(locale.languageCode);
+      messages = {...base, ...messages};
     }
-    final messages = _cache[code]!.isNotEmpty ? _cache[code]! : (_cache['en'] ?? {});
+
+    if (messages.isEmpty) messages = await _loadBundle('en');
     return AppLocalizations._(locale, messages);
+  }
+
+  Future<Map<String, String>> _loadBundle(String code) async {
+    if (_cache.containsKey(code)) return _cache[code]!;
+    try {
+      final json = await rootBundle.loadString('assets/bundles/$code.json');
+      final decoded = jsonDecode(json) as Map<String, dynamic>;
+      final map = <String, String>{};
+      for (final entry in decoded.entries) {
+        if (entry.value is String) map[entry.key] = entry.value as String;
+      }
+      return _cache[code] = map;
+    } catch (_) {
+      return _cache[code] = {};
+    }
   }
 
   @override

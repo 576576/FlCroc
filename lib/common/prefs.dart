@@ -44,4 +44,8 @@ class AppPrefs {
 
   static Future<bool> setJson(String key, Map<String, dynamic> value) =>
       _prefs?.setString(key, jsonEncode(value)) ?? Future.value(false);
+
+  static Future<void> remove(String key) async {
+    await _prefs?.remove(key);
+  }
 }

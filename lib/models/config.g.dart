@@ -29,8 +29,12 @@ _$AppSettingPropsImpl _$$AppSettingPropsImplFromJson(
       FontFamily.system,
   pureBlackMode: json['pureBlackMode'] as bool? ?? false,
   noTextMode: json['noTextMode'] as bool? ?? false,
+  disableAnimations: json['disableAnimations'] as bool? ?? false,
   developerMode: json['developerMode'] as bool? ?? false,
   autoCheckUpdate: json['autoCheckUpdate'] as bool? ?? false,
+  updateChannel:
+      $enumDecodeNullable(_$UpdateChannelEnumMap, json['updateChannel']) ??
+      UpdateChannel.release,
   relayConfig: json['relayConfig'] == null
       ? const RelayConfig()
       : RelayConfig.fromJson(json['relayConfig'] as Map<String, dynamic>),
@@ -52,8 +56,10 @@ Map<String, dynamic> _$$AppSettingPropsImplToJson(
   'fontFamily': _$FontFamilyEnumMap[instance.fontFamily]!,
   'pureBlackMode': instance.pureBlackMode,
   'noTextMode': instance.noTextMode,
+  'disableAnimations': instance.disableAnimations,
   'developerMode': instance.developerMode,
   'autoCheckUpdate': instance.autoCheckUpdate,
+  'updateChannel': _$UpdateChannelEnumMap[instance.updateChannel]!,
   'relayConfig': instance.relayConfig,
   'defaultSavePath': instance.defaultSavePath,
 };
@@ -76,6 +82,11 @@ const _$FontFamilyEnumMap = {
   FontFamily.system: 'system',
   FontFamily.notoSans: 'notoSans',
   FontFamily.roboto: 'roboto',
+};
+
+const _$UpdateChannelEnumMap = {
+  UpdateChannel.release: 'release',
+  UpdateChannel.nightly: 'nightly',
 };
 
 _$ThemePropsImpl _$$ThemePropsImplFromJson(Map<String, dynamic> json) =>

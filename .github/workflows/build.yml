@@ -23,19 +23,26 @@ jobs:
       contents: write
     outputs:
       windows: ${{ steps.platform.outputs.windows }}
-      windows_arm64: ${{ steps.platform.outputs.windows_arm64 }}
       linux: ${{ steps.platform.outputs.linux }}
       android: ${{ steps.platform.outputs.android }}
       arch_all: ${{ steps.platform.outputs.arch_all }}
-      is_main: ${{ steps.branch.outputs.is_main }}
       is_tag: ${{ steps.branch.outputs.is_tag }}
       do_release: ${{ steps.ver.outputs.do_release }}
       release_version: ${{ steps.ver.outputs.release_version }}
       release_tag: ${{ steps.ver.outputs.release_tag }}
       release_name: ${{ steps.ver.outputs.release_name }}
-      nightly_version: ${{ steps.ver.outputs.nightly_version }}
       nightly_date: ${{ steps.ver.outputs.nightly_date }}
       synced_version: ${{ steps.ver.outputs.synced_version }}
+      new_build: ${{ steps.ver.outputs.new_build }}
+      app_version: ${{ steps.app-ver.outputs.version }}
+      flutter_version: ${{ steps.flutter-ver.outputs.version }}
+      croc_version: ${{ steps.croc-ver.outputs.version }}
+      skip_all: ${{ steps.platform.outputs.skip_all }}
+      i18n_do: ${{ steps.hash-check.outputs.do_i18n }}
+      docs_do: ${{ steps.hash-check.outputs.do_docs }}
+      bundles_hash: ${{ steps.hash-check.outputs.bundles_hash }}
+      docs_hash: ${{ steps.hash-check.outputs.docs_hash }}
+      templates_hash: ${{ steps.hash-check.outputs.templates_hash }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -48,13 +55,10 @@ jobs:
         run: |
           REF="${{ github.ref }}"
           if [[ "$REF" == refs/tags/* ]]; then
-            echo "is_main=true" >> $GITHUB_OUTPUT
             echo "is_tag=true" >> $GITHUB_OUTPUT
           elif [[ "$REF" == refs/heads/main ]] || [[ "$REF" == refs/heads/master ]]; then
-            echo "is_main=true" >> $GITHUB_OUTPUT
             echo "is_tag=false" >> $GITHUB_OUTPUT
           else
-            echo "is_main=false" >> $GITHUB_OUTPUT
             echo "is_tag=false" >> $GITHUB_OUTPUT
           fi
 
@@ -80,11 +84,11 @@ jobs:
             case "$PREFIX" in
               beta)
                 TAG="v$VER-beta"
-                REL_NAME="FlCroc Beta $VER"
+                REL_NAME="Beta $VER"
                 ;;
               *)
                 TAG="v$VER"
-                REL_NAME="FlCroc $VER"
+                REL_NAME="$VER"
                 ;;
             esac
             echo "Syncing release version: $NEW_VERSION (build $CUR_BUILD → $NEW_BUILD)"
@@ -93,18 +97,11 @@ jobs:
             echo "release_tag=$TAG" >> $GITHUB_OUTPUT
             echo "release_name=$REL_NAME" >> $GITHUB_OUTPUT
             echo "synced_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-            sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add pubspec.yaml
-            git diff --cached --quiet && exit 0
-            git commit -m "sync-ver: $NEW_VERSION [skip ci]"
-            git push
+            echo "new_build=$NEW_BUILD" >> $GITHUB_OUTPUT
           else
             # ── Non-release: increment build number only if a build will run ──
-            if ! echo "$MSG" | grep -qE '\b(b-win64|b-win|b-linux|b-mobile|b-all)\b'; then
+            if ! echo "$MSG" | grep -qE '\b(b-win|b-linux|b-mobile|b-all)\b'; then
               echo "No build trigger in commit message, skip version sync"
-              echo "nightly_version=${CUR_VER}" >> $GITHUB_OUTPUT
               echo "nightly_date=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
               echo "synced_version=${CUR_VER}" >> $GITHUB_OUTPUT
               exit 0
@@ -118,16 +115,9 @@ jobs:
             NEW_VERSION="${BASE}+${NEW_BUILD}"
             NIGHTLY_DATE=$(date +%Y%m%d)
             echo "Syncing dev version: $NEW_VERSION (build $CUR_BUILD → $NEW_BUILD)"
-            echo "nightly_version=$NEW_VERSION" >> $GITHUB_OUTPUT
             echo "nightly_date=$NIGHTLY_DATE" >> $GITHUB_OUTPUT
             echo "synced_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-            sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add pubspec.yaml
-            git diff --cached --quiet && exit 0
-            git commit -m "sync-ver: $NEW_VERSION [skip ci]"
-            git push
+            echo "new_build=$NEW_BUILD" >> $GITHUB_OUTPUT
           fi
 
       - name: Update submodule to latest croc
@@ -145,17 +135,48 @@ jobs:
           cd ../..
           find submodules/croc -name '*_test.go' -delete
 
+      - name: Detect croc version
+        id: croc-ver
+        run: |
+          cd submodules/croc
+          VER=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+          echo "version=${VER:-unknown}" >> $GITHUB_OUTPUT
+          cd ../..
+
+      - name: Detect Flutter version
+        id: flutter-ver
+        run: |
+          VER=$(curl -sL https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json | jq -r '.releases[] | select(.channel=="stable") | .version' | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          echo "version=${VER:-unknown}" >> $GITHUB_OUTPUT
+
+      - name: Detect app version
+        id: app-ver
+        run: |
+          VER=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
+          echo "version=${VER}" >> $GITHUB_OUTPUT
+
       - name: Determine platforms
         id: platform
         env:
           MSG: ${{ github.event.head_commit.message || '' }}
           IS_TAG: ${{ steps.branch.outputs.is_tag }}
         run: |
-          W='false'; WA='false'; L='false'; A='false'; ALL='false'
+          W='false'; L='false'; A='false'; ALL='false'
+          # b-none: skip all builds and tests
+          if echo "$MSG" | grep -qE '\bb-none\b'; then
+            echo "skip_all=true" >> $GITHUB_OUTPUT
+            echo "windows=false" >> $GITHUB_OUTPUT
+            echo "linux=false" >> $GITHUB_OUTPUT
+            echo "android=false" >> $GITHUB_OUTPUT
+            echo "arch_all=false" >> $GITHUB_OUTPUT
+            echo "Platforms → b-none: skip all"
+            exit 0
+          fi
+          echo "skip_all=false" >> $GITHUB_OUTPUT
           # arch-all: include secondary architectures (Win-ARM64, Android-AMD64)
           if echo "$MSG" | grep -qE '\b(arch-all)\b'; then ALL='true'; fi
           if [ "$IS_TAG" = "true" ]; then
-            W='true'; WA='true'; L='true'; A='true'; ALL='true'
+            W='true'; L='true'; A='true'; ALL='true'
           else
             case "$MSG" in
               *b-win*)    W='true' ;;
@@ -163,22 +184,60 @@ jobs:
               *b-mobile*) A='true' ;;
               *b-all*)    W='true'; L='true'; A='true' ;;
             esac
-            # Secondary arch: only when arch-all flag is present
-            if [ "$ALL" = 'true' ]; then
-              if [ "$W" = 'true' ]; then WA='true'; fi
-            fi
           fi
           echo "windows=$W" >> $GITHUB_OUTPUT
-          echo "windows_arm64=$WA" >> $GITHUB_OUTPUT
           echo "linux=$L" >> $GITHUB_OUTPUT
           echo "android=$A" >> $GITHUB_OUTPUT
           echo "arch_all=$ALL" >> $GITHUB_OUTPUT
-          echo "Platforms → windows:$W arm64:$WA linux:$L android:$A arch-all:$ALL"
+          echo "Platforms → windows:$W linux:$L android:$A arch-all:$ALL"
+
+      - name: Check i18n & docs changes
+        id: hash-check
+        env:
+          MSG: ${{ github.event.head_commit.message || '' }}
+        run: |
+          # Use short hashes (first 8 chars of SHA256)
+          BUNDLES_HASH=$(find assets/bundles -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -c1-8)
+          DOCS_HASH=$(find assets/docs -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -c1-8)
+          TEMPLATES_HASH=$(find assets/templates -type f -exec sha256sum {} \; | sort | sha256sum | cut -c1-8)
+
+          # b-doc: force i18n + docs regeneration
+          if echo "$MSG" | grep -qE '\bb-doc\b'; then
+            echo "do_i18n=true" >> $GITHUB_OUTPUT
+            echo "do_docs=true" >> $GITHUB_OUTPUT
+            echo "bundles_hash=$BUNDLES_HASH" >> $GITHUB_OUTPUT
+            echo "docs_hash=$DOCS_HASH" >> $GITHUB_OUTPUT
+            echo "templates_hash=$TEMPLATES_HASH" >> $GITHUB_OUTPUT
+            echo "i18n: true (forced)  docs: true (forced)"
+            exit 0
+          fi
+
+          OLD_BUNDLES=""; OLD_DOCS=""; OLD_TEMPLATES=""
+          if [ -f docs/i18n.md ]; then
+            OLD_BUNDLES=$(grep 'bundles:' docs/i18n.md | tail -1 | awk '{print $2}')
+            OLD_DOCS=$(grep 'docs:' docs/i18n.md | tail -1 | awk '{print $2}')
+            OLD_TEMPLATES=$(grep 'templates:' docs/i18n.md | tail -1 | awk '{print $2}')
+          fi
+
+          DO_I18N="false"; DO_DOCS="false"
+          # Templates change → force like b-doc
+          [ "$TEMPLATES_HASH" != "$OLD_TEMPLATES" ] && DO_I18N="true" && DO_DOCS="true"
+          [ "$BUNDLES_HASH" != "$OLD_BUNDLES" ] && DO_I18N="true"
+          [ "$DOCS_HASH" != "$OLD_DOCS" ] && DO_I18N="true"
+          [ "$DOCS_HASH" != "$OLD_DOCS" ] && DO_DOCS="true"
+
+          echo "do_i18n=$DO_I18N" >> $GITHUB_OUTPUT
+          echo "do_docs=$DO_DOCS" >> $GITHUB_OUTPUT
+          echo "bundles_hash=$BUNDLES_HASH" >> $GITHUB_OUTPUT
+          echo "docs_hash=$DOCS_HASH" >> $GITHUB_OUTPUT
+          echo "templates_hash=$TEMPLATES_HASH" >> $GITHUB_OUTPUT
+          echo "i18n: $DO_I18N  docs: $DO_DOCS"
 
   # ── Test ──
   test:
     needs: prebuild
-    if: always() && !failure() && !cancelled()
+    if: always() && !failure() && !cancelled() && needs.prebuild.outputs.skip_all != 'true'
+    continue-on-error: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -193,10 +252,276 @@ jobs:
       - name: Run tests
         run: flutter test
 
-  # ── Windows (AMD64 + optional ARM64 via Zig cross-compile) ──
+  # ── i18n & Docs ──
+  i18n:
+    needs: prebuild
+    if: always() && !failure() && !cancelled() && (needs.prebuild.outputs.i18n_do == 'true' || needs.prebuild.outputs.docs_do == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      i18n_changed: ${{ needs.prebuild.outputs.i18n_do }}
+      docs_changed: ${{ needs.prebuild.outputs.docs_do }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate i18n status
+        if: needs.prebuild.outputs.i18n_do == 'true'
+        run: |
+          TEMPLATE="assets/templates/i18n.md"
+          OUTPUT="docs/i18n.md"
+          DEFAULT="assets/bundles/en.json"
+          NOW=$(date -u +'%Y-%m-%d %H:%M UTC')
+
+          HEADER_KEYS=4
+          DEFAULT_TOTAL=$(jq '[keys[] | select(startswith("_") | not)] | length' "$DEFAULT")
+          ACTUAL=$((DEFAULT_TOTAL - HEADER_KEYS))
+
+          ROWS=""
+          for f in $(ls assets/bundles/*.json | sort -r); do
+            LANG=$(jq -r '.lang' "$f")
+            CODE=$(jq -r '.langCode' "$f")
+            REGION=$(jq -r '.langRegion' "$f")
+            TOTAL=$(jq '[keys[] | select(startswith("_") | not)] | length' "$f")
+            KEYS=$((TOTAL - HEADER_KEYS))
+            PCT=$((100 * KEYS / ACTUAL))
+            [ "$PCT" -gt 100 ] && PCT=100
+
+            DOCS=0
+            if [ "$CODE" = "en" ]; then
+              DOCS=$(ls docs/*.md 2>/dev/null | wc -l)
+              [ -f README.md ] && DOCS=$((DOCS + 1))
+            elif [ -d "docs/$CODE" ]; then
+              DOCS=$(find "docs/$CODE" -name '*.md' 2>/dev/null | wc -l)
+            fi
+            HAS_DOC_JSON=""
+            [ -f "assets/docs/$CODE.json" ] && HAS_DOC_JSON=" 📄"
+
+            if [ "$CODE" = "en" ]; then README_LINK="../README.md"
+            else README_LINK="$CODE/README.md"
+            fi
+
+            ROWS="$ROWS| [$LANG]($README_LINK) | \`$CODE\` | $REGION | $KEYS/$ACTUAL ($PCT%) | $DOCS$HAS_DOC_JSON |\n"
+          done
+
+          cp "$TEMPLATE" "$OUTPUT"
+          sed -i "s#{{date}}#$NOW#" "$OUTPUT"
+          sed -i "s#{{rows}}#$ROWS#" "$OUTPUT"
+          sed -i "s#{{bundles_hash}}#${{ needs.prebuild.outputs.bundles_hash }}#" "$OUTPUT"
+          sed -i "s#{{docs_hash}}#${{ needs.prebuild.outputs.docs_hash }}#" "$OUTPUT"
+          sed -i "s#{{templates_hash}}#${{ needs.prebuild.outputs.templates_hash }}#" "$OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        if: needs.prebuild.outputs.i18n_do == 'true'
+        with:
+          name: i18n-md
+          path: docs/i18n.md
+
+      - name: Generate READMEs
+        if: needs.prebuild.outputs.docs_do == 'true'
+        env:
+          APP_VERSION: ${{ needs.prebuild.outputs.app_version }}
+          FLUTTER_VERSION: ${{ needs.prebuild.outputs.flutter_version }}
+          CROC_VERSION: ${{ needs.prebuild.outputs.croc_version }}
+        run: |
+          TEMPLATE="assets/templates/README.md"
+          VERSION="$APP_VERSION"
+          FLUTTER_VER="$FLUTTER_VERSION"
+          CROC_VER="$CROC_VERSION"
+
+          for DATA in assets/docs/*.json; do
+            LANG=$(basename "$DATA" .json)
+            if [ "$LANG" = "en" ]; then OUTPUT="README.md"
+            else mkdir -p "docs/$LANG"; OUTPUT="docs/$LANG/README.md"
+            fi
+            echo "Generating $OUTPUT from $DATA"
+
+            # Count docs per language group to decide whether to show region
+            LANGS_HTML=""
+            for doc in $(ls assets/docs/*.json | sort -r); do
+              code=$(basename "$doc" .json)
+              label=$(jq -r '.lang' "$doc")
+              region=$(jq -r '.langRegion' "$doc")
+              base=$(echo "$code" | cut -d- -f1)
+              # Only show region suffix when multiple variants share the same lang field
+              other_count=$(jq -r '.lang' assets/docs/*.json | grep -cFx "$label" || echo 0)
+              if [ "$other_count" -gt 1 ]; then
+                label="$label ($region)"
+              fi
+              # Build relative link path from OUTPUT
+              if [ "$OUTPUT" = "README.md" ]; then
+                [ "$code" = "en" ] && path="README.md" || path="docs/$code/README.md"
+              else
+                [ "$code" = "en" ] && path="../../README.md" || path="../$code/README.md"
+              fi
+              [ -n "$LANGS_HTML" ] && LANGS_HTML="$LANGS_HTML &nbsp;|&nbsp; "
+              if [ "$code" = "$LANG" ]; then LANGS_HTML="$LANGS_HTML$label"
+              else LANGS_HTML="$LANGS_HTML<a href=\"$path\">$label</a>"
+              fi
+            done
+
+            ICON_PREFIX=""; [[ "$OUTPUT" != "README.md" ]] && ICON_PREFIX="../../"
+            DOC_PREFIX="docs/"; [[ "$OUTPUT" != "README.md" ]] && DOC_PREFIX="../"
+
+            TITLE=$(jq -r '.title' "$DATA")
+            TAGLINE=$(jq -r '.tagline_block' "$DATA")
+            BUILDING=$(jq -r '.building' "$DATA")
+            H_FEATURES=$(jq -r '.headings.features' "$DATA")
+            H_BUILD=$(jq -r '.headings.build' "$DATA")
+            H_ARCH=$(jq -r '.headings.architecture' "$DATA")
+            H_STACK=$(jq -r '.headings.stack' "$DATA")
+            H_I18N=$(jq -r '.headings.i18n' "$DATA")
+            H_ACKS=$(jq -r '.headings.acknowledgments' "$DATA")
+            H_LICENSE=$(jq -r '.headings.license' "$DATA")
+            ARCH_LIB=$(jq -r '.arch_tree.lib' "$DATA")
+            ARCH_GO=$(jq -r '.arch_tree.go_bridge' "$DATA")
+            ARCH_SUB=$(jq -r '.arch_tree.submodules' "$DATA")
+            ARCH_ASSETS=$(jq -r '.arch_tree.assets' "$DATA")
+            ARCH_CI=$(jq -r '.arch_tree.ci' "$DATA")
+            STACK_CL=$(jq -r '.stack_tree.col_layer' "$DATA")
+            STACK_CT=$(jq -r '.stack_tree.col_tech' "$DATA")
+            STACK_L_UI=$(jq -r '.stack_tree.l_ui' "$DATA")
+            STACK_L_STATE=$(jq -r '.stack_tree.l_state' "$DATA")
+            STACK_L_BACKEND=$(jq -r '.stack_tree.l_backend' "$DATA")
+            STACK_L_I18N=$(jq -r '.stack_tree.l_i18n' "$DATA")
+            STACK_L_CI=$(jq -r '.stack_tree.l_ci' "$DATA")
+            STACK_UI=$(jq -r '.stack_tree.ui' "$DATA")
+            STACK_STATE=$(jq -r '.stack_tree.state' "$DATA")
+            STACK_BACKEND=$(jq -r '.stack_tree.backend' "$DATA")
+            STACK_I18N=$(jq -r '.stack_tree.i18n' "$DATA")
+            STACK_CI=$(jq -r '.stack_tree.ci' "$DATA")
+            ACK_CP=$(jq -r '.ack_tree.col_project' "$DATA")
+            ACK_CD=$(jq -r '.ack_tree.col_desc' "$DATA")
+            ACK_CROC=$(jq -r '.ack_tree.croc' "$DATA")
+            ACK_FLUTTER=$(jq -r '.ack_tree.flutter' "$DATA")
+            ACK_FLCLASH=$(jq -r '.ack_tree.flclash' "$DATA")
+            ACK_CROCAPP=$(jq -r '.ack_tree.crocapp' "$DATA")
+            I18N=$(jq -r '.i18n' "$DATA")
+            FEAT_PLATFORM=$(jq -r '.feat_table.platform' "$DATA")
+            FEAT_ENCRYPTION=$(jq -r '.feat_table.encryption' "$DATA")
+            FEAT_I18N=$(jq -r '.feat_table.i18n' "$DATA")
+            FEAT_THEME=$(jq -r '.feat_table.theme' "$DATA")
+
+            cp "$TEMPLATE" "$OUTPUT"
+            sed -i "s#{{icon_prefix}}#$ICON_PREFIX#" "$OUTPUT"
+            LANGS_ESC=$(echo "$LANGS_HTML" | sed 's/&/\\&/g')
+            sed -i "s#{{languages}}#$LANGS_ESC#" "$OUTPUT"
+            sed -i "s|{{title}}|$TITLE|" "$OUTPUT"
+            sed -i "s|{{version}}|$VERSION|" "$OUTPUT"
+            sed -i "s|{{flutter_version}}|$FLUTTER_VER|" "$OUTPUT"
+            sed -i "s|{{croc_version}}|$CROC_VER|" "$OUTPUT"
+            sed -i "s|{{tagline_block}}|$TAGLINE|" "$OUTPUT"
+            sed -i "s|{{heading_features}}|$H_FEATURES|" "$OUTPUT"
+            sed -i "s|{{heading_build}}|$H_BUILD|" "$OUTPUT"
+            sed -i "s|{{heading_architecture}}|$H_ARCH|" "$OUTPUT"
+            sed -i "s|{{heading_stack}}|$H_STACK|" "$OUTPUT"
+            sed -i "s|{{heading_i18n}}|$H_I18N|" "$OUTPUT"
+            sed -i "s|{{heading_acknowledgments}}|$H_ACKS|" "$OUTPUT"
+            sed -i "s|{{heading_license}}|$H_LICENSE|" "$OUTPUT"
+            sed -i "s|{{feat_platform}}|$FEAT_PLATFORM|" "$OUTPUT"
+            sed -i "s|{{feat_encryption}}|$FEAT_ENCRYPTION|" "$OUTPUT"
+            sed -i "s|{{feat_i18n}}|$FEAT_I18N|" "$OUTPUT"
+            sed -i "s|{{feat_theme}}|$FEAT_THEME|" "$OUTPUT"
+            sed -i "s|{{getting_started}}|$BUILDING|" "$OUTPUT"
+            sed -i "s|{{building}}|$BUILDING|" "$OUTPUT"
+            sed -i "s|{{arch_lib}}|$ARCH_LIB|" "$OUTPUT"
+            sed -i "s|{{arch_go_bridge}}|$ARCH_GO|" "$OUTPUT"
+            sed -i "s|{{arch_submodules}}|$ARCH_SUB|" "$OUTPUT"
+            sed -i "s|{{arch_assets}}|$ARCH_ASSETS|" "$OUTPUT"
+            sed -i "s|{{arch_ci}}|$ARCH_CI|" "$OUTPUT"
+            sed -i "s|{{stack_col_layer}}|$STACK_CL|" "$OUTPUT"
+            sed -i "s|{{stack_col_tech}}|$STACK_CT|" "$OUTPUT"
+            sed -i "s|{{stack_l_ui}}|$STACK_L_UI|" "$OUTPUT"
+            sed -i "s|{{stack_l_state}}|$STACK_L_STATE|" "$OUTPUT"
+            sed -i "s|{{stack_l_backend}}|$STACK_L_BACKEND|" "$OUTPUT"
+            sed -i "s|{{stack_l_i18n}}|$STACK_L_I18N|" "$OUTPUT"
+            sed -i "s|{{stack_l_ci}}|$STACK_L_CI|" "$OUTPUT"
+            sed -i "s|{{stack_ui}}|$STACK_UI|" "$OUTPUT"
+            sed -i "s|{{stack_state}}|$STACK_STATE|" "$OUTPUT"
+            sed -i "s|{{stack_backend}}|$STACK_BACKEND|" "$OUTPUT"
+            sed -i "s|{{stack_i18n}}|$STACK_I18N|" "$OUTPUT"
+            sed -i "s|{{stack_ci}}|$STACK_CI|" "$OUTPUT"
+            sed -i "s|{{i18n}}|$I18N|" "$OUTPUT"
+            sed -i "s|{{ack_col_project}}|$ACK_CP|" "$OUTPUT"
+            sed -i "s|{{ack_col_desc}}|$ACK_CD|" "$OUTPUT"
+            sed -i "s|{{ack_croc}}|$ACK_CROC|" "$OUTPUT"
+            sed -i "s|{{ack_flutter}}|$ACK_FLUTTER|" "$OUTPUT"
+            sed -i "s|{{ack_flclash}}|$ACK_FLCLASH|" "$OUTPUT"
+            sed -i "s|{{ack_crocapp}}|$ACK_CROCAPP|" "$OUTPUT"
+            sed -i "s|](docs/|]($DOC_PREFIX|g" "$OUTPUT"
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: needs.prebuild.outputs.docs_do == 'true'
+        with:
+          name: readme-md
+          path: |
+            README.md
+            docs/*/README.md
+
+  # ── Commit ──
+  commit:
+    needs: [prebuild, test]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply version update
+        if: needs.prebuild.outputs.new_build != '' && needs.test.result != 'failure'
+        run: |
+          NEW_VER="${{ needs.prebuild.outputs.synced_version }}"
+          sed -i "s/^version: .*/version: $NEW_VER/" pubspec.yaml
+
+      - name: Download i18n artifact
+        if: needs.prebuild.outputs.i18n_do == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: i18n-md
+          path: docs/
+
+      - name: Download README artifact
+        if: needs.prebuild.outputs.docs_do == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: readme-md
+          path: .
+
+      - name: Build commit message
+        id: msg
+        run: |
+          LINES=""
+          if [ -n "${{ needs.prebuild.outputs.new_build }}" ] && [ "${{ needs.test.result }}" != "failure" ]; then
+            LINES="${LINES}- Update build number ${{ needs.prebuild.outputs.new_build }}.\n"
+          fi
+          if [ "${{ needs.prebuild.outputs.i18n_do }}" == "true" ]; then
+            LINES="${LINES}- Update i18n.\n"
+          fi
+          if [ "${{ needs.prebuild.outputs.docs_do }}" == "true" ]; then
+            LINES="${LINES}- Update documents.\n"
+          fi
+          MSG="Auto commit by Github Actions\n${LINES}"
+          echo "message=$MSG" >> $GITHUB_OUTPUT
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "$(echo -e '${{ steps.msg.outputs.message }}')\n\n[skip ci]"
+          git pull --rebase origin "$GITHUB_REF_NAME" || true
+          git push
+
+  # ── Windows ──
   build-windows:
-    needs: [test, prebuild]
-    if: needs.prebuild.outputs.windows == 'true' || needs.prebuild.outputs.windows_arm64 == 'true'
+    needs: [commit, prebuild]
+    if: needs.prebuild.outputs.windows == 'true'
     runs-on: windows-latest
     defaults:
       run:
@@ -206,11 +531,6 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 0
-
-      - name: Pull latest (include version sync from prebuild)
-        if: needs.prebuild.outputs.is_tag != 'true'
-        run: git pull origin ${{ github.ref_name }}
-
       - name: Get short SHA
         id: sha
         run: echo "sha=$(git rev-parse --short HEAD)" >> $env:GITHUB_OUTPUT
@@ -295,7 +615,7 @@ jobs:
       # ════════════════════════════════════════════════════════════
 
       - name: "[ARM64] Setup Zig (cross-compiler)"
-        if: needs.prebuild.outputs.windows_arm64 == 'true'
+        if: needs.prebuild.outputs.arch_all == 'true'
         run: |
           if (!(Get-Command zig -ErrorAction SilentlyContinue)) {
             choco install zig --no-progress -y
@@ -303,7 +623,7 @@ jobs:
           zig version
 
       - name: "[ARM64] Build Go bridge (.dll)"
-        if: needs.prebuild.outputs.windows_arm64 == 'true'
+        if: needs.prebuild.outputs.arch_all == 'true'
         run: |
           Push-Location go_bridge
           go mod tidy
@@ -316,7 +636,7 @@ jobs:
           Pop-Location
 
       - name: "[ARM64] Verify .dll"
-        if: needs.prebuild.outputs.windows_arm64 == 'true'
+        if: needs.prebuild.outputs.arch_all == 'true'
         run: |
           if (Test-Path windows\runner\libcroc_bridge_arm64.dll) {
             Get-Item windows\runner\libcroc_bridge_arm64.dll | Select-Object Length, FullName
@@ -325,14 +645,14 @@ jobs:
           }
 
       - name: "[ARM64] Download AMD64 artifact"
-        if: needs.prebuild.outputs.windows_arm64 == 'true'
+        if: needs.prebuild.outputs.arch_all == 'true'
         uses: actions/download-artifact@v4
         with:
           name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64
           path: amd64-pkg
 
       - name: "[ARM64] Repack with ARM64 .dll"
-        if: needs.prebuild.outputs.windows_arm64 == 'true'
+        if: needs.prebuild.outputs.arch_all == 'true'
         run: |
           Expand-Archive "amd64-pkg\FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.zip" -DestinationPath arm64-repack
           Copy-Item "windows\runner\libcroc_bridge_arm64.dll" "arm64-repack\libcroc_bridge.dll" -Force
@@ -340,26 +660,21 @@ jobs:
           Compress-Archive -Path "arm64-repack\*" -DestinationPath FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64.zip
 
       - uses: actions/upload-artifact@v4
-        if: needs.prebuild.outputs.windows_arm64 == 'true'
+        if: needs.prebuild.outputs.arch_all == 'true'
         with:
           name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64
           path: FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64.zip
 
   # ── Linux ──
   build-linux:
-    needs: [test, prebuild]
+    needs: [commit, prebuild]
     if: needs.prebuild.outputs.linux == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           fetch-depth: 0
-
-      - name: Pull latest (include version sync from prebuild)
-        if: needs.prebuild.outputs.is_tag != 'true'
-        run: git pull origin ${{ github.ref_name }}
-
       - name: Get short SHA
         id: sha
         run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
@@ -426,7 +741,7 @@ jobs:
 
   # ── Android (ARM64 + AMD64 sequential) ──
   build-android:
-    needs: [test, prebuild]
+    needs: [commit, prebuild]
     if: needs.prebuild.outputs.android == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -434,11 +749,6 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 0
-
-      - name: Pull latest (include version sync from prebuild)
-        if: needs.prebuild.outputs.is_tag != 'true'
-        run: git pull origin ${{ github.ref_name }}
-
       - name: Get short SHA
         id: sha
         run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
@@ -487,7 +797,7 @@ jobs:
           mkdir -p ../android/app/src/main/jniLibs/arm64-v8a
           export CC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/${HOST_TAG}/bin/aarch64-linux-android21-clang"
           CGO_ENABLED=1 GOOS=android GOARCH=arm64 \
-            go build -buildmode=c-shared -ldflags="-s -w" \
+            go build -buildmode=c-shared -ldflags="-s -w -extldflags=-Wl,-z,max-page-size=16384" \
             -o ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so .
           echo "✓ Go bridge built for Android ARM64"
           file ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so
@@ -496,7 +806,7 @@ jobs:
             mkdir -p ../android/app/src/main/jniLibs/x86_64
             export CC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/${HOST_TAG}/bin/x86_64-linux-android21-clang"
             CGO_ENABLED=1 GOOS=android GOARCH=amd64 \
-              go build -buildmode=c-shared -ldflags="-s -w" \
+              go build -buildmode=c-shared -ldflags="-s -w -extldflags=-Wl,-z,max-page-size=16384" \
               -o ../android/app/src/main/jniLibs/x86_64/libcroc_bridge.so .
             echo "✓ Go bridge built for Android AMD64"
             file ../android/app/src/main/jniLibs/x86_64/libcroc_bridge.so
@@ -576,7 +886,7 @@ jobs:
       - name: Get nightly version
         id: ver
         env:
-          NIGHTLY_VER: ${{ needs.prebuild.outputs.nightly_version }}
+          NIGHTLY_VER: ${{ needs.prebuild.outputs.synced_version }}
           NIGHTLY_DATE: ${{ needs.prebuild.outputs.nightly_date }}
         run: |
           echo "version=$NIGHTLY_VER" >> $GITHUB_OUTPUT
@@ -698,32 +1008,38 @@ jobs:
       - name: List artifacts
         run: find artifacts -type f -ls
 
+      - name: Build release body
+        id: body
+        run: |
+          BODY="## 📦 ${{ steps.version.outputs.release_name }}
+
+          Cross-platform file transfer GUI powered by croc.
+
+          ### Downloads"
+          for f in artifacts/FlCroc-*; do
+            [ -f "$f" ] || continue
+            fname=$(basename "$f")
+            case "$fname" in
+              *windows-arm64*)          icon="🪟 Windows ARM64" ;;
+              *windows*)                icon="🪟 Windows" ;;
+              *linux*)                  icon="🐧 Linux" ;;
+              *android-arm64*)          icon="🤖 Android ARM64" ;;
+              *android*)                icon="🤖 Android" ;;
+              *)                        icon="📦" ;;
+            esac
+            BODY="$BODY"$'\n'"- $icon | \`$fname\`"
+          done
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: ${{ steps.version.outputs.release_name }}
-          body: |
-            ## 📦 ${{ steps.version.outputs.release_name }}
-
-            Cross-platform file transfer GUI powered by croc.
-
-            ### Downloads
-            | Platform | File |
-            |----------|------|
-            | 🪟 Windows x64 | `FlCroc-${{ steps.version.outputs.version }}-windows-amd64.zip` |
-            | 🪟 Windows ARM64 | `FlCroc-${{ steps.version.outputs.version }}-windows-arm64.zip` |
-            | 💿 Windows Installer | `FlCroc-${{ steps.version.outputs.version }}-windows-amd64-installer.exe` |
-            | 🐧 Linux | `FlCroc-${{ steps.version.outputs.version }}-linux-amd64.tar.gz` |
-            | 🤖 Android | `FlCroc-${{ steps.version.outputs.version }}-android-arm64.apk` |
-
-            ### What's Changed
-            (auto-generated release notes below)
+          body: ${{ steps.body.outputs.body }}
           files: |
-            artifacts/FlCroc-*-android-arm64.apk
-            artifacts/FlCroc-*-windows-amd64.zip
-            artifacts/FlCroc-*-windows-arm64.zip
-            artifacts/FlCroc-*-windows-amd64-installer.exe
-            artifacts/FlCroc-*-linux-amd64.tar.gz
+            artifacts/FlCroc-*
           draft: false
           generate_release_notes: true
           make_latest: true
