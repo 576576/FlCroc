@@ -45,8 +45,8 @@ FlCroc/
 ├── go_bridge/         Go CGO 共享库 (FFI 桥接)
 ├── submodules/croc/   内置 croc 源码
 ├── assets/            应用图标、国际化 JSON 语言包
-├── (platform)/          Android、iOS、Linux、macOS、Windows、Web
-└── .github/workflows/           CI/CD (build.yml)
+├── .github/workflows/ CI/CD (build.yml)
+└── (platform)/
 ```
 
 ---

@@ -45,8 +45,8 @@ FlCroc/
 ├── go_bridge/         Go CGO 共有ライブラリ (FFI ブリッジ)
 ├── submodules/croc/   内蔵 croc ソース
 ├── assets/            アプリアイコン、i18n JSON バンドル
-├── (platform)/          Android、iOS、Linux、macOS、Windows、Web
-└── .github/workflows/           CI/CD (build.yml)
+├── .github/workflows/ CI/CD (build.yml)
+└── (platform)/
 ```
 
 ---
