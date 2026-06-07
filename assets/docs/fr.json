@@ -33,7 +33,6 @@
     "go_bridge": "Bibliothèque partagée Go CGO (pont FFI)",
     "submodules": "Source croc intégrée",
     "assets": "Icône de l'application, bundles JSON i18n",
-    "platforms": "Android, iOS, Linux, macOS, Windows, Web",
     "ci": "CI/CD (build.yml)"
   },
   "stack_tree": {

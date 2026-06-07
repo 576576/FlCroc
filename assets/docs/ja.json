@@ -33,7 +33,6 @@
     "go_bridge": "Go CGO 共有ライブラリ (FFI ブリッジ)",
     "submodules": "内蔵 croc ソース",
     "assets": "アプリアイコン、i18n JSON バンドル",
-    "platforms": "Android、iOS、Linux、macOS、Windows、Web",
     "ci": "CI/CD (build.yml)"
   },
   "stack_tree": {

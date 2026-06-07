@@ -33,7 +33,6 @@
     "go_bridge": "Go CGO shared library (FFI bridge)",
     "submodules": "Vendored croc source",
     "assets": "App icon, I18n JSON bundles",
-    "platforms": "Android, iOS, Linux, macOS, Windows, Web",
     "ci": "CI/CD (build.yml)"
   },
   "stack_tree": {

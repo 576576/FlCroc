@@ -45,8 +45,8 @@ FlCroc/
 ├── go_bridge/         {{arch_go_bridge}}
 ├── submodules/croc/   {{arch_submodules}}
 ├── assets/            {{arch_assets}}
-├── (platform)/          {{arch_platforms}}
-└── .github/workflows/           {{arch_ci}}
+├── .github/workflows/ {{arch_ci}}
+└── (platform)/
 ```
 
 ---

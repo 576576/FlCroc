@@ -42,6 +42,7 @@ jobs:
       docs_do: ${{ steps.hash-check.outputs.do_docs }}
       bundles_hash: ${{ steps.hash-check.outputs.bundles_hash }}
       docs_hash: ${{ steps.hash-check.outputs.docs_hash }}
+      templates_hash: ${{ steps.hash-check.outputs.templates_hash }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -195,9 +196,10 @@ jobs:
         env:
           MSG: ${{ github.event.head_commit.message || '' }}
         run: |
-          # Always compute real hashes (b-doc just forces the action)
-          BUNDLES_HASH=$(find assets/bundles -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
-          DOCS_HASH=$(find assets/docs -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
+          # Use short hashes (first 8 chars of SHA256)
+          BUNDLES_HASH=$(find assets/bundles -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -c1-8)
+          DOCS_HASH=$(find assets/docs -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -c1-8)
+          TEMPLATES_HASH=$(find assets/templates -type f -exec sha256sum {} \; | sort | sha256sum | cut -c1-8)
 
           # b-doc: force i18n + docs regeneration
           if echo "$MSG" | grep -qE '\bb-doc\b'; then
@@ -205,20 +207,21 @@ jobs:
             echo "do_docs=true" >> $GITHUB_OUTPUT
             echo "bundles_hash=$BUNDLES_HASH" >> $GITHUB_OUTPUT
             echo "docs_hash=$DOCS_HASH" >> $GITHUB_OUTPUT
+            echo "templates_hash=$TEMPLATES_HASH" >> $GITHUB_OUTPUT
             echo "i18n: true (forced)  docs: true (forced)"
             exit 0
           fi
 
-          OLD_BUNDLES=""; OLD_DOCS=""
+          OLD_BUNDLES=""; OLD_DOCS=""; OLD_TEMPLATES=""
           if [ -f docs/i18n.md ]; then
-            LAST_LINE=$(tail -1 docs/i18n.md)
-            if echo "$LAST_LINE" | grep -q '^> Related i18n hash:'; then
-              OLD_BUNDLES=$(echo "$LAST_LINE" | awk '{print $5}')
-              OLD_DOCS=$(echo "$LAST_LINE" | awk '{print $6}')
-            fi
+            OLD_BUNDLES=$(grep 'bundles:' docs/i18n.md | tail -1 | awk '{print $2}')
+            OLD_DOCS=$(grep 'docs:' docs/i18n.md | tail -1 | awk '{print $2}')
+            OLD_TEMPLATES=$(grep 'templates:' docs/i18n.md | tail -1 | awk '{print $2}')
           fi
 
           DO_I18N="false"; DO_DOCS="false"
+          # Templates change → force like b-doc
+          [ "$TEMPLATES_HASH" != "$OLD_TEMPLATES" ] && DO_I18N="true" && DO_DOCS="true"
           [ "$BUNDLES_HASH" != "$OLD_BUNDLES" ] && DO_I18N="true"
           [ "$DOCS_HASH" != "$OLD_DOCS" ] && DO_I18N="true"
           [ "$DOCS_HASH" != "$OLD_DOCS" ] && DO_DOCS="true"
@@ -227,6 +230,7 @@ jobs:
           echo "do_docs=$DO_DOCS" >> $GITHUB_OUTPUT
           echo "bundles_hash=$BUNDLES_HASH" >> $GITHUB_OUTPUT
           echo "docs_hash=$DOCS_HASH" >> $GITHUB_OUTPUT
+          echo "templates_hash=$TEMPLATES_HASH" >> $GITHUB_OUTPUT
           echo "i18n: $DO_I18N  docs: $DO_DOCS"
 
   # ── Test ──
@@ -303,7 +307,10 @@ jobs:
           cp "$TEMPLATE" "$OUTPUT"
           sed -i "s#{{date}}#$NOW#" "$OUTPUT"
           sed -i "s#{{rows}}#$ROWS#" "$OUTPUT"
-          echo "> Related i18n hash: ${{ needs.prebuild.outputs.bundles_hash }} ${{ needs.prebuild.outputs.docs_hash }}" >> "$OUTPUT"
+          echo "> Related i18n hash:" >> "$OUTPUT"
+          echo ">   bundles:   ${{ needs.prebuild.outputs.bundles_hash }}" >> "$OUTPUT"
+          echo ">   docs:      ${{ needs.prebuild.outputs.docs_hash }}" >> "$OUTPUT"
+          echo ">   templates: ${{ needs.prebuild.outputs.templates_hash }}" >> "$OUTPUT"
 
       - uses: actions/upload-artifact@v4
         if: needs.prebuild.outputs.i18n_do == 'true'
@@ -371,7 +378,6 @@ jobs:
             ARCH_GO=$(jq -r '.arch_tree.go_bridge' "$DATA")
             ARCH_SUB=$(jq -r '.arch_tree.submodules' "$DATA")
             ARCH_ASSETS=$(jq -r '.arch_tree.assets' "$DATA")
-            ARCH_PLAT=$(jq -r '.arch_tree.platforms' "$DATA")
             ARCH_CI=$(jq -r '.arch_tree.ci' "$DATA")
             STACK_CL=$(jq -r '.stack_tree.col_layer' "$DATA")
             STACK_CT=$(jq -r '.stack_tree.col_tech' "$DATA")
@@ -423,7 +429,6 @@ jobs:
             sed -i "s|{{arch_go_bridge}}|$ARCH_GO|" "$OUTPUT"
             sed -i "s|{{arch_submodules}}|$ARCH_SUB|" "$OUTPUT"
             sed -i "s|{{arch_assets}}|$ARCH_ASSETS|" "$OUTPUT"
-            sed -i "s|{{arch_platforms}}|$ARCH_PLAT|" "$OUTPUT"
             sed -i "s|{{arch_ci}}|$ARCH_CI|" "$OUTPUT"
             sed -i "s|{{stack_col_layer}}|$STACK_CL|" "$OUTPUT"
             sed -i "s|{{stack_col_tech}}|$STACK_CT|" "$OUTPUT"
