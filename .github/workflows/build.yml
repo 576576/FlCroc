@@ -307,10 +307,9 @@ jobs:
           cp "$TEMPLATE" "$OUTPUT"
           sed -i "s#{{date}}#$NOW#" "$OUTPUT"
           sed -i "s#{{rows}}#$ROWS#" "$OUTPUT"
-          echo "> Related i18n hash:" >> "$OUTPUT"
-          echo ">   bundles:   ${{ needs.prebuild.outputs.bundles_hash }}" >> "$OUTPUT"
-          echo ">   docs:      ${{ needs.prebuild.outputs.docs_hash }}" >> "$OUTPUT"
-          echo ">   templates: ${{ needs.prebuild.outputs.templates_hash }}" >> "$OUTPUT"
+          sed -i "s#{{bundles_hash}}#${{ needs.prebuild.outputs.bundles_hash }}#" "$OUTPUT"
+          sed -i "s#{{docs_hash}}#${{ needs.prebuild.outputs.docs_hash }}#" "$OUTPUT"
+          sed -i "s#{{templates_hash}}#${{ needs.prebuild.outputs.templates_hash }}#" "$OUTPUT"
 
       - uses: actions/upload-artifact@v4
         if: needs.prebuild.outputs.i18n_do == 'true'
