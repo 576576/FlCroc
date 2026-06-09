@@ -927,6 +927,20 @@ jobs:
           MSG: ${{ github.event.head_commit.message || '' }}
           TITLE: ${{ steps.ver.outputs.title }}
         run: |
+          WIN_CELL=""
+          LINUX_CELL=""
+          ANDROID_CELL=""
+          for f in artifacts/FlCroc-*; do
+            fname=$(basename "$f")
+            URL="https://github.com/\${{ github.repository }}/releases/download/nightly/$fname"
+            case "$fname" in
+              *windows-arm64*) WIN_CELL="$WIN_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/ARM64-blue.svg?logo=windows\"></a><br>" ;;
+              *windows*)       WIN_CELL="$WIN_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-blue.svg?logo=windows\"></a><br>" ;;
+              *linux*)         LINUX_CELL="$LINUX_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-orange.svg?logo=linux\"></a><br>" ;;
+              *android-arm64*) ANDROID_CELL="$ANDROID_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/ARM64-green.svg?logo=android\"></a><br>" ;;
+              *android*)       ANDROID_CELL="$ANDROID_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-green.svg?logo=android\"></a><br>" ;;
+            esac
+          done
           BODY="**Commit**: \`${{ steps.sha.outputs.sha }}\`
 
           $MSG
@@ -937,18 +951,9 @@ jobs:
 
           <table>
           <tr><th>Platform</th><th>Download</th></tr>"
-          for f in artifacts/FlCroc-*; do
-            fname=$(basename "$f")
-            case "$fname" in
-              *windows-arm64*) label="🪟 Windows ARM64" ; badge="Windows-ARM64-blue"    ; icon="windows" ;;
-              *windows*)       label="🪟 Windows"       ; badge="Windows-x64-blue"      ; icon="windows" ;;
-              *linux*)         label="🐧 Linux"         ; badge="Linux-x64-orange"      ; icon="linux"   ;;
-              *android-arm64*) label="🤖 Android ARM64" ; badge="Android-ARM64-green"   ; icon="android" ;;
-              *android*)       label="🤖 Android"       ; badge="Android-x64-green"     ; icon="android" ;;
-              *)               label="$fname"           ; badge="File-Download-lightgrey" ; icon=""        ;;
-            esac
-            BODY="$BODY<tr><td>$label</td><td><a href=\"https://github.com/\${{ github.repository }}/releases/download/nightly/$fname\"><img src=\"https://img.shields.io/badge/${badge}.svg?logo=${icon}\"></a></td></tr>"
-          done
+          [ -n "$WIN_CELL" ] && BODY="$BODY<tr><td>Windows</td><td>$WIN_CELL</td></tr>"
+          [ -n "$LINUX_CELL" ] && BODY="$BODY<tr><td>Linux</td><td>$LINUX_CELL</td></tr>"
+          [ -n "$ANDROID_CELL" ] && BODY="$BODY<tr><td>Android</td><td>$ANDROID_CELL</td></tr>"
           BODY="$BODY</table>"
           echo "body<<EOF" >> $GITHUB_OUTPUT
           echo "$BODY" >> $GITHUB_OUTPUT
@@ -1036,23 +1041,28 @@ jobs:
       - name: Build release body
         id: body
         run: |
+          WIN_CELL=""
+          LINUX_CELL=""
+          ANDROID_CELL=""
+          for f in artifacts/FlCroc-*; do
+            [ -f "$f" ] || continue
+            fname=$(basename "$f")
+            URL="https://github.com/\${{ github.repository }}/releases/download/\${{ steps.version.outputs.tag }}/$fname"
+            case "$fname" in
+              *windows-arm64*) WIN_CELL="$WIN_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/ARM64-blue.svg?logo=windows\"></a><br>" ;;
+              *windows*)       WIN_CELL="$WIN_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-blue.svg?logo=windows\"></a><br>" ;;
+              *linux*)         LINUX_CELL="$LINUX_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-orange.svg?logo=linux\"></a><br>" ;;
+              *android-arm64*) ANDROID_CELL="$ANDROID_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/ARM64-green.svg?logo=android\"></a><br>" ;;
+              *android*)       ANDROID_CELL="$ANDROID_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-green.svg?logo=android\"></a><br>" ;;
+            esac
+          done
           BODY="**Download based on your OS:**
 
           <table>
           <tr><th>Platform</th><th>Download</th></tr>"
-          for f in artifacts/FlCroc-*; do
-            [ -f "$f" ] || continue
-            fname=$(basename "$f")
-            case "$fname" in
-              *windows-arm64*) label="🪟 Windows ARM64" ; badge="Windows-ARM64-blue"    ; icon="windows" ;;
-              *windows*)       label="🪟 Windows"       ; badge="Windows-x64-blue"      ; icon="windows" ;;
-              *linux*)         label="🐧 Linux"         ; badge="Linux-x64-orange"      ; icon="linux"   ;;
-              *android-arm64*) label="🤖 Android ARM64" ; badge="Android-ARM64-green"   ; icon="android" ;;
-              *android*)       label="🤖 Android"       ; badge="Android-x64-green"     ; icon="android" ;;
-              *)               label="$fname"           ; badge="File-Download-lightgrey" ; icon=""        ;;
-            esac
-            BODY="$BODY<tr><td>$label</td><td><a href=\"https://github.com/\${{ github.repository }}/releases/download/\${{ steps.version.outputs.tag }}/$fname\"><img src=\"https://img.shields.io/badge/${badge}.svg?logo=${icon}\"></a></td></tr>"
-          done
+          [ -n "$WIN_CELL" ] && BODY="$BODY<tr><td>Windows</td><td>$WIN_CELL</td></tr>"
+          [ -n "$LINUX_CELL" ] && BODY="$BODY<tr><td>Linux</td><td>$LINUX_CELL</td></tr>"
+          [ -n "$ANDROID_CELL" ] && BODY="$BODY<tr><td>Android</td><td>$ANDROID_CELL</td></tr>"
           BODY="$BODY</table>"
           echo "body<<EOF" >> $GITHUB_OUTPUT
           echo "$BODY" >> $GITHUB_OUTPUT
