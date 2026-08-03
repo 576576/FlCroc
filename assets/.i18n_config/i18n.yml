@@ -1,0 +1,7 @@
+# Repository i18n & docs configuration
+#
+# root_lang: the language whose README is also generated at the repository
+#            root (README.md). All languages — including root_lang — are
+#            ALWAYS generated under docs/{code}/README.md, so docs/en/ is
+#            never omitted even when en is the root language.
+root_lang: en

@@ -199,7 +199,7 @@ jobs:
           # Use short hashes (first 8 chars of SHA256)
           BUNDLES_HASH=$(find assets/bundles -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -c1-8)
           DOCS_HASH=$(find assets/docs -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -c1-8)
-          TEMPLATES_HASH=$(find assets/templates -type f -exec sha256sum {} \; | sort | sha256sum | cut -c1-8)
+          TEMPLATES_HASH=$(find assets/templates assets/.i18n_config -type f -exec sha256sum {} \; | sort | sha256sum | cut -c1-8)
 
           # b-doc: force i18n + docs regeneration
           if echo "$MSG" | grep -qE '\bb-doc\b'; then
@@ -288,18 +288,13 @@ jobs:
             [ "$PCT" -gt 100 ] && PCT=100
 
             DOCS=0
-            if [ "$CODE" = "en" ]; then
-              DOCS=$(ls docs/*.md 2>/dev/null | wc -l)
-              [ -f README.md ] && DOCS=$((DOCS + 1))
-            elif [ -d "docs/$CODE" ]; then
+            if [ -d "docs/$CODE" ]; then
               DOCS=$(find "docs/$CODE" -name '*.md' 2>/dev/null | wc -l)
             fi
             HAS_DOC_JSON=""
             [ -f "assets/docs/$CODE.json" ] && HAS_DOC_JSON=" 📄"
 
-            if [ "$CODE" = "en" ]; then README_LINK="../README.md"
-            else README_LINK="$CODE/README.md"
-            fi
+            README_LINK="$CODE/README.md"
 
             ROWS="$ROWS| [$LANG]($README_LINK) | \`$CODE\` | $REGION | $KEYS/$ACTUAL ($PCT%) | $DOCS$HAS_DOC_JSON |\n"
           done
@@ -328,11 +323,17 @@ jobs:
           VERSION="$APP_VERSION"
           FLUTTER_VER="$FLUTTER_VERSION"
           CROC_VER="$CROC_VERSION"
+          # Root README language, read from assets/.i18n_config/i18n.yml (default: en)
+          ROOT_LANG=$(awk -F: '/^[[:space:]]*root_lang[[:space:]]*:/{gsub(/[[:space:]"]/,"",$2); print $2; exit}' assets/.i18n_config/i18n.yml 2>/dev/null)
+          ROOT_LANG=${ROOT_LANG:-en}
+          echo "Root README language: $ROOT_LANG"
 
-          for DATA in assets/docs/*.json; do
-            LANG=$(basename "$DATA" .json)
-            if [ "$LANG" = "en" ]; then OUTPUT="README.md"
-            else mkdir -p "docs/$LANG"; OUTPUT="docs/$LANG/README.md"
+          render_readme() {
+            local DATA="$1" LANG="$2" OUTPUT="$3" ROOT_VIEW="$4"
+            local ICON_PREFIX="" DOC_PREFIX="docs/"
+            if [ "$ROOT_VIEW" = "false" ]; then
+              ICON_PREFIX="../../"
+              DOC_PREFIX="../"
             fi
             echo "Generating $OUTPUT from $DATA"
 
@@ -348,11 +349,11 @@ jobs:
               if [ "$other_count" -gt 1 ]; then
                 label="$label ($region)"
               fi
-              # Build relative link path from OUTPUT
-              if [ "$OUTPUT" = "README.md" ]; then
-                [ "$code" = "en" ] && path="README.md" || path="docs/$code/README.md"
+              # Build relative link path from the current view
+              if [ "$ROOT_VIEW" = "true" ]; then
+                path="docs/$code/README.md"
               else
-                [ "$code" = "en" ] && path="../../README.md" || path="../$code/README.md"
+                path="../$code/README.md"
               fi
               [ -n "$LANGS_HTML" ] && LANGS_HTML="$LANGS_HTML &nbsp;|&nbsp; "
               if [ "$code" = "$LANG" ]; then LANGS_HTML="$LANGS_HTML$label"
@@ -360,8 +361,7 @@ jobs:
               fi
             done
 
-            ICON_PREFIX=""; [[ "$OUTPUT" != "README.md" ]] && ICON_PREFIX="../../"
-            DOC_PREFIX="docs/"; [[ "$OUTPUT" != "README.md" ]] && DOC_PREFIX="../"
+            # ICON_PREFIX / DOC_PREFIX already set at function start based on ROOT_VIEW
 
             TITLE=$(jq -r '.title' "$DATA")
             TAGLINE=$(jq -r '.tagline_block' "$DATA")
@@ -449,6 +449,15 @@ jobs:
             sed -i "s|{{ack_flclash}}|$ACK_FLCLASH|" "$OUTPUT"
             sed -i "s|{{ack_crocapp}}|$ACK_CROCAPP|" "$OUTPUT"
             sed -i "s|](docs/|]($DOC_PREFIX|g" "$OUTPUT"
+          }
+
+          for DATA in assets/docs/*.json; do
+            LANG=$(basename "$DATA" .json)
+            mkdir -p "docs/$LANG"
+            render_readme "$DATA" "$LANG" "docs/$LANG/README.md" "false"
+            if [ "$LANG" = "$ROOT_LANG" ]; then
+              render_readme "$DATA" "$LANG" "README.md" "true"
+            fi
           done
 
       - uses: actions/upload-artifact@v4
