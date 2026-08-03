@@ -12,8 +12,8 @@
   <img src="https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux-blue" alt="Platform">
   <img src="https://img.shields.io/badge/license-GPL v3-green" alt="License">
   <img alt="version" src="https://img.shields.io/badge/version-1.2.3-informational" />
-  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.44.1-02569B?logo=flutter" />
-  <img alt="croc" src="https://img.shields.io/badge/croc-10.4.4-blue" />
+  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.44.8-02569B?logo=flutter" />
+  <img alt="croc" src="https://img.shields.io/badge/croc-11.0.1-blue" />
 </p>
 
 <em>A Flutter GUI for croc — easily and securely transfer files between computers</em>
@@ -26,14 +26,14 @@
 |---|-----|
 | 🖥️ | Cross-platform (Windows, Linux, Android) |
 | 🔒 | End-to-end encrypted file transfer via croc |
-| 🌍 | Native multi-language support (see [i18n.md](../docs/i18n.md) for details) |
+| 🌍 | Native multi-language support (see [i18n.md](../i18n.md) for details) |
 | 🌙 | Modern Flutter UI with adaptive layout, animations, and custom color schemes |
 
 ---
 
 ## 🚀 Build
 
-See [BUILD.md](../docs/BUILD.md) for build instructions and platform-specific guides.
+See [BUILD.md](../BUILD.md) for build instructions and platform-specific guides.
 
 ---
 
@@ -65,7 +65,7 @@ FlCroc/
 
 ## 🌍 I18n
 
-See [docs/i18n.md](../docs/i18n.md) for language status and contribution guide.
+See [docs/i18n.md](../i18n.md) for language status and contribution guide.
 
 ---
 
@@ -83,4 +83,3 @@ See [docs/i18n.md](../docs/i18n.md) for language status and contribution guide.
 ## 📄 License
 
 GPL3 © FlCroc Contributors
-

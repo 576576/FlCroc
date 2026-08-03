@@ -5,15 +5,15 @@
 <h1 align="center">FlCroc</h1>
 
 <p align="center">
-<a href="../zh/README.md">中文 (简体)</a> &nbsp;|&nbsp; <a href="../zh-Hant/README.md">中文 (繁體)</a> &nbsp;|&nbsp; 日本語 &nbsp;|&nbsp; <a href="../fr/README.md">Français</a> &nbsp;|&nbsp; <a href="../../README.md">English</a>
+<a href="../zh/README.md">中文 (简体)</a> &nbsp;|&nbsp; <a href="../zh-Hant/README.md">中文 (繁體)</a> &nbsp;|&nbsp; 日本語 &nbsp;|&nbsp; <a href="../fr/README.md">Français</a> &nbsp;|&nbsp; <a href="../en/README.md">English</a>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux-blue" alt="Platform">
   <img src="https://img.shields.io/badge/license-GPL v3-green" alt="License">
   <img alt="version" src="https://img.shields.io/badge/version-1.2.3-informational" />
-  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.44.1-02569B?logo=flutter" />
-  <img alt="croc" src="https://img.shields.io/badge/croc-10.4.4-blue" />
+  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.44.8-02569B?logo=flutter" />
+  <img alt="croc" src="https://img.shields.io/badge/croc-11.0.1-blue" />
 </p>
 
 <em>croc の Flutter GUI — コンピュータ間で安全にファイルを転送</em>

@@ -12,8 +12,8 @@
   <img src="https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux-blue" alt="Platform">
   <img src="https://img.shields.io/badge/license-GPL v3-green" alt="License">
   <img alt="version" src="https://img.shields.io/badge/version-1.2.3-informational" />
-  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.44.1-02569B?logo=flutter" />
-  <img alt="croc" src="https://img.shields.io/badge/croc-10.4.4-blue" />
+  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.44.8-02569B?logo=flutter" />
+  <img alt="croc" src="https://img.shields.io/badge/croc-11.0.1-blue" />
 </p>
 
 <em>A Flutter GUI for croc — easily and securely transfer files between computers</em>
