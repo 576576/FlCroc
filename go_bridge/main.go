@@ -15,6 +15,7 @@ package main
 import "C"
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -36,6 +37,10 @@ var (
 	activeClient *croc.Client
 	progressChan chan progressEvent
 )
+
+// Event type for status messages (e.g. croc v11 reconnect notices).
+// Dart clients that don't recognise type 5 simply ignore it.
+const eventTypeStatus = 5
 
 type progressEvent struct {
 	Type            int     `json:"type"`
@@ -179,6 +184,47 @@ func marshalEvent(ev *progressEvent) *C.char {
 	return C.CString(string(b))
 }
 
+// captureStderr redirects os.Stderr into a pipe and scans croc's output for
+// reconnect notices (croc v11 prints "…detected a transfer interruption.
+// Retrying securely…" to stderr). When matched, a type-5 status event is
+// queued so the Flutter UI can show "reconnecting" instead of appearing
+// stuck. All other stderr content is discarded.
+//
+// croc.New() with Quiet=true replaces os.Stderr with os.DevNull and never
+// restores it, so this must be called AFTER croc.New() to take effect.
+// The returned restore function must be called when the transfer ends.
+func captureStderr(transferID string) (restore func()) {
+	oldStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		return func() {}
+	}
+	os.Stderr = w
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		scanner := bufio.NewScanner(r)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.Contains(line, "transfer interruption") ||
+				strings.Contains(line, "Retrying securely") {
+				progressChan <- progressEvent{
+					Type:       eventTypeStatus,
+					TransferID: transferID,
+					Error:      "reconnecting",
+				}
+			}
+		}
+	}()
+
+	return func() {
+		w.Close()
+		os.Stderr = oldStderr
+		<-done
+	}
+}
+
 func doSend(paths []string, code string, opts sendOptions, transferID string) {
 	// Handle text mode: write text content to a temp file.
 	// croc recognises the "croc-stdin-" prefix as stdin/text content.
@@ -271,6 +317,11 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 		return
 	}
 
+	// croc.New(Quiet) sent stderr to DevNull; restore + capture it so we can
+	// surface croc v11 reconnect notices as status events.
+	restoreStderr := captureStderr(transferID)
+	defer restoreStderr()
+
 	mu.Lock()
 	activeClient = c
 	mu.Unlock()
@@ -353,6 +404,11 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: err.Error()}
 		return
 	}
+
+	// croc.New(Quiet) sent stderr to DevNull; restore + capture it so we can
+	// surface croc v11 reconnect notices as status events.
+	restoreStderr := captureStderr(transferID)
+	defer restoreStderr()
 
 	mu.Lock()
 	activeClient = c
