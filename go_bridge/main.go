@@ -25,9 +25,10 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/schollz/croc/v10/src/croc"
-	"github.com/schollz/croc/v10/src/models"
-	"github.com/schollz/croc/v10/src/utils"
+	"github.com/schollz/croc/v11/src/croc"
+	"github.com/schollz/croc/v11/src/models"
+	"github.com/schollz/croc/v11/src/utils"
+	"github.com/schollz/croc/v11/src/version"
 )
 
 // ── Global state ────────────────────────────────────────────
@@ -55,7 +56,7 @@ type progressEvent struct {
 
 //export CrocGetVersion
 func CrocGetVersion() *C.char {
-	return C.CString("croc v10.4.4")
+	return C.CString("croc v" + version.Value)
 }
 
 //export CrocSendFiles

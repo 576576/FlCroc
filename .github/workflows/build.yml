@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GO_VERSION: '1.25'
+  GO_VERSION: '1.27.1'
 
 jobs:
   # ── Prebuild: submodule update + platform detection + branch detection ──
@@ -119,21 +119,6 @@ jobs:
             echo "synced_version=$NEW_VERSION" >> $GITHUB_OUTPUT
             echo "new_build=$NEW_BUILD" >> $GITHUB_OUTPUT
           fi
-
-      - name: Update submodule to latest croc
-        run: |
-          cd submodules/croc
-          for i in 1 2 3; do
-            echo "Attempt $i..."
-            git fetch --tags --depth 1 && break
-            sleep $((i * 5))
-          done || echo "⚠️ Fetch failed — using existing submodule ref"
-          latest=$(git tag -l 'v*' --sort=-v:refname | head -1)
-          if [ -n "$latest" ]; then
-            git checkout "$latest" 2>/dev/null || echo "⚠️ Checkout failed — using existing ref"
-          fi
-          cd ../..
-          find submodules/croc -name '*_test.go' -delete
 
       - name: Detect croc version
         id: croc-ver

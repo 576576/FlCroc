@@ -13,7 +13,7 @@ PLATFORM="${1:-linux}"
 ARCH="${2:-amd64}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OUTPUT_DIR="${SCRIPT_DIR}/../build/${PLATFORM}"
-CROC_TAG="v10.4.4"
+CROC_TAG="v11.5.2"
 CROC_SRC="/tmp/croc_src"
 
 echo "========================================"
@@ -23,7 +23,7 @@ echo "========================================"
 
 # --- Check Go ---
 if ! command -v go &> /dev/null; then
-    echo "[ERROR] Go is not installed. Install Go 1.25+"
+    echo "[ERROR] Go is not installed. Install Go 1.27+"
     exit 1
 fi
 echo "[OK] Go: $(go version)"
@@ -39,7 +39,7 @@ echo "[OK] croc cloned"
 echo ""
 echo "[STEP 2/4] Setting up Go module..."
 cd "${SCRIPT_DIR}"
-go mod edit -replace github.com/schollz/croc/v10="${CROC_SRC}"
+go mod edit -replace github.com/schollz/croc/v11="${CROC_SRC}"
 go mod tidy
 echo "[OK] Module ready"
 
