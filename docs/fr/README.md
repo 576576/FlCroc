@@ -45,7 +45,7 @@ FlCroc/
 ├── go_bridge/         Bibliothèque partagée Go CGO (pont FFI)
 ├── submodules/croc/   Source croc intégrée
 ├── assets/            Icône de l'application, bundles JSON i18n
-├── .github/workflows/ CI/CD (build.yml)
+├── .github/workflows/ CI/CD (release.yml + build.yml)
 └── (platform)/
 ```
 
