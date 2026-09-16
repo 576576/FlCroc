@@ -31,26 +31,16 @@ class _DashboardViewState extends ConsumerState<DashboardView>
   @override
   void initState() {
     super.initState();
-    final settings = ref.read(appSettingProvider);
-    var widgets = List<DashboardWidget>.from(settings.dashboardWidgets);
-
-    // Dedup: keep only one quickTransfer; migrate legacy quickSend/quickReceive
-    final hasLegacySend = widgets.any((w) => w.name == 'quickSend');
-    final hasLegacyRecv = widgets.any((w) => w.name == 'quickReceive');
-    if (hasLegacySend || hasLegacyRecv) {
-      widgets.removeWhere((w) => w.name == 'quickSend' || w.name == 'quickReceive');
-    }
-    // Ensure quickTransfer is present and deduplicated
-    final qtIndex = widgets.indexWhere((w) => w == DashboardWidget.quickTransfer);
-    if (qtIndex >= 0) {
-      // Keep only the first, remove rest
-      final first = widgets[qtIndex];
-      widgets.removeWhere((w) => w == DashboardWidget.quickTransfer);
-      widgets.insert(0, first);
-    } else {
-      widgets.insert(0, DashboardWidget.quickTransfer);
-    }
-    _currentWidgetsNotifier.value = widgets;
+    // The persisted list is the single source of truth: take it verbatim.
+    //
+    // This used to "normalise" the list on every mount — hoisting quickTransfer
+    // to index 0, and inserting it back when it was missing. Since PageView
+    // disposes off-screen pages, that ran again on every tab switch and silently
+    // rewrote the saved layout back to the default (issue #6). Legacy name
+    // migration and de-duplication now live in the JSON converter, i.e. they
+    // happen once when the config is read, not on every build of this page.
+    _currentWidgetsNotifier.value =
+        List<DashboardWidget>.from(ref.read(appSettingProvider).dashboardWidgets);
 
     _shakeCtrl = AnimationController(
       vsync: this,
@@ -93,9 +83,16 @@ class _DashboardViewState extends ConsumerState<DashboardView>
     _currentWidgetsNotifier.value = updated;
   }
 
+  /// Move the card at [oldIndex] onto the position of the card at [newIndex].
+  ///
+  /// Both are plain list indices — the drag target reports the index of the card
+  /// it was dropped on, not a ReorderableListView-style "gap between cards"
+  /// index. The old `if (newIndex > oldIndex) newIndex--` was copied from the
+  /// ReorderableListView API and therefore moved a card dragged forward down by
+  /// exactly one slot, however far it was actually dragged (issue #6).
   void _moveWidget(int oldIndex, int newIndex) {
+    if (oldIndex == newIndex) return;
     final updated = List<DashboardWidget>.from(_currentWidgetsNotifier.value);
-    if (newIndex > oldIndex) newIndex--;
     final item = updated.removeAt(oldIndex);
     updated.insert(newIndex, item);
     _currentWidgetsNotifier.value = updated;
