@@ -125,6 +125,13 @@ jobs:
         run: |
           cd submodules/croc
           VER=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+          # The "update submodule to latest tag" step is gone, so if the
+          # submodule was fetched without tags fall back to croc's canonical
+          # version file — the same value the Go bridge reports as
+          # version.Value.
+          if [ -z "$VER" ]; then
+            VER=$(sed -n 's/.*Value = "\(.*\)"/\1/p' src/version/version.go 2>/dev/null | head -1)
+          fi
           echo "version=${VER:-unknown}" >> $GITHUB_OUTPUT
           cd ../..
 

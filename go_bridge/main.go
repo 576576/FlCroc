@@ -43,6 +43,12 @@ var (
 // Dart clients that don't recognise type 5 simply ignore it.
 const eventTypeStatus = 5
 
+// maxTextTransferBytes mirrors croc's internal limit
+// (src/croc/croc.go: `maxTextTransferBytes = 1 << 20`). Since croc v11.5 the
+// receiver validates text offers via validateSendingTextOffer() and rejects
+// anything outside 1 byte..1 MiB, so the sender must respect the same bound.
+const maxTextTransferBytes = 1 << 20
+
 type progressEvent struct {
 	Type            int     `json:"type"`
 	TransferID      string  `json:"transfer_id"`
@@ -231,6 +237,14 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 	// croc recognises the "croc-stdin-" prefix as stdin/text content.
 	sendingText := opts.SendingText && opts.TextContent != ""
 	if sendingText {
+		// croc v11.5+ validates text offers on the receiver. Reject oversized
+		// payloads here so the user gets a clear local error instead of a
+		// failed transfer ("text transfer size must be between 1 byte and 1 MiB").
+		if n := len(opts.TextContent); n > maxTextTransferBytes {
+			progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: fmt.Sprintf(
+				"text too large: %d bytes (croc limit is %d bytes / 1 MiB)", n, maxTextTransferBytes)}
+			return
+		}
 		tmpDir := opts.TempDir
 		tmpFile, err := os.CreateTemp(tmpDir, "croc-stdin-*.txt")
 		if err != nil {
@@ -426,9 +440,11 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		TransferID: transferID,
 	}
 
-	// Capture stdout during receive — croc prints text content to stdout
-	// when SendingText is true (and then deletes the temp file).
-	// By capturing stdout we get the text without modifying croc source.
+	// Capture stdout during receive — croc echoes the text payload to stdout
+	// when SendingText is true, then `transfer()` deletes the received file
+	// (`if c.Options.Stdout && !c.Options.IsSender { root.Remove(pathToFile) }`,
+	// croc v11.5.2). By capturing stdout we get the text without modifying
+	// croc source.
 	var capturedStdout string
 	oldStdout := os.Stdout
 	r, w, pipeErr := os.Pipe()
@@ -464,7 +480,10 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 	var textContent string
 
 	// Detect text receive: `c.Options.SendingText` is reliably set by the
-	// receiver from the sender's info (croc.go processMessageFileInfo L1305).
+	// receiver from the sender's info (croc.go `processSenderInfo`:
+	// `c.Options.SendingText = senderInfo.SendingText`, right after the
+	// validateSendingTextOffer() gate), which also flips `c.Options.Stdout` on
+	// so the payload is echoed to stdout.
 	if c.Options.SendingText {
 		isText = true
 		textContent = capturedStdout

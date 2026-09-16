@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/license-GPL v3-green" alt="License">
   <img alt="version" src="https://img.shields.io/badge/version-1.2.4-informational" />
   <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.44.9-02569B?logo=flutter" />
-  <img alt="croc" src="https://img.shields.io/badge/croc-11.0.2-blue" />
+  <img alt="croc" src="https://img.shields.io/badge/croc-11.5.2-blue" />
 </p>
 
 <em>Croc 的 Flutter 圖形界面 — 輕鬆安全地在計算機之間傳輸文件</em>
