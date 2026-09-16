@@ -3,7 +3,7 @@ name: Release
 # 唯一入口 —— push / pull_request / workflow_dispatch 都由本文件承接，
 # 所有编译与打包委托给可复用工作流 .github/workflows/build.yml。
 #
-#   push main / master / dev  → 只做维护：跑测试 + 按需重新生成 i18n/文档并提交回分支
+#   push main / dev           → 只做维护：跑测试 + 按需重新生成 i18n/文档并提交回分支
 #   pull_request              → 跑测试 + 校验 i18n/文档（不提交、不出包）
 #   workflow_dispatch         → 手动勾选目标出包；channel 决定 nightly / release / 仅出产物
 #
@@ -18,9 +18,9 @@ name: Release
 
 on:
   push:
-    branches: [main, master, dev]
+    branches: [main, dev]
   pull_request:
-    branches: [main, master]
+    branches: [main]
   workflow_dispatch:
     inputs:
       channel:
@@ -638,12 +638,15 @@ jobs:
             esac
           done
 
+          # 旧 CI 这里是 "Automated dev-branch build" —— 那时 nightly 只在 dev 分支
+          # 有平台构建时产生。现在 nightly 只能由 workflow_dispatch 触发，且不限定
+          # 分支（main / dev 都可能），故改成与分支无关的措辞。
           if [ "$CHANNEL" = "nightly" ]; then
             BODY="**Commit**: \`$(git rev-parse --short HEAD)\`
 
           $(git log -1 --pretty=%B)
 
-          > ⚠️ Automated dev-branch build — may be unstable.
+          > ⚠️ Nightly pre-release — may be unstable.
 
           "
           else
