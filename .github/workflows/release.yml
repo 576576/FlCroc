@@ -8,6 +8,13 @@ name: Release
 #   pull_request              → 跑测试 + 校验 i18n/文档（不提交、不出包）
 #   workflow_dispatch         → 手动勾选目标出包；channel 决定 nightly / release / 仅出产物
 #
+# 路径过滤只挂在 push 上（见 on.push.paths-ignore）：纯文档改动的 push 整个 workflow
+# 都不跑，也就不出包。三条容易踩的：
+#   * 是「**全部**变更路径都命中」才跳过 —— 文档与代码混在同一个 push 里照常出包；
+#   * 跳过时**一个 run 都不建**，Actions 页面看不到任何记录、哪里都不报错。这和提交
+#     信息里写 [skip ci] 是同一类静默行为 —— 排查「我推了怎么没跑」先想这两处；
+#   * 需要强制出包时用 workflow_dispatch，路径过滤对手动触发不生效。
+#
 # "默认三目标" = dispatch 的默认勾选，两处默认值必须一起改：
 #   Windows x64 / Linux x64 / Android ARM64（见 Resolve targets & version 步骤）。
 # 不让 push 用 release 通道：release 的 tag 是 `v<x.y.z>`（不含 build 号），
@@ -52,6 +59,20 @@ name: Release
 on:
   push:
     branches: [main, dev]
+    # 纯文档改动不出包。官方语义：**全部**变更路径都命中下面任一条 → 整个 workflow
+    # 不运行（连 run 都不建，Actions 页面不留痕迹）；只要有一条不命中，照常运行。
+    #
+    # 刻意**不**列 assets/**：assets/docs/ 与 assets/templates/ 是 i18n job 的输入
+    # （指纹由 git subtree id 算出），改了就得重渲染 README 与 docs/i18n.md，
+    # 滤掉它们等于让那两处永久失修。同理不列 .gitattributes —— 它会影响检出后的字节。
+    #
+    # pull_request 有意不加同样的过滤：PR 本来就不出包，而 i18n job 会校验
+    # docs/i18n.md 与 README 的新鲜度，把 docs/** 滤掉等于白丢一道检查。
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'                  # 只匹配根目录（* 不跨 /），assets/templates/*.md 不受影响
+      - 'LICENSE'
+      - '.github/ISSUE_TEMPLATE/**'
   pull_request:
     branches: [main]
   workflow_dispatch:
