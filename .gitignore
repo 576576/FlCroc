@@ -23,6 +23,7 @@ build/
 # AI agent reference (local only, not committed)
 # ============================================================
 AGENTS.md
+.workbuddy/
 
 # ============================================================
 # 操作系统杂项
@@ -136,7 +137,7 @@ go_bridge/flcroc_bridge.dll
 go_bridge/flcroc_bridge.h
 
 # ============================================================
-# CI / Workflow（已合并为单一 build.yml）
+# CI / Workflow（历史遗留的单平台 workflow 文件，勿提交）
 # ============================================================
 .github/workflows/build-android.yml
 .github/workflows/build-linux.yml
