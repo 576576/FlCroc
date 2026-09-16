@@ -2,10 +2,17 @@
 
 ## Build with CI/CD
 
-Builds are started by hand from **Actions → Release → Run workflow**. Pushes and
-pull requests only run the maintenance jobs: tests, plus i18n/README
+Builds run **automatically on every push to `main`**, using exactly the default
+targets in the table below (Windows x64 · Linux x64 · Android ARM64) and publishing
+the nightly pre-release. A build can also be started by hand from
+**Actions → Release → Run workflow** for any other combination. Pushes to other
+branches and pull requests only run the maintenance jobs: tests, plus i18n/README
 regeneration when the tracked inputs change. No commit-message keywords are
 involved.
+
+Because a push uses the defaults, the extra targets (`windows_arm64`,
+`linux_arm64`, `android_x64`) are **never** built automatically — dispatch a run if
+you want them.
 
 | Input | Default | Effect |
 |-------|---------|--------|

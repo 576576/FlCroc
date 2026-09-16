@@ -3,9 +3,15 @@ name: Release
 # 唯一入口 —— push / pull_request / workflow_dispatch 都由本文件承接，
 # 所有编译与打包委托给可复用工作流 .github/workflows/build.yml。
 #
-#   push main / dev           → 只做维护：跑测试 + 按需重新生成 i18n/文档并提交回分支
+#   push main                 → **自动出包**（默认三目标）+ 更新 nightly 预发布
+#   push 其它分支             → 只做维护：跑测试 + 按需重新生成 i18n/文档并提交回分支
 #   pull_request              → 跑测试 + 校验 i18n/文档（不提交、不出包）
 #   workflow_dispatch         → 手动勾选目标出包；channel 决定 nightly / release / 仅出产物
+#
+# "默认三目标" = dispatch 的默认勾选，两处默认值必须一起改：
+#   Windows x64 / Linux x64 / Android ARM64（见 Resolve targets & version 步骤）。
+# 不让 push 用 release 通道：release 的 tag 是 `v<x.y.z>`（不含 build 号），
+# 同版本第二次 push 会撞上已存在的 tag。
 #
 # dispatch 一共 6 个平台开关，产物名统一 FlCroc-<x.y.z>-<os>-<arch>.<ext>，
 # 架构一律写 x64 / arm64（amd64 只出现在 go build 的 GOARCH 参数里，不进产物名）：
@@ -19,6 +25,16 @@ name: Release
 #
 # 版本号仍以 pubspec.yaml 的 x.y.z+N 为唯一事实来源：出包时把 N 递增 1，
 # 由 commit job 提交回分支（dispatch 到标签 ref 时不动版本号）。
+#
+# action 版本都已升到当前最新大版本（与 build.yml 同一批，Node 24 运行时）。
+# 只有本文件用到的两个需要留意的破坏性变更：
+#   download-artifact v8 —— ① 不再无条件解压：按 Content-Type 判断，非 zip 的不解压
+#                            （我们上传的都是 zip 容器，仍会正常解出原始文件）；
+#                          ② 摘要不匹配从 warn 改为**默认 error**（secure by default），
+#                             想回退用 digest-mismatch 参数。
+#                           另外 v5 的破坏性变更只针对「按 ID 下载单个制品」的路径
+#                           行为，我们全部按 name 下载，不受影响。
+#   action-gh-release v3 —— 仅 Node 20 → Node 24 运行时，输入参数未变。
 
 on:
   push:
@@ -94,7 +110,7 @@ jobs:
       docs_hash: ${{ steps.hash-check.outputs.docs_hash }}
       templates_hash: ${{ steps.hash-check.outputs.templates_hash }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -129,6 +145,8 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           REF_TYPE: ${{ github.ref_type }}
+          # push 事件要不要自动出包，取决于是不是 main（见下方 Resolve 步骤）
+          REF_NAME: ${{ github.ref_name }}
           IN_CHANNEL: ${{ github.event.inputs.channel }}
           IN_VERSION: ${{ github.event.inputs.version }}
           IN_FORCE_DOCS: ${{ github.event.inputs.force_docs }}
@@ -141,8 +159,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          # dispatch 以外的事件（push / pull_request）不出包，只做维护 —— 与旧 CI 里
-          # 「提交信息没带 b-* 就只跑测试与文档」的行为一致。
+          # 默认不出包：pull_request 只做维护（可能来自 fork，拿不到 secrets，
+          # 也不该发布），非 main 分支的 push 同理。
           CHANNEL='none'; VERSION_INPUT=''; FORCE_DOCS='false'
           W64='false'; WA64='false'; L64='false'; LA64='false'; A64='false'; AX64='false'
           if [ "$EVENT" = "workflow_dispatch" ]; then
@@ -156,6 +174,19 @@ jobs:
             LA64="${IN_LINUX_A64:-false}"
             A64="${IN_A64:-false}"
             AX64="${IN_AX64:-false}"
+          elif [ "$EVENT" = "push" ] && [ "$REF_NAME" = "main" ]; then
+            # ── push main：自动出包并更新 nightly 预发布 ──
+            # 目标与 dispatch 的默认勾选**完全一致**（Windows x64 / Linux x64 /
+            # Android ARM64），所以「手动 dispatch 什么都不改」与「push 一次」
+            # 产出同一组产物 —— 两处默认值要一起改，别只改一边。
+            #
+            # 只认 main：nightly 是**一个共享 tag**，多分支各自发 nightly 会互相覆盖。
+            # 不会自我触发循环：commit job 的提交信息固定以 `[skip ci]` 结尾
+            # （见 Commit and push 步骤），版本号回写那一次 push 不会再拉起本工作流。
+            # 也不用 release 通道做自动发布：release 的 tag 是 `v<x.y.z>`（不含 build
+            # 号），同版本第二次 push 会撞上已存在的 tag，只能 nightly。
+            CHANNEL='nightly'
+            W64='true'; L64='true'; A64='true'
           fi
 
           # Windows ARM64 包在 x64 包基础上换 .dll 重打，所以 build.yml 的 windows job
@@ -285,7 +316,7 @@ jobs:
     continue-on-error: true
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
       - uses: subosito/flutter-action@v2
@@ -303,7 +334,7 @@ jobs:
     if: needs.prep.outputs.i18n_do == 'true' || needs.prep.outputs.docs_do == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Generate i18n status
         if: needs.prep.outputs.i18n_do == 'true'
@@ -346,7 +377,7 @@ jobs:
           sed -i "s#{{docs_hash}}#${{ needs.prep.outputs.docs_hash }}#" "$OUTPUT"
           sed -i "s#{{templates_hash}}#${{ needs.prep.outputs.templates_hash }}#" "$OUTPUT"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: needs.prep.outputs.i18n_do == 'true'
         with:
           name: i18n-md
@@ -500,7 +531,7 @@ jobs:
             fi
           done
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: needs.prep.outputs.docs_do == 'true'
         with:
           name: readme-md
@@ -516,7 +547,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Apply version update
         if: needs.prep.outputs.new_build != '' && needs.test.result != 'failure'
@@ -527,14 +558,14 @@ jobs:
 
       - name: Download i18n artifact
         if: needs.prep.outputs.i18n_do == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: i18n-md
           path: docs/
 
       - name: Download README artifact
         if: needs.prep.outputs.docs_do == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: readme-md
           path: .
@@ -606,11 +637,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
@@ -687,7 +718,7 @@ jobs:
           fi
 
       - name: Create release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prep.outputs.tag }}
           name: ${{ needs.prep.outputs.channel == 'nightly' && format('Nightly {0} {1}', needs.prep.outputs.version, needs.prep.outputs.nightly_date) || format('Release {0}', needs.prep.outputs.display_version) }}

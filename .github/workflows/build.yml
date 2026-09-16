@@ -6,7 +6,8 @@ name: Build
 # 创建 Release；本文件只负责把包做出来。构建目标完全由调用方传入的布尔输入决定。
 #
 # 原先基于提交信息文本（b-all / b-win / b-linux / b-mobile / arch-all）的平台探测
-# 已全部移除 —— 与 Suwayomi-next 一致，入口只认 workflow_dispatch 选项。
+# 已全部移除 —— 与 Suwayomi-next 一致，入口只认 workflow_dispatch 选项，
+# 以及 release.yml 里「push main ⇒ 默认三目标」那一条自动路径。
 #
 # 版本号经 inputs.version 传入（完整版本，含 build 号，如 1.2.4+90），每个 job 在
 # checkout 后用 sed 写进 pubspec.yaml 再编译。刻意**不**依赖调用方上传的 pubspec
@@ -14,6 +15,17 @@ name: Build
 #
 # 产物统一命名 FlCroc-<x.y.z>-<os>-<arch>.<ext>，架构用 x64 / arm64（不用 amd64：
 # 那是 Go 的 GOARCH 写法，只出现在 go build 的参数里，不进产物名）。
+#
+# action 版本都已升到当前最新大版本，全部跑在 Node 24 运行时上（要求 runner
+# ≥ 2.327.1；GitHub 托管 runner 恒满足，自托管需先升级）。升级时核过的破坏性变更：
+#   checkout v7        —— v5 起换 Node 24；v7 起禁止 pull_request_target/workflow_run
+#                         checkout fork PR（我们不用这两个触发，无影响）
+#   setup-go v7        —— v6 换 Node 24，v7 转 ESM
+#   setup-java v6      —— v5 换 Node 24；v6 把 Zulu 的 Discovery API 换成 Azul
+#                         Metadata API（只影响 distribution: zulu，我们用 temurin）
+#   upload-artifact v7 —— v5/v6 换 Node 24；v7 新增可选的 archive 参数（默认仍打包）
+# 我们的 with: 参数（name / path / if-no-files-found / go-version / distribution）
+# 都未落在上述破坏性变更里。
 
 on:
   workflow_call:
@@ -62,7 +74,7 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -83,7 +95,7 @@ jobs:
           VERSION: ${{ inputs.version }}
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
 
@@ -140,7 +152,7 @@ jobs:
         run: Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.display_version }}-windows-x64.zip
 
       # 只有用户真的勾了 windows_x64 才把这个 zip 当成产物上传。
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: inputs.windows_x64
         with:
           name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-x64
@@ -196,7 +208,7 @@ jobs:
           Copy-Item "windows\runner\libcroc_bridge_arm64.dll" "arm64-repack\data\flutter_assets\libcroc_bridge.dll" -Force -ErrorAction SilentlyContinue
           Compress-Archive -Path "arm64-repack\*" -DestinationPath FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64.zip
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: inputs.windows_arm64
         with:
           name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64
@@ -209,7 +221,7 @@ jobs:
     if: inputs.linux_x64
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -226,7 +238,7 @@ jobs:
           VERSION: ${{ inputs.version }}
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
 
@@ -279,7 +291,7 @@ jobs:
       - name: Package tar
         run: tar -czf FlCroc-${{ steps.ver.outputs.display_version }}-linux-x64.tar.gz -C build/linux/x64/release/bundle .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: FlCroc-${{ steps.ver.outputs.display_version }}-linux-x64
           path: FlCroc-${{ steps.ver.outputs.display_version }}-linux-x64.tar.gz
@@ -310,7 +322,7 @@ jobs:
       # secrets / inputs 可用），写 ${{ runner.temp }} 会解析成空串。
       FLUTTER_SDK: ${{ github.workspace }}/.flutter-sdk
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -327,7 +339,7 @@ jobs:
           VERSION: ${{ inputs.version }}
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
 
@@ -408,7 +420,7 @@ jobs:
       - name: Package tar
         run: tar -czf FlCroc-${{ steps.ver.outputs.display_version }}-linux-arm64.tar.gz -C build/linux/arm64/release/bundle .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: FlCroc-${{ steps.ver.outputs.display_version }}-linux-arm64
           path: FlCroc-${{ steps.ver.outputs.display_version }}-linux-arm64.tar.gz
@@ -419,7 +431,7 @@ jobs:
     if: inputs.android_arm64 || inputs.android_x64
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -436,13 +448,13 @@ jobs:
           VERSION: ${{ inputs.version }}
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
 
@@ -527,7 +539,7 @@ jobs:
 
       # 用通配而不是逐行列两个路径：只勾一个架构时另一个文件不存在，列路径会让
       # upload-artifact 直接报错（旧写法只能靠 continue-on-error 兜着）。
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: FlCroc-${{ steps.ver.outputs.display_version }}-android
           path: FlCroc-${{ steps.ver.outputs.display_version }}-android-*.apk
