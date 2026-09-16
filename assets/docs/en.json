@@ -33,7 +33,7 @@
     "go_bridge": "Go CGO shared library (FFI bridge)",
     "submodules": "Vendored croc source",
     "assets": "App icon, I18n JSON bundles",
-    "ci": "CI/CD (build.yml)"
+    "ci": "CI/CD (release.yml + build.yml)"
   },
   "stack_tree": {
     "col_layer": "Layer",

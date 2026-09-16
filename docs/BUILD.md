@@ -2,32 +2,35 @@
 
 ## Build with CI/CD
 
-Push to `main`/`master`/`dev` with a commit message containing one of the triggers below.
-GitHub Actions will build and upload artifacts automatically.
+Builds are started by hand from **Actions → Release → Run workflow**. Pushes and
+pull requests only run the maintenance jobs: tests, plus i18n/README
+regeneration when the tracked inputs change. No commit-message keywords are
+involved.
 
-| Build Tags | Win x64 | Win ARM64 | Linux x64 | Android ARM64 | Android x64 |
-|-------------|:-------:|:---------:|:---------:|:-------------:|:-----------:|
-| `b-all` | ✅ | – | ✅ | ✅ | – |
-| `b-all arch-all` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `b-win` | ✅ | – | – | – | – |
-| `b-win arch-all` | ✅ | ✅ | – | – | – |
-| `b-linux` | – | – | ✅ | – | – |
-| `b-mobile` | – | – | – | ✅ | – |
-| `b-mobile arch-all` | – | – | – | ✅ | ✅ |
-| `b-none` | – | – | – | – | – |
+| Input | Default | Effect |
+|-------|---------|--------|
+| `channel` | `nightly` | `nightly` rebuilds the nightly pre-release · `release` cuts a `vX.Y.Z` release · `none` uploads artifacts only |
+| `version` | *(from `pubspec.yaml`)* | Override the `x.y.z` part; the `+build` number still increments |
+| `windows_amd64` | ✅ | Windows x64 |
+| `windows_arm64` | – | Windows ARM64 — repacked over the x64 package, so x64 is added automatically |
+| `linux_amd64` | ✅ | Linux x64 |
+| `android_arm64` | ✅ | Android ARM64 |
+| `android_amd64` | – | Android x64 |
+| `force_docs` | – | Force-regenerate `docs/i18n.md` and all READMEs |
 
-| Release Tag | Effect |
-|-------------|--------|
-| `r-1.2.3` / `release-1.2.3` | Production release |
-| `beta-1.2.3` | Beta release |
+A `channel` other than `none` needs at least one platform selected, otherwise the
+run fails early. Leaving `channel` at `nightly` while selecting a single platform
+is the usual way to smoke-test one target; pick `none` to get artifacts without
+touching the published release.
 
-> **Nightly** releases are published automatically whenever any build runs on `dev` branch.
+> **Version numbers** — `pubspec.yaml` holds `x.y.z+N` and is the single source of
+> truth. When packaging from a branch, `N` is incremented by 1 and committed back
+> to that branch, so the workflow row is the record of what was built.
 
-| Other Tag | Effect |
-|----------------|--------|
-| `b-doc` | Force regenerate `docs/i18n.md` and all READMEs |
-
-> **Docs:** `docs/i18n.md` and all README files are regenerated automatically when `assets/bundles/` or `assets/docs/` change — detected via hash comparison. Use `b-doc` to force.
+> **Docs:** `docs/i18n.md` and all README files are regenerated automatically when
+> `assets/bundles/`, `assets/docs/` or `assets/templates/` change — detected by
+> comparing git subtree IDs against the values recorded in `docs/i18n.md`. Use the
+> `force_docs` input to force it.
 
 ---
 

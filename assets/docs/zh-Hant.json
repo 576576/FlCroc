@@ -33,7 +33,7 @@
     "go_bridge": "Go CGO 共享庫 (FFI 橋接)",
     "submodules": "內置 croc 源碼",
     "assets": "應用圖標、國際化 JSON 語言包",
-    "ci": "CI/CD (build.yml)"
+    "ci": "CI/CD (release.yml + build.yml)"
   },
   "stack_tree": {
     "col_layer": "層級",
