@@ -573,18 +573,31 @@ jobs:
       - name: Build commit message
         id: msg
         run: |
-          LINES=""
+          # 逐行攒数组、用真换行拼，不要写 "\n"：bash 双引号里的 \n 是两个字面字符，
+          # 会原样进提交信息（曾写出 `- Update i18n.\n` 这种带反斜杠的行）。
+          LINES=()
           if [ -n "${{ needs.prep.outputs.new_build }}" ] && [ "${{ needs.test.result }}" != "failure" ]; then
-            LINES="${LINES}- Update build number ${{ needs.prep.outputs.new_build }}.\n"
+            LINES+=("- Update build number ${{ needs.prep.outputs.new_build }}.")
           fi
           if [ "${{ needs.prep.outputs.i18n_do }}" == "true" ]; then
-            LINES="${LINES}- Update i18n.\n"
+            LINES+=("- Update i18n.")
           fi
           if [ "${{ needs.prep.outputs.docs_do }}" == "true" ]; then
-            LINES="${LINES}- Update documents.\n"
+            LINES+=("- Update documents.")
           fi
-          MSG="Auto commit by Github Actions\n${LINES}"
-          echo "message=$MSG" >> $GITHUB_OUTPUT
+          # $GITHUB_OUTPUT 是逐行 key=value：值里带真换行必须用 heredoc 形式，
+          # 否则第二行起会被丢掉。这里不留尾随空行，分隔交给写提交那一步。
+          # 标题与 bullet 之间留一个空行：git 的「subject」是第一**段**，不空行的话
+          # git log --oneline / %s 会把标题和所有 bullet 折叠成一行。
+          {
+            echo 'message<<__COMMIT_MSG_EOF__'
+            echo 'Auto commit by Github Actions'
+            if [ ${#LINES[@]} -gt 0 ]; then
+              echo
+              for line in "${LINES[@]}"; do echo "$line"; done
+            fi
+            echo '__COMMIT_MSG_EOF__'
+          } >> "$GITHUB_OUTPUT"
 
       # On pull_request events GITHUB_REF_NAME is "<n>/merge" — a read-only ref
       # that has no remote counterpart, so the rebase/push below always failed
@@ -593,6 +606,10 @@ jobs:
       # branch pushes only; on PRs the artifacts are validated, not published.
       - name: Commit and push
         if: github.event_name != 'pull_request'
+        env:
+          # 经 env 传值，别把表达式插进脚本文本：多行值插进去会破词，也是 GitHub
+          # 明确不建议的脚本注入面。
+          COMMIT_MSG: ${{ steps.msg.outputs.message }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -601,7 +618,10 @@ jobs:
             echo "No changes to commit"
             exit 0
           fi
-          git commit -m "$(echo -e '${{ steps.msg.outputs.message }}')\n\n[skip ci]"
+          # -F - 从 stdin 读整条信息，所以不需要任何 \n 转义。
+          # 末尾那个方括号标记是**必需**的：它让 GitHub 跳过这次 push 触发的 CI，
+          # 否则「push 出包 → 版本号回写 → 再触发」会死循环（ci_check 已钉成不变量）。
+          { printf '%s\n\n' "$COMMIT_MSG"; echo '[skip ci]'; } | git commit -F -
           git pull --rebase origin "$GITHUB_REF_NAME" || true
           git push
 
