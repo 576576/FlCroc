@@ -13,6 +13,19 @@ name: Release
 # 不让 push 用 release 通道：release 的 tag 是 `v<x.y.z>`（不含 build 号），
 # 同版本第二次 push 会撞上已存在的 tag。
 #
+# 同样是 nightly 通道，tag 取决于**怎么触发的**：
+#   push main         → 固定 tag `nightly`，覆盖式「最新构建位」。应用内的 nightly
+#                       更新通道写死了查 releases/tags/nightly（lib/application.dart），
+#                       自动构建不能改这个 tag，否则 app 收不到推送构建。
+#   workflow_dispatch → `r<提交数>`（HEAD 可达提交数）。每次手动发布各留一条独立、
+#                       互不覆盖的记录，便于回溯对应的 commit，也不打扰 nightly 那一位。
+#                       连带代价：app 的两条更新通道都看不到 r<N>（前者查固定 tag，
+#                       后者查 releases/latest），它只在 GitHub Releases 网页可见。
+#
+# 两种 nightly 都是预发布，因此都不会成为 release 页的 Latest —— GitHub 明确
+# 「Latest release cannot be draft or prerelease.」；实测 PATCH 直接 422、POST
+# 创建则静默忽略（HTTP 200 但不生效）。Latest 只由 channel=release 更新。
+#
 # dispatch 一共 6 个平台开关，产物名统一 FlCroc-<x.y.z>-<os>-<arch>.<ext>，
 # 架构一律写 x64 / arm64（amd64 只出现在 go build 的 GOARCH 参数里，不进产物名）：
 #   windows_x64 / windows_arm64 / linux_x64 / linux_arm64 / android_arm64 / android_x64
@@ -218,8 +231,33 @@ jobs:
           fi
           DISPLAY="${FULL%%+*}"
 
+          # 通道 → tag / 预发布标志。
+          #   push main（自动出包）→ 固定 tag `nightly`，反复覆盖同一个「最新构建位」。
+          #     应用内的 nightly 更新通道写死了查 releases/tags/nightly
+          #     （lib/application.dart 的 'tags/nightly'），所以自动构建必须继续用它，
+          #     换成任何别的 tag 都会让 app 收不到推送构建。
+          #   workflow_dispatch（手动出包）→ tag 换成 `r<提交数>`，每次手动发布各留一条
+          #     独立、互不覆盖的记录，便于回溯「这次发布对应哪个 commit」。
+          #     代价：app 的两条更新通道（tags/nightly 与 releases/latest）都看不到
+          #     r<N>，它只在 GitHub Releases 网页上可见。
           case "$CHANNEL" in
-            nightly) TAG='nightly';         PRE='true'  ;;
+            nightly)
+              PRE='true'
+              if [ "$EVENT" = "workflow_dispatch" ]; then
+                # 提交数= HEAD 可达的祖先数（含自身）。依赖 prep 的 fetch-depth: 0：
+                # 浅克隆下 rev-list --count 会静默偏小甚至恒为 1，算出来的 tag 会
+                # 悄悄撞到别的构建上，故先挡住。
+                if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+                  echo "::error::仓库是浅克隆，git rev-list --count 不可信，无法推算 r<提交数>"
+                  exit 1
+                fi
+                RCOUNT=$(git rev-list --count HEAD)
+                TAG="r${RCOUNT}"
+                echo "手动触发：nightly 通道改打 r<提交数> 标签 → $TAG"
+              else
+                TAG='nightly'
+              fi
+              ;;
             release) TAG="v${DISPLAY}";     PRE='false' ;;
             none)    TAG='';                PRE='false' ;;
             *) echo "::error::未知 channel: $CHANNEL"; exit 1 ;;
@@ -699,8 +737,8 @@ jobs:
           done
 
           # 旧 CI 这里是 "Automated dev-branch build" —— 那时 nightly 只在 dev 分支
-          # 有平台构建时产生。现在 nightly 只能由 workflow_dispatch 触发，且不限定
-          # 分支（main / dev 都可能），故改成与分支无关的措辞。
+          # 有平台构建时产生。现在 push main 与 workflow_dispatch 都能产出 nightly，
+          # 且不限定分支（main / dev 都可能），故改成与分支无关的措辞。
           if [ "$CHANNEL" = "nightly" ]; then
             BODY="**Commit**: \`$(git rev-parse --short HEAD)\`
 

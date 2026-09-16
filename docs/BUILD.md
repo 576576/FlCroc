@@ -16,7 +16,7 @@ you want them.
 
 | Input | Default | Effect |
 |-------|---------|--------|
-| `channel` | `nightly` | `nightly` rebuilds the nightly pre-release · `release` cuts a `vX.Y.Z` release · `none` uploads artifacts only |
+| `channel` | `nightly` | `nightly` publishes a pre-release — a push updates the fixed `nightly` tag, a manual run tags `r<commit-count>` · `release` cuts a `vX.Y.Z` release · `none` uploads artifacts only |
 | `version` | *(from `pubspec.yaml`)* | Override the `x.y.z` part; the `+build` number still increments |
 | `windows_x64` | ✅ | Windows x64 — `FlCroc-x.y.z-windows-x64.zip` |
 | `windows_arm64` | – | Windows ARM64 — `.zip`; the x64 package is built as an intermediate base but only published when `windows_x64` is selected too |
@@ -29,7 +29,16 @@ you want them.
 A `channel` other than `none` needs at least one platform selected, otherwise the
 run fails early. Leaving `channel` at `nightly` while selecting a single platform
 is the usual way to smoke-test one target; pick `none` to get artifacts without
-touching the published release.
+creating any release at all.
+
+> **`nightly` tags depend on how the run was started.** A push updates the fixed
+> `nightly` tag, which is what the in-app updater polls (`releases/tags/nightly`); a
+> manual run creates `r<commit-count>` instead — the number of commits reachable from
+> `HEAD`, e.g. `r258`. That keeps every manual build as its own record and leaves the
+> `nightly` slot alone. The trade-off: `r<N>` releases are visible on the GitHub
+> Releases page only — neither in-app update channel (`releases/tags/nightly` and
+> `releases/latest`) will find them. Both flavours stay pre-releases, so neither ever
+> becomes the page's *Latest*; only `channel: release` moves that.
 
 > **Linux ARM64** runs on `ubuntu-22.04-arm` and needs a native ARM64 host: Flutter
 > refuses to cross-build Linux arm64 from an x64 host (`build_linux.dart`), and its
