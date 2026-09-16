@@ -7,6 +7,10 @@ name: Release
 #   pull_request              → 跑测试 + 校验 i18n/文档（不提交、不出包）
 #   workflow_dispatch         → 手动勾选目标出包；channel 决定 nightly / release / 仅出产物
 #
+# dispatch 一共 6 个平台开关，产物名统一 FlCroc-<x.y.z>-<os>-<arch>.<ext>，
+# 架构一律写 x64 / arm64（amd64 只出现在 go build 的 GOARCH 参数里，不进产物名）：
+#   windows_x64 / windows_arm64 / linux_x64 / linux_arm64 / android_arm64 / android_x64
+#
 # 与原 build.yml 的差别：
 #   * 提交信息文本触发器（b-all / b-win / b-linux / b-mobile / b-none / arch-all /
 #     b-doc / r-x.y.z）全部移除，目标与通道改由 dispatch 选项承担；
@@ -24,36 +28,34 @@ on:
   workflow_dispatch:
     inputs:
       channel:
-        description: 发布通道（nightly = 重建 nightly 预发布；release = 打正式 tag；none = 只出产物不发布）
+        description: 发布通道：nightly 更新预发布 / release 打正式 tag / none 只出产物
         type: choice
         options: [nightly, release, none]
         default: nightly
       version:
-        description: 版本号覆盖（如 1.3.0，留空则用 pubspec 当前的 x.y.z；build 号仍自动递增）
+        description: 覆盖版本号，留空用 pubspec 现值；build 号自动 +1
         type: string
         default: ''
-      windows_amd64:
-        description: Windows x64
+      windows_x64:
         type: boolean
         default: true
       windows_arm64:
-        description: Windows ARM64（在 x64 包上换 .dll 重打，会自动带上 Windows x64）
         type: boolean
         default: false
-      linux_amd64:
-        description: Linux x64
+      linux_x64:
         type: boolean
         default: true
+      linux_arm64:
+        type: boolean
+        default: false
       android_arm64:
-        description: Android arm64 APK
         type: boolean
         default: true
-      android_amd64:
-        description: Android x86_64 APK
+      android_x64:
         type: boolean
         default: false
       force_docs:
-        description: 强制重新生成 i18n 与 README（原先由提交信息里的 b-doc 触发）
+        description: 强制重新生成 i18n 与 README
         type: boolean
         default: false
 
@@ -77,11 +79,12 @@ jobs:
       has_targets: ${{ steps.ver.outputs.has_targets }}
       new_build: ${{ steps.ver.outputs.new_build }}
       nightly_date: ${{ steps.ver.outputs.nightly_date }}
-      win_amd64: ${{ steps.ver.outputs.win_amd64 }}
+      win_x64: ${{ steps.ver.outputs.win_x64 }}
       win_arm64: ${{ steps.ver.outputs.win_arm64 }}
-      linux_amd64: ${{ steps.ver.outputs.linux_amd64 }}
+      linux_x64: ${{ steps.ver.outputs.linux_x64 }}
+      linux_arm64: ${{ steps.ver.outputs.linux_arm64 }}
       android_arm64: ${{ steps.ver.outputs.android_arm64 }}
-      android_amd64: ${{ steps.ver.outputs.android_amd64 }}
+      android_x64: ${{ steps.ver.outputs.android_x64 }}
       app_version: ${{ steps.app-ver.outputs.version }}
       flutter_version: ${{ steps.flutter-ver.outputs.version }}
       croc_version: ${{ steps.croc-ver.outputs.version }}
@@ -129,18 +132,19 @@ jobs:
           IN_CHANNEL: ${{ github.event.inputs.channel }}
           IN_VERSION: ${{ github.event.inputs.version }}
           IN_FORCE_DOCS: ${{ github.event.inputs.force_docs }}
-          IN_WIN64: ${{ github.event.inputs.windows_amd64 }}
+          IN_WIN64: ${{ github.event.inputs.windows_x64 }}
           IN_WIN_A64: ${{ github.event.inputs.windows_arm64 }}
-          IN_LINUX64: ${{ github.event.inputs.linux_amd64 }}
+          IN_LINUX64: ${{ github.event.inputs.linux_x64 }}
+          IN_LINUX_A64: ${{ github.event.inputs.linux_arm64 }}
           IN_A64: ${{ github.event.inputs.android_arm64 }}
-          IN_AX64: ${{ github.event.inputs.android_amd64 }}
+          IN_AX64: ${{ github.event.inputs.android_x64 }}
         run: |
           set -euo pipefail
 
           # dispatch 以外的事件（push / pull_request）不出包，只做维护 —— 与旧 CI 里
           # 「提交信息没带 b-* 就只跑测试与文档」的行为一致。
           CHANNEL='none'; VERSION_INPUT=''; FORCE_DOCS='false'
-          W64='false'; WA64='false'; L64='false'; A64='false'; AX64='false'
+          W64='false'; WA64='false'; L64='false'; LA64='false'; A64='false'; AX64='false'
           if [ "$EVENT" = "workflow_dispatch" ]; then
             CHANNEL="${IN_CHANNEL:-none}"
             VERSION_INPUT="${IN_VERSION:-}"
@@ -149,18 +153,18 @@ jobs:
             W64="${IN_WIN64:-false}"
             WA64="${IN_WIN_A64:-false}"
             L64="${IN_LINUX64:-false}"
+            LA64="${IN_LINUX_A64:-false}"
             A64="${IN_A64:-false}"
             AX64="${IN_AX64:-false}"
           fi
 
-          # Windows ARM64 是把 x64 包里的 .dll 换成 ARM64 版重打，没有 x64 包就没得打
-          if [ "$WA64" = "true" ] && [ "$W64" != "true" ]; then
-            echo "::notice::勾选了 Windows ARM64，自动带上 Windows x64（ARM64 包在 x64 包基础上换 .dll 重打）"
-            W64='true'
-          fi
-
+          # Windows ARM64 包在 x64 包基础上换 .dll 重打，所以 build.yml 的 windows job
+          # 在「只要 arm64」时也会跑一遍 x64 构建当作基底 —— 但那只是 job 内部的中间
+          # 产物，x64 的 upload-artifact 仍只看 windows_x64，不勾就不上传，于是发布
+          # 正文与附件里都不会出现 windows-x64。这里**不**再把 W64 置 true：
+          # 一旦置 true，x64 包就会被当成用户主动选择的目标发出去。
           HAS_TARGETS='false'
-          for f in "$W64" "$WA64" "$L64" "$A64" "$AX64"; do
+          for f in "$W64" "$WA64" "$L64" "$LA64" "$A64" "$AX64"; do
             if [ "$f" = "true" ]; then HAS_TARGETS='true'; fi
           done
 
@@ -202,15 +206,16 @@ jobs:
             echo "prerelease=$PRE"
             echo "has_targets=$HAS_TARGETS"
             echo "new_build=$NEW_BUILD"
-            echo "win_amd64=$W64"
+            echo "win_x64=$W64"
             echo "win_arm64=$WA64"
-            echo "linux_amd64=$L64"
+            echo "linux_x64=$L64"
+            echo "linux_arm64=$LA64"
             echo "android_arm64=$A64"
-            echo "android_amd64=$AX64"
+            echo "android_x64=$AX64"
             echo "force_docs=$FORCE_DOCS"
             echo "nightly_date=$(date +%Y%m%d)"
           } >> $GITHUB_OUTPUT
-          echo "目标 → win64:$W64 win-arm64:$WA64 linux64:$L64 android-arm64:$A64 android-x64:$AX64  channel:$CHANNEL"
+          echo "目标 → win64:$W64 win-arm64:$WA64 linux64:$L64 linux-arm64:$LA64 android-arm64:$A64 android-x64:$AX64  channel:$CHANNEL"
           echo "标签 → ${TAG:-（不发布）} prerelease:$PRE"
 
       - name: Check i18n & docs changes
@@ -577,11 +582,12 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       version: ${{ needs.prep.outputs.version }}
-      windows_amd64: ${{ needs.prep.outputs.win_amd64 == 'true' }}
+      windows_x64: ${{ needs.prep.outputs.win_x64 == 'true' }}
       windows_arm64: ${{ needs.prep.outputs.win_arm64 == 'true' }}
-      linux_amd64: ${{ needs.prep.outputs.linux_amd64 == 'true' }}
+      linux_x64: ${{ needs.prep.outputs.linux_x64 == 'true' }}
+      linux_arm64: ${{ needs.prep.outputs.linux_arm64 == 'true' }}
       android_arm64: ${{ needs.prep.outputs.android_arm64 == 'true' }}
-      android_amd64: ${{ needs.prep.outputs.android_amd64 == 'true' }}
+      android_x64: ${{ needs.prep.outputs.android_x64 == 'true' }}
     # 必须显式继承：workflow_call 的被调工作流默认拿不到调用方的 secret，
     # 不写这行时 build.yml 里的 secrets.ANDROID_KEYSTORE_* 恒为空 ——
     # 表现是「secret 配了但 APK 仍用 debug key 签名」，且只留一条 ::warning::。
@@ -629,9 +635,12 @@ jobs:
             # （只有 \$ \` \" \\ 才转义）→ 生成 github.com/\owner/repo 这种死链。
             # 旧 CI 的 nightly/release 正文里就是这个坏链接（已在 nightly 产物上核实）。
             URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/$fname"
+            # 顺序有意义：每个平台的 arm64 分支必须排在它的通配分支之前，
+            # 否则 arm64 包会被当成 x64 打上 x64 徽章。
             case "$fname" in
               *windows-arm64*) WIN_CELL="$WIN_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/ARM64-blue.svg?logo=windows\"></a><br>" ;;
               *windows*)       WIN_CELL="$WIN_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-blue.svg?logo=windows\"></a><br>" ;;
+              *linux-arm64*)   LINUX_CELL="$LINUX_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/ARM64-orange.svg?logo=linux\"></a><br>" ;;
               *linux*)         LINUX_CELL="$LINUX_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-orange.svg?logo=linux\"></a><br>" ;;
               *android-arm64*) ANDROID_CELL="$ANDROID_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/ARM64-green.svg?logo=android\"></a><br>" ;;
               *android*)       ANDROID_CELL="$ANDROID_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-green.svg?logo=android\"></a><br>" ;;

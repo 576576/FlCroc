@@ -11,17 +11,23 @@ involved.
 |-------|---------|--------|
 | `channel` | `nightly` | `nightly` rebuilds the nightly pre-release · `release` cuts a `vX.Y.Z` release · `none` uploads artifacts only |
 | `version` | *(from `pubspec.yaml`)* | Override the `x.y.z` part; the `+build` number still increments |
-| `windows_amd64` | ✅ | Windows x64 |
-| `windows_arm64` | – | Windows ARM64 — repacked over the x64 package, so x64 is added automatically |
-| `linux_amd64` | ✅ | Linux x64 |
-| `android_arm64` | ✅ | Android ARM64 |
-| `android_amd64` | – | Android x64 |
+| `windows_x64` | ✅ | Windows x64 — `FlCroc-x.y.z-windows-x64.zip` |
+| `windows_arm64` | – | Windows ARM64 — `.zip`; the x64 package is built as an intermediate base but only published when `windows_x64` is selected too |
+| `linux_x64` | ✅ | Linux x64 — `FlCroc-x.y.z-linux-x64.tar.gz` |
+| `linux_arm64` | – | Linux ARM64 — `.tar.gz`; built on a native ARM64 runner |
+| `android_arm64` | ✅ | Android ARM64 — `FlCroc-x.y.z-android-arm64.apk` |
+| `android_x64` | – | Android x64 — `FlCroc-x.y.z-android-x64.apk` |
 | `force_docs` | – | Force-regenerate `docs/i18n.md` and all READMEs |
 
 A `channel` other than `none` needs at least one platform selected, otherwise the
 run fails early. Leaving `channel` at `nightly` while selecting a single platform
 is the usual way to smoke-test one target; pick `none` to get artifacts without
 touching the published release.
+
+> **Linux ARM64** runs on `ubuntu-22.04-arm` and needs a native ARM64 host: Flutter
+> refuses to cross-build Linux arm64 from an x64 host (`build_linux.dart`), and its
+> release manifest publishes no arm64 Linux SDK archive, so the SDK is bootstrapped
+> from git there instead of via `flutter-action`.
 
 > **Version numbers** — `pubspec.yaml` holds `x.y.z+N` and is the single source of
 > truth. When packaging from a branch, `N` is incremented by 1 and committed back

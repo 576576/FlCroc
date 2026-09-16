@@ -11,6 +11,9 @@ name: Build
 # 版本号经 inputs.version 传入（完整版本，含 build 号，如 1.2.4+90），每个 job 在
 # checkout 后用 sed 写进 pubspec.yaml 再编译。刻意**不**依赖调用方上传的 pubspec
 # 制品，所以本工作流与调用方的 commit job 之间没有制品耦合、可以并行。
+#
+# 产物统一命名 FlCroc-<x.y.z>-<os>-<arch>.<ext>，架构用 x64 / arm64（不用 amd64：
+# 那是 Go 的 GOARCH 写法，只出现在 go build 的参数里，不进产物名）。
 
 on:
   workflow_call:
@@ -19,28 +22,29 @@ on:
         description: 完整版本号（含 build 号，如 1.2.4+90），编译前写进 pubspec.yaml
         required: true
         type: string
-      windows_amd64:
-        description: Windows x64 包
+      windows_x64:
         required: false
         type: boolean
         default: false
       windows_arm64:
-        description: Windows ARM64 包（Go 桥用 zig 交叉编译，再替换 x64 包里的 .dll 重打；依赖 windows_amd64）
+        description: Windows ARM64；x64 基底包由本工作流的 windows job 内部构建，调用方无需同时打开 windows_x64
         required: false
         type: boolean
         default: false
-      linux_amd64:
-        description: Linux x64 包
+      linux_x64:
+        required: false
+        type: boolean
+        default: false
+      linux_arm64:
+        description: Linux ARM64；在原生 arm64 runner 上构建
         required: false
         type: boolean
         default: false
       android_arm64:
-        description: Android arm64 APK
         required: false
         type: boolean
         default: false
-      android_amd64:
-        description: Android x86_64 APK
+      android_x64:
         required: false
         type: boolean
         default: false
@@ -52,7 +56,7 @@ jobs:
   # ── Windows ──
   build-windows:
     name: Windows
-    if: inputs.windows_amd64 || inputs.windows_arm64
+    if: inputs.windows_x64 || inputs.windows_arm64
     runs-on: windows-latest
     defaults:
       run:
@@ -95,11 +99,14 @@ jobs:
         run: dart run flutter_launcher_icons
 
       # ════════════════════════════════════════════════════════════
-      # ── AMD64: native Go build + Flutter Windows ──
+      # ── x64：原生 Go 构建 + Flutter Windows ──
+      # 这些步骤的 if 是「要 x64 或要 arm64」：arm64 包 = 拿 x64 包换 .dll 重打，
+      # 所以只要 arm64 也得先构建出 x64 基底。**但上传只认 windows_x64** ——
+      # 用户没勾 x64 时它只是 job 内部的中间产物，不进产物列表也不进发布。
       # ════════════════════════════════════════════════════════════
 
-      - name: "[AMD64] Build Go bridge (.dll)"
-        if: inputs.windows_amd64
+      - name: "[x64] Build Go bridge (.dll)"
+        if: inputs.windows_x64 || inputs.windows_arm64
         run: |
           Push-Location go_bridge
           go mod tidy
@@ -110,37 +117,39 @@ jobs:
           go build -buildmode=c-shared -ldflags="-s -w -H windowsgui -extldflags=-Wl,--subsystem,windows" -o "$env:GITHUB_WORKSPACE\windows\runner\libcroc_bridge.dll" .
           Pop-Location
 
-      - name: "[AMD64] Verify .dll"
-        if: inputs.windows_amd64
+      - name: "[x64] Verify .dll"
+        if: inputs.windows_x64 || inputs.windows_arm64
         run: |
           if (Test-Path windows\runner\libcroc_bridge.dll) {
             Get-Item windows\runner\libcroc_bridge.dll | Select-Object Length, FullName
           } else {
             Write-Error "libcroc_bridge.dll not found!"
+            exit 1
           }
 
-      - name: "[AMD64] Build Flutter Windows"
-        if: inputs.windows_amd64
+      - name: "[x64] Build Flutter Windows"
+        if: inputs.windows_x64 || inputs.windows_arm64
         run: flutter build windows --release
 
-      - name: "[AMD64] Bundle bridge .dll into build output"
-        if: inputs.windows_amd64
+      - name: "[x64] Bundle bridge .dll into build output"
+        if: inputs.windows_x64 || inputs.windows_arm64
         run: Copy-Item "windows\runner\libcroc_bridge.dll" "build\windows\x64\runner\Release\libcroc_bridge.dll" -Force
 
-      - name: "[AMD64] Package zip"
-        if: inputs.windows_amd64
-        run: Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.zip
+      - name: "[x64] Package zip"
+        if: inputs.windows_x64 || inputs.windows_arm64
+        run: Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath FlCroc-${{ steps.ver.outputs.display_version }}-windows-x64.zip
 
+      # 只有用户真的勾了 windows_x64 才把这个 zip 当成产物上传。
       - uses: actions/upload-artifact@v4
-        if: inputs.windows_amd64
+        if: inputs.windows_x64
         with:
-          name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64
-          path: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.zip
+          name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-x64
+          path: FlCroc-${{ steps.ver.outputs.display_version }}-windows-x64.zip
 
       # ════════════════════════════════════════════════════════════
-      # ── ARM64: Zig cross-compile Go bridge → repack AMD64 artifact ──
-      # 只是把 x64 包里的 .dll 换成 ARM64 版重打，所以调用方必须同时要 x64
-      # （release.yml 的 prep 会强制 win_amd64 = win_amd64 || win_arm64）。
+      # ── ARM64：Zig 交叉编译 Go bridge → 用上面的 x64 zip 重打 ──
+      # 直接读上一步在同一个 runner 上落地的 zip，不再 download-artifact：
+      # 那样要求 x64 包必须先上传，而没勾 x64 时它不该被上传。
       # ════════════════════════════════════════════════════════════
 
       - name: "[ARM64] Setup Zig (cross-compiler)"
@@ -171,19 +180,18 @@ jobs:
             Get-Item windows\runner\libcroc_bridge_arm64.dll | Select-Object Length, FullName
           } else {
             Write-Error "libcroc_bridge_arm64.dll not found!"
+            exit 1
           }
-
-      - name: "[ARM64] Download AMD64 artifact"
-        if: inputs.windows_arm64
-        uses: actions/download-artifact@v4
-        with:
-          name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64
-          path: amd64-pkg
 
       - name: "[ARM64] Repack with ARM64 .dll"
         if: inputs.windows_arm64
         run: |
-          Expand-Archive "amd64-pkg\FlCroc-${{ steps.ver.outputs.display_version }}-windows-amd64.zip" -DestinationPath arm64-repack
+          $base = "FlCroc-${{ steps.ver.outputs.display_version }}-windows-x64.zip"
+          if (!(Test-Path $base)) {
+            Write-Error "x64 基底包不存在：$base（[x64] 构建步骤被跳过？）"
+            exit 1
+          }
+          Expand-Archive $base -DestinationPath arm64-repack
           Copy-Item "windows\runner\libcroc_bridge_arm64.dll" "arm64-repack\libcroc_bridge.dll" -Force
           Copy-Item "windows\runner\libcroc_bridge_arm64.dll" "arm64-repack\data\flutter_assets\libcroc_bridge.dll" -Force -ErrorAction SilentlyContinue
           Compress-Archive -Path "arm64-repack\*" -DestinationPath FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64.zip
@@ -194,11 +202,11 @@ jobs:
           name: FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64
           path: FlCroc-${{ steps.ver.outputs.display_version }}-windows-arm64.zip
 
-  # ── Linux ──
+  # ── Linux x64 ──
   # 固定 ubuntu-22.04（不是 -latest）：产物要能在较老的 glibc 上跑。
   build-linux:
-    name: Linux
-    if: inputs.linux_amd64
+    name: Linux x64
+    if: inputs.linux_x64
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -246,26 +254,169 @@ jobs:
       - name: Generate launcher icons
         run: dart run flutter_launcher_icons
 
-      - name: Build Linux
-        run: flutter build linux --release
+      # --target-platform 在 x64 主机上本就默认 linux-x64，显式写出是为了与 arm64
+      # job 对称：一旦这批跑在非 x64 主机上，flutter 会直接报「不支持交叉编译」，
+      # 而不是静默产出错架构的包。
+      - name: Build Linux x64
+        run: flutter build linux --release --target-platform linux-x64
 
-      - name: Bundle bridge .so into build output
+      - name: Bundle bridge .so & verify arch
         run: |
-          mkdir -p build/linux/x64/release/bundle/lib
-          cp linux/flutter/ephemeral/libcroc_bridge.so build/linux/x64/release/bundle/lib/
+          set -euo pipefail
+          BUNDLE=build/linux/x64/release/bundle
+          [ -d "$BUNDLE" ] || { echo "::error::$BUNDLE 不存在（构建目录变了？）"; exit 1; }
+          mkdir -p "$BUNDLE/lib"
+          cp linux/flutter/ephemeral/libcroc_bridge.so "$BUNDLE/lib/"
+          file "$BUNDLE/fl_croc" "$BUNDLE/lib/libcroc_bridge.so"
+          # 只判 ELF magic 拦不住交叉生成，必须按架构断言；不用管道 + grep -q
+          # （`set -o pipefail` 下 grep -q 会让上游吃 SIGPIPE，rc=141 误判失败）
+          APP_INFO=$(file -b "$BUNDLE/fl_croc")
+          case "$APP_INFO" in
+            *x86-64*) echo "✓ 产物架构正确" ;;
+            *) echo "::error::产物不是 x86-64：$APP_INFO"; exit 1 ;;
+          esac
 
       - name: Package tar
-        run: tar -czf FlCroc-${{ steps.ver.outputs.display_version }}-linux-amd64.tar.gz -C build/linux/x64/release/bundle .
+        run: tar -czf FlCroc-${{ steps.ver.outputs.display_version }}-linux-x64.tar.gz -C build/linux/x64/release/bundle .
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FlCroc-${{ steps.ver.outputs.display_version }}-linux-amd64
-          path: FlCroc-${{ steps.ver.outputs.display_version }}-linux-amd64.tar.gz
+          name: FlCroc-${{ steps.ver.outputs.display_version }}-linux-x64
+          path: FlCroc-${{ steps.ver.outputs.display_version }}-linux-x64.tar.gz
 
-  # ── Android（arm64 / x86_64 各自独立，按选项出） ──
+  # ── Linux ARM64 ──
+  # 必须跑在**原生 arm64** 主机上：flutter_tools 明确禁止 x64 → arm64 交叉编译 ——
+  #   if (hostPlatform == linux_x64 && targetPlatform == linux_arm64)
+  #     throwToolExit('Cross-build from Linux x64 host to Linux arm64 target is not
+  #     currently supported.');            // commands/build_linux.dart
+  # 在 arm64 主机上 HostPlatform.linux_arm64.platformName 与
+  # TargetPlatform.linux_arm64.simpleName 都是 'arm64'（base/os.dart、build_info.dart），
+  # needCrossBuild 为 false，走的是受支持的原生路径。
+  #
+  # 因此这里**不能**用 subosito/flutter-action：官方 releases_linux.json 里
+  # dart_sdk_arch 只有 x64，linux/macos/windows 三个平台中只有 macOS 带 arm64 归档，
+  # 在 arm64 主机上装 x64 SDK 会立刻失败。可行路径是 clone 官方仓库、由 bin/flutter
+  # 自行拉取 flutter_infra_release/flutter/<engine>/ 下的
+  # dart-sdk-linux-arm64.zip 与 linux-arm64{,-release}/（两者都已确认存在）。
+  # 浅 clone 到具体 stable 版本号（而不是 -b stable 分支）：git describe 只有能就地
+  # 看到该 tag 才认得出框架版本号，否则 flutter --version 会报 0.0.0-unknown。
+  build-linux-arm64:
+    name: Linux ARM64
+    if: inputs.linux_arm64
+    runs-on: ubuntu-22.04-arm
+    env:
+      # 装在工作区内（点开头，不会被工具扫到）。不用 runner.temp：`runner` 上下文
+      # 在 job 级 env: 里不可用（只有 github / needs / strategy / matrix / vars /
+      # secrets / inputs 可用），写 ${{ runner.temp }} 会解析成空串。
+      FLUTTER_SDK: ${{ github.workspace }}/.flutter-sdk
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+
+      - name: Apply version
+        run: |
+          sed -i "s/^version: .*/version: ${{ inputs.version }}/" pubspec.yaml
+          grep '^version:' pubspec.yaml
+
+      - name: Resolve version
+        id: ver
+        run: echo "display_version=${VERSION%%+*}" >> $GITHUB_OUTPUT
+        env:
+          VERSION: ${{ inputs.version }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Install Linux deps
+        run: |
+          sudo apt-get update -qq
+          # jq 显式安装：arm64 runner 用的是 Arm 维护的 partner 镜像，预装工具集
+          # 与 x64 官方镜像不一定一致，下面解析 Flutter manifest 要用它。
+          sudo apt-get install -y -qq clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev jq
+
+      - name: Setup Flutter (native arm64, from git)
+        run: |
+          set -euo pipefail
+          MANIFEST=https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json
+          # 与 release.yml 的 prep 同一个口径：manifest 里最新的 stable。
+          # 用 jq 一次选出（不要 `| head -1`：pipefail 下 head 提前关管道会让 jq
+          # 收到 SIGPIPE，整条管道判失败而中断本步）。
+          # 用 if ! 而不是裸赋值：jq 解析失败时 `set -e` 会在赋值处直接中止，
+          # 下面那条更明确的 ::error:: 就永远打不出来。
+          if ! STABLE=$(curl -sL --retry 3 "$MANIFEST" \
+              | jq -r '[.releases[] | select(.channel == "stable") | .version][0]'); then
+            echo "::error::解析 Flutter manifest 失败（网络问题，或 manifest 结构变了）"
+            exit 1
+          fi
+          [ -n "$STABLE" ] && [ "$STABLE" != "null" ] \
+            || { echo "::error::Flutter manifest 里取不到 stable 版本号"; exit 1; }
+          echo "Flutter stable = $STABLE"
+          git clone --depth 1 --branch "$STABLE" https://github.com/flutter/flutter.git "$FLUTTER_SDK"
+          echo "$FLUTTER_SDK/bin" >> "$GITHUB_PATH"
+
+      - name: Verify SDK is really aarch64
+        run: |
+          set -euo pipefail
+          flutter --version
+          # 刻意**不**写 `file ... | grep -q aarch64`：`set -o pipefail` 下 grep -q
+          # 一命中就退出，上游可能吃到 SIGPIPE（rc=141）从而把整步判失败。先取值再
+          # case 匹配，整条链路没有管道。
+          DART_INFO=$(file -b "$FLUTTER_SDK/bin/cache/dart-sdk/bin/dart")
+          echo "dart-sdk: $DART_INFO"
+          case "$DART_INFO" in
+            *aarch64*) echo "✓ Dart SDK 是 aarch64 原生二进制" ;;
+            *) echo "::error::拉到的 Dart SDK 不是 aarch64：$DART_INFO"; exit 1 ;;
+          esac
+
+      - name: Build Go bridge (.so)
+        run: |
+          cd go_bridge
+          go mod tidy
+          CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
+            go build -buildmode=c-shared -ldflags="-s -w" -o ../linux/flutter/ephemeral/libcroc_bridge.so .
+          cd ..
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
+
+      - name: Build Linux ARM64
+        run: flutter build linux --release --target-platform linux-arm64
+
+      - name: Bundle bridge .so & verify arch
+        run: |
+          set -euo pipefail
+          # 输出目录由 TargetPlatform.simpleName 决定 → build/linux/arm64/release/bundle
+          BUNDLE=build/linux/arm64/release/bundle
+          [ -d "$BUNDLE" ] || { echo "::error::$BUNDLE 不存在（构建目录变了？）"; exit 1; }
+          mkdir -p "$BUNDLE/lib"
+          cp linux/flutter/ephemeral/libcroc_bridge.so "$BUNDLE/lib/"
+          file "$BUNDLE/fl_croc" "$BUNDLE/lib/libcroc_bridge.so"
+          # 只判 ELF magic 拦不住交叉生成，必须按架构断言；不用管道 + grep -q（见上）
+          APP_INFO=$(file -b "$BUNDLE/fl_croc")
+          case "$APP_INFO" in
+            *aarch64*) echo "✓ 产物架构正确" ;;
+            *) echo "::error::产物不是 aarch64：$APP_INFO"; exit 1 ;;
+          esac
+
+      - name: Package tar
+        run: tar -czf FlCroc-${{ steps.ver.outputs.display_version }}-linux-arm64.tar.gz -C build/linux/arm64/release/bundle .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FlCroc-${{ steps.ver.outputs.display_version }}-linux-arm64
+          path: FlCroc-${{ steps.ver.outputs.display_version }}-linux-arm64.tar.gz
+
+  # ── Android（arm64 / x64 各自独立，按选项出） ──
   build-android:
     name: Android
-    if: inputs.android_arm64 || inputs.android_amd64
+    if: inputs.android_arm64 || inputs.android_x64
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -320,13 +471,13 @@ jobs:
             file ../android/app/src/main/jniLibs/arm64-v8a/libcroc_bridge.so
           fi
 
-          if [ "${{ inputs.android_amd64 }}" = "true" ]; then
+          if [ "${{ inputs.android_x64 }}" = "true" ]; then
             mkdir -p ../android/app/src/main/jniLibs/x86_64
             export CC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/${HOST_TAG}/bin/x86_64-linux-android21-clang"
             CGO_ENABLED=1 GOOS=android GOARCH=amd64 \
               go build -buildmode=c-shared -ldflags="-s -w -extldflags=-Wl,-z,max-page-size=16384" \
               -o ../android/app/src/main/jniLibs/x86_64/libcroc_bridge.so .
-            echo "✓ Go bridge built for Android AMD64"
+            echo "✓ Go bridge built for Android x64"
             file ../android/app/src/main/jniLibs/x86_64/libcroc_bridge.so
           fi
           cd ..
@@ -361,8 +512,8 @@ jobs:
         if: inputs.android_arm64
         run: cp build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.display_version }}-android-arm64.apk
 
-      - name: Build Android AMD64
-        if: inputs.android_amd64
+      - name: Build Android x64
+        if: inputs.android_x64
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -370,9 +521,9 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: flutter build apk --release --target-platform android-x64
 
-      - name: Save AMD64 APK
-        if: inputs.android_amd64
-        run: cp build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.display_version }}-android-amd64.apk
+      - name: Save x64 APK
+        if: inputs.android_x64
+        run: cp build/app/outputs/flutter-apk/app-release.apk FlCroc-${{ steps.ver.outputs.display_version }}-android-x64.apk
 
       # 用通配而不是逐行列两个路径：只勾一个架构时另一个文件不存在，列路径会让
       # upload-artifact 直接报错（旧写法只能靠 continue-on-error 兜着）。
