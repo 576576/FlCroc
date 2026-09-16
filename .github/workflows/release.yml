@@ -1,0 +1,687 @@
+name: Release
+
+# 唯一入口 —— push / pull_request / workflow_dispatch 都由本文件承接，
+# 所有编译与打包委托给可复用工作流 .github/workflows/build.yml。
+#
+#   push main / master / dev  → 只做维护：跑测试 + 按需重新生成 i18n/文档并提交回分支
+#   pull_request              → 跑测试 + 校验 i18n/文档（不提交、不出包）
+#   workflow_dispatch         → 手动勾选目标出包；channel 决定 nightly / release / 仅出产物
+#
+# 与原 build.yml 的差别：
+#   * 提交信息文本触发器（b-all / b-win / b-linux / b-mobile / b-none / arch-all /
+#     b-doc / r-x.y.z）全部移除，目标与通道改由 dispatch 选项承担；
+#   * 不再有 push tag 触发 —— tag 由本文件的 publish job 依 channel 自行创建；
+#   * 「Build」拆到 build.yml（on: workflow_call），本文件只负责算参数与发布。
+#
+# 版本号仍以 pubspec.yaml 的 x.y.z+N 为唯一事实来源：出包时把 N 递增 1，
+# 由 commit job 提交回分支（dispatch 到标签 ref 时不动版本号）。
+
+on:
+  push:
+    branches: [main, master, dev]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: 发布通道（nightly = 重建 nightly 预发布；release = 打正式 tag；none = 只出产物不发布）
+        type: choice
+        options: [nightly, release, none]
+        default: nightly
+      version:
+        description: 版本号覆盖（如 1.3.0，留空则用 pubspec 当前的 x.y.z；build 号仍自动递增）
+        type: string
+        default: ''
+      windows_amd64:
+        description: Windows x64
+        type: boolean
+        default: true
+      windows_arm64:
+        description: Windows ARM64（在 x64 包上换 .dll 重打，会自动带上 Windows x64）
+        type: boolean
+        default: false
+      linux_amd64:
+        description: Linux x64
+        type: boolean
+        default: true
+      android_arm64:
+        description: Android arm64 APK
+        type: boolean
+        default: true
+      android_amd64:
+        description: Android x86_64 APK
+        type: boolean
+        default: false
+      force_docs:
+        description: 强制重新生成 i18n 与 README（原先由提交信息里的 b-doc 触发）
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Prep: 平台/版本/通道/i18n 变化探测 ──
+  prep:
+    name: 准备发布参数
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      channel: ${{ steps.ver.outputs.channel }}
+      version: ${{ steps.ver.outputs.version }}
+      display_version: ${{ steps.ver.outputs.display_version }}
+      tag: ${{ steps.ver.outputs.tag }}
+      prerelease: ${{ steps.ver.outputs.prerelease }}
+      has_targets: ${{ steps.ver.outputs.has_targets }}
+      new_build: ${{ steps.ver.outputs.new_build }}
+      nightly_date: ${{ steps.ver.outputs.nightly_date }}
+      win_amd64: ${{ steps.ver.outputs.win_amd64 }}
+      win_arm64: ${{ steps.ver.outputs.win_arm64 }}
+      linux_amd64: ${{ steps.ver.outputs.linux_amd64 }}
+      android_arm64: ${{ steps.ver.outputs.android_arm64 }}
+      android_amd64: ${{ steps.ver.outputs.android_amd64 }}
+      app_version: ${{ steps.app-ver.outputs.version }}
+      flutter_version: ${{ steps.flutter-ver.outputs.version }}
+      croc_version: ${{ steps.croc-ver.outputs.version }}
+      i18n_do: ${{ steps.hash-check.outputs.do_i18n }}
+      docs_do: ${{ steps.hash-check.outputs.do_docs }}
+      bundles_hash: ${{ steps.hash-check.outputs.bundles_hash }}
+      docs_hash: ${{ steps.hash-check.outputs.docs_hash }}
+      templates_hash: ${{ steps.hash-check.outputs.templates_hash }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+
+      - name: Detect croc version
+        id: croc-ver
+        run: |
+          cd submodules/croc
+          VER=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+          # submodule 固定版本是唯一事实来源；若 checkout 没带 tag，回退到 croc
+          # 自己的版本文件 —— 与 Go 桥报告的 version.Value 同一个值。
+          if [ -z "$VER" ]; then
+            VER=$(sed -n 's/.*Value = "\(.*\)"/\1/p' src/version/version.go 2>/dev/null | head -1)
+          fi
+          echo "version=${VER:-unknown}" >> $GITHUB_OUTPUT
+          cd ../..
+
+      - name: Detect Flutter version
+        id: flutter-ver
+        run: |
+          VER=$(curl -sL https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json | jq -r '.releases[] | select(.channel=="stable") | .version' | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          echo "version=${VER:-unknown}" >> $GITHUB_OUTPUT
+
+      - name: Detect app version
+        id: app-ver
+        run: |
+          VER=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
+          echo "version=${VER}" >> $GITHUB_OUTPUT
+
+      - name: Resolve targets & version
+        id: ver
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          IN_CHANNEL: ${{ github.event.inputs.channel }}
+          IN_VERSION: ${{ github.event.inputs.version }}
+          IN_FORCE_DOCS: ${{ github.event.inputs.force_docs }}
+          IN_WIN64: ${{ github.event.inputs.windows_amd64 }}
+          IN_WIN_A64: ${{ github.event.inputs.windows_arm64 }}
+          IN_LINUX64: ${{ github.event.inputs.linux_amd64 }}
+          IN_A64: ${{ github.event.inputs.android_arm64 }}
+          IN_AX64: ${{ github.event.inputs.android_amd64 }}
+        run: |
+          set -euo pipefail
+
+          # dispatch 以外的事件（push / pull_request）不出包，只做维护 —— 与旧 CI 里
+          # 「提交信息没带 b-* 就只跑测试与文档」的行为一致。
+          CHANNEL='none'; VERSION_INPUT=''; FORCE_DOCS='false'
+          W64='false'; WA64='false'; L64='false'; A64='false'; AX64='false'
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            CHANNEL="${IN_CHANNEL:-none}"
+            VERSION_INPUT="${IN_VERSION:-}"
+            # input 没填时 github.event.inputs.X 渲染成空串（而不是 'false'），统一兜 false
+            FORCE_DOCS="${IN_FORCE_DOCS:-false}"
+            W64="${IN_WIN64:-false}"
+            WA64="${IN_WIN_A64:-false}"
+            L64="${IN_LINUX64:-false}"
+            A64="${IN_A64:-false}"
+            AX64="${IN_AX64:-false}"
+          fi
+
+          # Windows ARM64 是把 x64 包里的 .dll 换成 ARM64 版重打，没有 x64 包就没得打
+          if [ "$WA64" = "true" ] && [ "$W64" != "true" ]; then
+            echo "::notice::勾选了 Windows ARM64，自动带上 Windows x64（ARM64 包在 x64 包基础上换 .dll 重打）"
+            W64='true'
+          fi
+
+          HAS_TARGETS='false'
+          for f in "$W64" "$WA64" "$L64" "$A64" "$AX64"; do
+            if [ "$f" = "true" ]; then HAS_TARGETS='true'; fi
+          done
+
+          # 版本号：pubspec 的 x.y.z+N 是唯一事实来源，出包时 N 递增 1 并提交回分支
+          CUR_FULL=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}')
+          CUR_BASE="${CUR_FULL%%+*}"
+          CUR_BUILD="${CUR_FULL##*+}"
+          case "$CUR_BUILD" in ''|*[!0-9]*) CUR_BUILD=0 ;; esac
+
+          BASE="${VERSION_INPUT:-$CUR_BASE}"
+          if [ "$HAS_TARGETS" = "true" ] && [ "$REF_TYPE" = "branch" ]; then
+            NEW_BUILD=$((CUR_BUILD + 1))
+            FULL="${BASE}+${NEW_BUILD}"
+            echo "版本 $CUR_FULL → $FULL（build $CUR_BUILD → $NEW_BUILD）"
+          else
+            # 不出包、或 dispatch 选了标签 ref：不动版本号（不回写历史 ref）
+            NEW_BUILD=''
+            FULL="$CUR_FULL"
+            echo "版本保持 $FULL（无构建目标或 ref 不是分支，不递增 build 号）"
+          fi
+          DISPLAY="${FULL%%+*}"
+
+          case "$CHANNEL" in
+            nightly) TAG='nightly';         PRE='true'  ;;
+            release) TAG="v${DISPLAY}";     PRE='false' ;;
+            none)    TAG='';                PRE='false' ;;
+            *) echo "::error::未知 channel: $CHANNEL"; exit 1 ;;
+          esac
+          if [ "$CHANNEL" != "none" ] && [ "$HAS_TARGETS" != "true" ]; then
+            echo "::error::channel=$CHANNEL 但没勾选任何构建目标，没有产物可发布"
+            exit 1
+          fi
+
+          {
+            echo "channel=$CHANNEL"
+            echo "version=$FULL"
+            echo "display_version=$DISPLAY"
+            echo "tag=$TAG"
+            echo "prerelease=$PRE"
+            echo "has_targets=$HAS_TARGETS"
+            echo "new_build=$NEW_BUILD"
+            echo "win_amd64=$W64"
+            echo "win_arm64=$WA64"
+            echo "linux_amd64=$L64"
+            echo "android_arm64=$A64"
+            echo "android_amd64=$AX64"
+            echo "force_docs=$FORCE_DOCS"
+            echo "nightly_date=$(date +%Y%m%d)"
+          } >> $GITHUB_OUTPUT
+          echo "目标 → win64:$W64 win-arm64:$WA64 linux64:$L64 android-arm64:$A64 android-x64:$AX64  channel:$CHANNEL"
+          echo "标签 → ${TAG:-（不发布）} prerelease:$PRE"
+
+      - name: Check i18n & docs changes
+        id: hash-check
+        env:
+          FORCE: ${{ steps.ver.outputs.force_docs }}
+        run: |
+          # 三组 i18n 输入的内容指纹（短 hash，前 8 位）。
+          # 用 git 的 subtree 对象 ID，而不是 `find | sha256sum`：
+          # 后者的被哈希流里混进了**文件路径**（sha256sum 会把路径打进输出），
+          # 于是同一份内容在不同 checkout 前缀 / 行尾（autocrlf）/ locale 下会算出
+          # 不同结果。那正是"已记录 hash"永远对不上的根源之一：CI 写进 docs/i18n.md
+          # 的值在本地无法复核（实测：全仓库 249 个提交 × LF/CRLF 两种行尾 × 多种
+          # 枚举形式，都复现不出已记录的值，连同一个提交的树上都算不出来）。
+          # subtree ID 是该子树 (mode, name, blob-sha) 的 Merkle 摘要 —— 只依赖仓库
+          # 对象，与路径前缀、行尾、locale 无关，在 runner 与本地完全一致。
+          tree_id() { git rev-parse "HEAD:$1"; }
+          BUNDLES_HASH=$(tree_id assets/bundles | cut -c1-8)
+          DOCS_HASH=$(tree_id assets/docs | cut -c1-8)
+          TEMPLATES_HASH=$(printf '%s\n%s\n' "$(tree_id assets/templates)" \
+                                            "$(tree_id assets/.i18n_config)" | sha256sum | cut -c1-8)
+
+          # force_docs: 强制重新生成 i18n + 文档（取代旧的 b-doc 文本触发器）
+          if [ "$FORCE" = "true" ]; then
+            echo "do_i18n=true" >> $GITHUB_OUTPUT
+            echo "do_docs=true" >> $GITHUB_OUTPUT
+            echo "bundles_hash=$BUNDLES_HASH" >> $GITHUB_OUTPUT
+            echo "docs_hash=$DOCS_HASH" >> $GITHUB_OUTPUT
+            echo "templates_hash=$TEMPLATES_HASH" >> $GITHUB_OUTPUT
+            echo "i18n: true (forced)  docs: true (forced)"
+            exit 0
+          fi
+
+          # docs/i18n.md 里的形态是 `> bundles:   640c32fe  `（行首 "> "、行尾两个空格，
+          # checkout 后还可能带 CR）。**不能用 `awk '{print $2}'`** —— 那样取到的是
+          # "bundles:" 这个单词本身，永远不等于真实 hash，于是 do_i18n/do_docs 恒为 true，
+          # 每次 push 都重新生成 i18n 与全部 README 并留下一次机器人提交（旧 CI 就是这个
+          # 行为）。这里按行首 "> <key>:" 精确取值，并去掉可能存在的 CR。
+          read_hash() {
+            sed -n "s/^> *$1: *\([0-9a-f]\{4,\}\).*/\1/p" docs/i18n.md | tail -1 | tr -d '\r'
+          }
+          OLD_BUNDLES=""; OLD_DOCS=""; OLD_TEMPLATES=""
+          if [ -f docs/i18n.md ]; then
+            OLD_BUNDLES=$(read_hash bundles)
+            OLD_DOCS=$(read_hash docs)
+            OLD_TEMPLATES=$(read_hash templates)
+          fi
+          echo "已记录的 hash → bundles:${OLD_BUNDLES:-无} docs:${OLD_DOCS:-无} templates:${OLD_TEMPLATES:-无}"
+
+          DO_I18N="false"; DO_DOCS="false"
+          # Templates change → force like force_docs
+          [ "$TEMPLATES_HASH" != "$OLD_TEMPLATES" ] && DO_I18N="true" && DO_DOCS="true"
+          [ "$BUNDLES_HASH" != "$OLD_BUNDLES" ] && DO_I18N="true"
+          [ "$DOCS_HASH" != "$OLD_DOCS" ] && DO_I18N="true"
+          [ "$DOCS_HASH" != "$OLD_DOCS" ] && DO_DOCS="true"
+
+          echo "do_i18n=$DO_I18N" >> $GITHUB_OUTPUT
+          echo "do_docs=$DO_DOCS" >> $GITHUB_OUTPUT
+          echo "bundles_hash=$BUNDLES_HASH" >> $GITHUB_OUTPUT
+          echo "docs_hash=$DOCS_HASH" >> $GITHUB_OUTPUT
+          echo "templates_hash=$TEMPLATES_HASH" >> $GITHUB_OUTPUT
+          echo "i18n: $DO_I18N  docs: $DO_DOCS"
+
+  # ── Test ──
+  test:
+    needs: prep
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Run tests
+        run: flutter test
+
+  # ── i18n & Docs ──
+  i18n:
+    needs: prep
+    if: needs.prep.outputs.i18n_do == 'true' || needs.prep.outputs.docs_do == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate i18n status
+        if: needs.prep.outputs.i18n_do == 'true'
+        run: |
+          TEMPLATE="assets/templates/i18n.md"
+          OUTPUT="docs/i18n.md"
+          DEFAULT="assets/bundles/en.json"
+          NOW=$(date -u +'%Y-%m-%d %H:%M UTC')
+
+          HEADER_KEYS=4
+          DEFAULT_TOTAL=$(jq '[keys[] | select(startswith("_") | not)] | length' "$DEFAULT")
+          ACTUAL=$((DEFAULT_TOTAL - HEADER_KEYS))
+
+          ROWS=""
+          for f in $(ls assets/bundles/*.json | sort -r); do
+            LANG=$(jq -r '.lang' "$f")
+            CODE=$(jq -r '.langCode' "$f")
+            REGION=$(jq -r '.langRegion' "$f")
+            TOTAL=$(jq '[keys[] | select(startswith("_") | not)] | length' "$f")
+            KEYS=$((TOTAL - HEADER_KEYS))
+            PCT=$((100 * KEYS / ACTUAL))
+            [ "$PCT" -gt 100 ] && PCT=100
+
+            DOCS=0
+            if [ -d "docs/$CODE" ]; then
+              DOCS=$(find "docs/$CODE" -name '*.md' 2>/dev/null | wc -l)
+            fi
+            HAS_DOC_JSON=""
+            [ -f "assets/docs/$CODE.json" ] && HAS_DOC_JSON=" 📄"
+
+            README_LINK="$CODE/README.md"
+
+            ROWS="$ROWS| [$LANG]($README_LINK) | \`$CODE\` | $REGION | $KEYS/$ACTUAL ($PCT%) | $DOCS$HAS_DOC_JSON |\n"
+          done
+
+          cp "$TEMPLATE" "$OUTPUT"
+          sed -i "s#{{date}}#$NOW#" "$OUTPUT"
+          sed -i "s#{{rows}}#$ROWS#" "$OUTPUT"
+          sed -i "s#{{bundles_hash}}#${{ needs.prep.outputs.bundles_hash }}#" "$OUTPUT"
+          sed -i "s#{{docs_hash}}#${{ needs.prep.outputs.docs_hash }}#" "$OUTPUT"
+          sed -i "s#{{templates_hash}}#${{ needs.prep.outputs.templates_hash }}#" "$OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        if: needs.prep.outputs.i18n_do == 'true'
+        with:
+          name: i18n-md
+          path: docs/i18n.md
+
+      - name: Generate READMEs
+        if: needs.prep.outputs.docs_do == 'true'
+        env:
+          APP_VERSION: ${{ needs.prep.outputs.app_version }}
+          FLUTTER_VERSION: ${{ needs.prep.outputs.flutter_version }}
+          CROC_VERSION: ${{ needs.prep.outputs.croc_version }}
+        run: |
+          TEMPLATE="assets/templates/README.md"
+          VERSION="$APP_VERSION"
+          FLUTTER_VER="$FLUTTER_VERSION"
+          CROC_VER="$CROC_VERSION"
+          # Root README language, read from assets/.i18n_config/i18n.yml (default: en)
+          ROOT_LANG=$(awk -F: '/^[[:space:]]*root_lang[[:space:]]*:/{gsub(/[[:space:]"]/,"",$2); print $2; exit}' assets/.i18n_config/i18n.yml 2>/dev/null)
+          ROOT_LANG=${ROOT_LANG:-en}
+          echo "Root README language: $ROOT_LANG"
+
+          render_readme() {
+            local DATA="$1" LANG="$2" OUTPUT="$3" ROOT_VIEW="$4"
+            local ICON_PREFIX="" DOC_PREFIX="docs/"
+            if [ "$ROOT_VIEW" = "false" ]; then
+              ICON_PREFIX="../../"
+              DOC_PREFIX="../"
+            fi
+            echo "Generating $OUTPUT from $DATA"
+
+            # Count docs per language group to decide whether to show region
+            LANGS_HTML=""
+            for doc in $(ls assets/docs/*.json | sort -r); do
+              code=$(basename "$doc" .json)
+              label=$(jq -r '.lang' "$doc")
+              region=$(jq -r '.langRegion' "$doc")
+              base=$(echo "$code" | cut -d- -f1)
+              # Only show region suffix when multiple variants share the same lang field
+              other_count=$(jq -r '.lang' assets/docs/*.json | grep -cFx "$label" || echo 0)
+              if [ "$other_count" -gt 1 ]; then
+                label="$label ($region)"
+              fi
+              # Build relative link path from the current view
+              if [ "$ROOT_VIEW" = "true" ]; then
+                path="docs/$code/README.md"
+              else
+                path="../$code/README.md"
+              fi
+              [ -n "$LANGS_HTML" ] && LANGS_HTML="$LANGS_HTML &nbsp;|&nbsp; "
+              if [ "$code" = "$LANG" ]; then LANGS_HTML="$LANGS_HTML$label"
+              else LANGS_HTML="$LANGS_HTML<a href=\"$path\">$label</a>"
+              fi
+            done
+
+            # ICON_PREFIX / DOC_PREFIX already set at function start based on ROOT_VIEW
+
+            TITLE=$(jq -r '.title' "$DATA")
+            TAGLINE=$(jq -r '.tagline_block' "$DATA")
+            BUILDING=$(jq -r '.building' "$DATA")
+            H_FEATURES=$(jq -r '.headings.features' "$DATA")
+            H_BUILD=$(jq -r '.headings.build' "$DATA")
+            H_ARCH=$(jq -r '.headings.architecture' "$DATA")
+            H_STACK=$(jq -r '.headings.stack' "$DATA")
+            H_I18N=$(jq -r '.headings.i18n' "$DATA")
+            H_ACKS=$(jq -r '.headings.acknowledgments' "$DATA")
+            H_LICENSE=$(jq -r '.headings.license' "$DATA")
+            ARCH_LIB=$(jq -r '.arch_tree.lib' "$DATA")
+            ARCH_GO=$(jq -r '.arch_tree.go_bridge' "$DATA")
+            ARCH_SUB=$(jq -r '.arch_tree.submodules' "$DATA")
+            ARCH_ASSETS=$(jq -r '.arch_tree.assets' "$DATA")
+            ARCH_CI=$(jq -r '.arch_tree.ci' "$DATA")
+            STACK_CL=$(jq -r '.stack_tree.col_layer' "$DATA")
+            STACK_CT=$(jq -r '.stack_tree.col_tech' "$DATA")
+            STACK_L_UI=$(jq -r '.stack_tree.l_ui' "$DATA")
+            STACK_L_STATE=$(jq -r '.stack_tree.l_state' "$DATA")
+            STACK_L_BACKEND=$(jq -r '.stack_tree.l_backend' "$DATA")
+            STACK_L_I18N=$(jq -r '.stack_tree.l_i18n' "$DATA")
+            STACK_L_CI=$(jq -r '.stack_tree.l_ci' "$DATA")
+            STACK_UI=$(jq -r '.stack_tree.ui' "$DATA")
+            STACK_STATE=$(jq -r '.stack_tree.state' "$DATA")
+            STACK_BACKEND=$(jq -r '.stack_tree.backend' "$DATA")
+            STACK_I18N=$(jq -r '.stack_tree.i18n' "$DATA")
+            STACK_CI=$(jq -r '.stack_tree.ci' "$DATA")
+            ACK_CP=$(jq -r '.ack_tree.col_project' "$DATA")
+            ACK_CD=$(jq -r '.ack_tree.col_desc' "$DATA")
+            ACK_CROC=$(jq -r '.ack_tree.croc' "$DATA")
+            ACK_FLUTTER=$(jq -r '.ack_tree.flutter' "$DATA")
+            ACK_FLCLASH=$(jq -r '.ack_tree.flclash' "$DATA")
+            ACK_CROCAPP=$(jq -r '.ack_tree.crocapp' "$DATA")
+            I18N=$(jq -r '.i18n' "$DATA")
+            FEAT_PLATFORM=$(jq -r '.feat_table.platform' "$DATA")
+            FEAT_ENCRYPTION=$(jq -r '.feat_table.encryption' "$DATA")
+            FEAT_I18N=$(jq -r '.feat_table.i18n' "$DATA")
+            FEAT_THEME=$(jq -r '.feat_table.theme' "$DATA")
+
+            cp "$TEMPLATE" "$OUTPUT"
+            sed -i "s#{{icon_prefix}}#$ICON_PREFIX#" "$OUTPUT"
+            LANGS_ESC=$(echo "$LANGS_HTML" | sed 's/&/\\&/g')
+            sed -i "s#{{languages}}#$LANGS_ESC#" "$OUTPUT"
+            sed -i "s|{{title}}|$TITLE|" "$OUTPUT"
+            sed -i "s|{{version}}|$VERSION|" "$OUTPUT"
+            sed -i "s|{{flutter_version}}|$FLUTTER_VER|" "$OUTPUT"
+            sed -i "s|{{croc_version}}|$CROC_VER|" "$OUTPUT"
+            sed -i "s|{{tagline_block}}|$TAGLINE|" "$OUTPUT"
+            sed -i "s|{{heading_features}}|$H_FEATURES|" "$OUTPUT"
+            sed -i "s|{{heading_build}}|$H_BUILD|" "$OUTPUT"
+            sed -i "s|{{heading_architecture}}|$H_ARCH|" "$OUTPUT"
+            sed -i "s|{{heading_stack}}|$H_STACK|" "$OUTPUT"
+            sed -i "s|{{heading_i18n}}|$H_I18N|" "$OUTPUT"
+            sed -i "s|{{heading_acknowledgments}}|$H_ACKS|" "$OUTPUT"
+            sed -i "s|{{heading_license}}|$H_LICENSE|" "$OUTPUT"
+            sed -i "s|{{feat_platform}}|$FEAT_PLATFORM|" "$OUTPUT"
+            sed -i "s|{{feat_encryption}}|$FEAT_ENCRYPTION|" "$OUTPUT"
+            sed -i "s|{{feat_i18n}}|$FEAT_I18N|" "$OUTPUT"
+            sed -i "s|{{feat_theme}}|$FEAT_THEME|" "$OUTPUT"
+            sed -i "s|{{getting_started}}|$BUILDING|" "$OUTPUT"
+            sed -i "s|{{building}}|$BUILDING|" "$OUTPUT"
+            sed -i "s|{{arch_lib}}|$ARCH_LIB|" "$OUTPUT"
+            sed -i "s|{{arch_go_bridge}}|$ARCH_GO|" "$OUTPUT"
+            sed -i "s|{{arch_submodules}}|$ARCH_SUB|" "$OUTPUT"
+            sed -i "s|{{arch_assets}}|$ARCH_ASSETS|" "$OUTPUT"
+            sed -i "s|{{arch_ci}}|$ARCH_CI|" "$OUTPUT"
+            sed -i "s|{{stack_col_layer}}|$STACK_CL|" "$OUTPUT"
+            sed -i "s|{{stack_col_tech}}|$STACK_CT|" "$OUTPUT"
+            sed -i "s|{{stack_l_ui}}|$STACK_L_UI|" "$OUTPUT"
+            sed -i "s|{{stack_l_state}}|$STACK_L_STATE|" "$OUTPUT"
+            sed -i "s|{{stack_l_backend}}|$STACK_L_BACKEND|" "$OUTPUT"
+            sed -i "s|{{stack_l_i18n}}|$STACK_L_I18N|" "$OUTPUT"
+            sed -i "s|{{stack_l_ci}}|$STACK_L_CI|" "$OUTPUT"
+            sed -i "s|{{stack_ui}}|$STACK_UI|" "$OUTPUT"
+            sed -i "s|{{stack_state}}|$STACK_STATE|" "$OUTPUT"
+            sed -i "s|{{stack_backend}}|$STACK_BACKEND|" "$OUTPUT"
+            sed -i "s|{{stack_i18n}}|$STACK_I18N|" "$OUTPUT"
+            sed -i "s|{{stack_ci}}|$STACK_CI|" "$OUTPUT"
+            sed -i "s|{{i18n}}|$I18N|" "$OUTPUT"
+            sed -i "s|{{ack_col_project}}|$ACK_CP|" "$OUTPUT"
+            sed -i "s|{{ack_col_desc}}|$ACK_CD|" "$OUTPUT"
+            sed -i "s|{{ack_croc}}|$ACK_CROC|" "$OUTPUT"
+            sed -i "s|{{ack_flutter}}|$ACK_FLUTTER|" "$OUTPUT"
+            sed -i "s|{{ack_flclash}}|$ACK_FLCLASH|" "$OUTPUT"
+            sed -i "s|{{ack_crocapp}}|$ACK_CROCAPP|" "$OUTPUT"
+            sed -i "s|](docs/|]($DOC_PREFIX|g" "$OUTPUT"
+          }
+
+          for DATA in assets/docs/*.json; do
+            LANG=$(basename "$DATA" .json)
+            mkdir -p "docs/$LANG"
+            render_readme "$DATA" "$LANG" "docs/$LANG/README.md" "false"
+            if [ "$LANG" = "$ROOT_LANG" ]; then
+              render_readme "$DATA" "$LANG" "README.md" "true"
+            fi
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: needs.prep.outputs.docs_do == 'true'
+        with:
+          name: readme-md
+          path: |
+            README.md
+            docs/*/README.md
+
+  # ── Commit ──
+  commit:
+    needs: [prep, test]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply version update
+        if: needs.prep.outputs.new_build != '' && needs.test.result != 'failure'
+        run: |
+          NEW_VER="${{ needs.prep.outputs.version }}"
+          sed -i "s/^version: .*/version: $NEW_VER/" pubspec.yaml
+          grep '^version:' pubspec.yaml
+
+      - name: Download i18n artifact
+        if: needs.prep.outputs.i18n_do == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: i18n-md
+          path: docs/
+
+      - name: Download README artifact
+        if: needs.prep.outputs.docs_do == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: readme-md
+          path: .
+
+      - name: Build commit message
+        id: msg
+        run: |
+          LINES=""
+          if [ -n "${{ needs.prep.outputs.new_build }}" ] && [ "${{ needs.test.result }}" != "failure" ]; then
+            LINES="${LINES}- Update build number ${{ needs.prep.outputs.new_build }}.\n"
+          fi
+          if [ "${{ needs.prep.outputs.i18n_do }}" == "true" ]; then
+            LINES="${LINES}- Update i18n.\n"
+          fi
+          if [ "${{ needs.prep.outputs.docs_do }}" == "true" ]; then
+            LINES="${LINES}- Update documents.\n"
+          fi
+          MSG="Auto commit by Github Actions\n${LINES}"
+          echo "message=$MSG" >> $GITHUB_OUTPUT
+
+      # On pull_request events GITHUB_REF_NAME is "<n>/merge" — a read-only ref
+      # that has no remote counterpart, so the rebase/push below always failed
+      # with "couldn't find remote ref <n>/merge" + "not currently on a branch"
+      # (exit 128), turning every PR red. Docs are regenerated and pushed on
+      # branch pushes only; on PRs the artifacts are validated, not published.
+      - name: Commit and push
+        if: github.event_name != 'pull_request'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "$(echo -e '${{ steps.msg.outputs.message }}')\n\n[skip ci]"
+          git pull --rebase origin "$GITHUB_REF_NAME" || true
+          git push
+
+  # ── Build（委托可复用工作流） ──
+  build:
+    name: 构建
+    needs: [prep, commit]
+    if: needs.prep.outputs.has_targets == 'true'
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ needs.prep.outputs.version }}
+      windows_amd64: ${{ needs.prep.outputs.win_amd64 == 'true' }}
+      windows_arm64: ${{ needs.prep.outputs.win_arm64 == 'true' }}
+      linux_amd64: ${{ needs.prep.outputs.linux_amd64 == 'true' }}
+      android_arm64: ${{ needs.prep.outputs.android_arm64 == 'true' }}
+      android_amd64: ${{ needs.prep.outputs.android_amd64 == 'true' }}
+    # 必须显式继承：workflow_call 的被调工作流默认拿不到调用方的 secret，
+    # 不写这行时 build.yml 里的 secrets.ANDROID_KEYSTORE_* 恒为空 ——
+    # 表现是「secret 配了但 APK 仍用 debug key 签名」，且只留一条 ::warning::。
+    secrets: inherit
+
+  # ── Publish ──
+  publish:
+    name: 发布 ${{ needs.prep.outputs.channel }}
+    needs: [prep, build]
+    if: |
+      always() && !cancelled() &&
+      needs.prep.result == 'success' &&
+      needs.prep.outputs.channel != 'none' &&
+      needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: find artifacts -type f -ls
+
+      - name: Build release body
+        id: body
+        env:
+          CHANNEL: ${{ needs.prep.outputs.channel }}
+          TAG: ${{ needs.prep.outputs.tag }}
+        run: |
+          WIN_CELL=""
+          LINUX_CELL=""
+          ANDROID_CELL=""
+          for f in artifacts/FlCroc-*; do
+            [ -f "$f" ] || continue
+            fname=$(basename "$f")
+            # 注意这里**不能**写成 \${{ github.repository }}：GitHub 一样会替换表达式，
+            # 但那个反斜杠会留在文本里，而 bash 双引号里 "\5" 的反斜杠是原样保留的
+            # （只有 \$ \` \" \\ 才转义）→ 生成 github.com/\owner/repo 这种死链。
+            # 旧 CI 的 nightly/release 正文里就是这个坏链接（已在 nightly 产物上核实）。
+            URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/$fname"
+            case "$fname" in
+              *windows-arm64*) WIN_CELL="$WIN_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/ARM64-blue.svg?logo=windows\"></a><br>" ;;
+              *windows*)       WIN_CELL="$WIN_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-blue.svg?logo=windows\"></a><br>" ;;
+              *linux*)         LINUX_CELL="$LINUX_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-orange.svg?logo=linux\"></a><br>" ;;
+              *android-arm64*) ANDROID_CELL="$ANDROID_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/ARM64-green.svg?logo=android\"></a><br>" ;;
+              *android*)       ANDROID_CELL="$ANDROID_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-green.svg?logo=android\"></a><br>" ;;
+            esac
+          done
+
+          if [ "$CHANNEL" = "nightly" ]; then
+            BODY="**Commit**: \`$(git rev-parse --short HEAD)\`
+
+          $(git log -1 --pretty=%B)
+
+          > ⚠️ Automated dev-branch build — may be unstable.
+
+          "
+          else
+            BODY=""
+          fi
+          BODY="${BODY}**Download based on your OS:**
+
+          <table>
+          <tr><th>Platform</th><th>Download</th></tr>"
+          [ -n "$WIN_CELL" ] && BODY="$BODY<tr><td>Windows</td><td>$WIN_CELL</td></tr>"
+          [ -n "$LINUX_CELL" ] && BODY="$BODY<tr><td>Linux</td><td>$LINUX_CELL</td></tr>"
+          [ -n "$ANDROID_CELL" ] && BODY="$BODY<tr><td>Android</td><td>$ANDROID_CELL</td></tr>"
+          BODY="$BODY</table>"
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # nightly 是固定 tag，每次重建；release 同版本重发时也要先清掉旧 tag
+      - name: Delete existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prep.outputs.tag }}
+        run: |
+          if gh release view "$TAG" &>/dev/null; then
+            echo "删除已存在的 release $TAG"
+            gh release delete "$TAG" --yes --cleanup-tag
+          else
+            echo "没有已存在的 release $TAG"
+          fi
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prep.outputs.tag }}
+          name: ${{ needs.prep.outputs.channel == 'nightly' && format('Nightly {0} {1}', needs.prep.outputs.version, needs.prep.outputs.nightly_date) || format('Release {0}', needs.prep.outputs.display_version) }}
+          body: ${{ steps.body.outputs.body }}
+          files: |
+            artifacts/FlCroc-*
+          draft: false
+          prerelease: ${{ needs.prep.outputs.prerelease }}
+          make_latest: ${{ needs.prep.outputs.channel == 'release' }}
