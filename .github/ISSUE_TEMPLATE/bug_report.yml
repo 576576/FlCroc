@@ -1,0 +1,124 @@
+name: 🐛 Bug report
+description: Something in the app misbehaves — a crash, wrong data, or a broken UI element.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **English or 简体中文 — 用中文写也完全可以。**
+
+        Reports missing the app version or the reproduction steps usually cannot be
+        acted on, so please fill in every field marked as required. Please also
+        search the [existing issues](https://github.com/576576/FlCroc/issues?q=is%3Aissue)
+        first — this tracker is the only support channel.
+
+        For problems that occur *before* the UI appears — the download refuses to
+        start, the reported version does not match the file name, a shared library
+        is missing — use **Install / launch problem** instead.
+
+  - type: input
+    id: app_version
+    attributes:
+      label: App version
+      description: "`x.y.z+build` as displayed in the app: **Settings → About → FlCroc Version**."
+      placeholder: "1.2.4+91"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: build_source
+    attributes:
+      label: Where did this build come from?
+      description: Release and nightly builds are different artifacts; this decides which one has to be fixed.
+      options:
+        - GitHub Releases — the stable release
+        - GitHub Releases — the nightly pre-release
+        - Built from source myself
+        - Not sure / somewhere else
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows x64
+        - Windows ARM64
+        - Linux x64
+        - Linux ARM64
+        - Android ARM64
+        - Android x64
+    validations:
+      required: true
+
+  - type: input
+    id: os_version
+    attributes:
+      label: OS version
+      description: "Be specific: `Windows 11 23H2`, `Ubuntu 24.04`, `Android 14 / Pixel 7`."
+      placeholder: "Windows 11 23H2 (x64)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The shortest sequence that triggers the problem, starting from launching the app.
+      placeholder: |
+        1. Launch the app
+        2. Open Settings → ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened?
+      description: Paste error messages and console output verbatim — don't paraphrase them.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Debug log
+      description: |
+        **Settings → Debug → Debug Log → Export** (the share icon) writes
+        `FlCroc-debug-<yyMMdd-HHmmss>.log` into your configured save path
+        (*Internal Storage* on the Settings screen).
+
+        Paste the contents here, or drag the file into this box to attach it.
+
+        If *Auto-clear log* is enabled the buffer is wiped when debug mode is
+        entered or left — turn it off **before** reproducing a problem that
+        happens early in the session.
+    validations:
+      required: false
+
+  - type: input
+    id: croc_version
+    attributes:
+      label: Built-in croc version (optional)
+      description: "**Settings → About → Built-in Croc Version** — relevant for anything transfer-related."
+      placeholder: "11.5.2"
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true
+        - label: This report is about FlCroc itself, not about a croc transfer I could not complete for network reasons.
+          required: false

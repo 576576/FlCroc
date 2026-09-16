@@ -1,0 +1,115 @@
+name: 📦 Install / launch problem
+description: A downloaded package won't run, won't start, or reports a different version than the file name says.
+title: "[Install]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **English or 简体中文 — 用中文写也完全可以。**
+
+        Use this form when the problem happens **before the app UI is usable**:
+        the package will not start, the OS refuses it, a shared library is missing,
+        or the version shown in the app does not match the file you downloaded.
+
+        For problems inside a running app, use **Bug report** instead.
+
+  - type: input
+    id: asset_name
+    attributes:
+      label: Exact file name you downloaded
+      description: "Copy it verbatim — the name encodes version, OS and architecture, e.g. `FlCroc-1.2.4-windows-x64.zip`."
+      placeholder: "FlCroc-1.2.4-windows-x64.zip"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: source
+    attributes:
+      label: Where did you get it?
+      options:
+        - GitHub Releases — the stable release
+        - GitHub Releases — the nightly pre-release
+        - Built from source myself
+        - Not sure / somewhere else
+    validations:
+      required: true
+
+  - type: input
+    id: reported_version
+    attributes:
+      label: Version the app reports
+      description: "**Settings → About → FlCroc Version**, in `x.y.z+build` form. Write *never got that far* if the app does not start."
+      placeholder: "1.2.4+91"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows x64
+        - Windows ARM64
+        - Linux x64
+        - Linux ARM64
+        - Android ARM64
+        - Android x64
+    validations:
+      required: true
+
+  - type: input
+    id: os_version
+    attributes:
+      label: OS version
+      description: "Be specific — architecture mismatches are the most common cause here: `Windows 11 23H2 on a Snapdragon X Elite`, `Ubuntu 22.04 (aarch64)`, `Android 14 / Pixel 7`."
+      placeholder: "Windows 11 23H2 (x64)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: symptom
+    attributes:
+      label: What happens, exactly?
+      description: |
+        Include the literal message: an error dialog, a terminal traceback, an exit
+        code, or the OS wording (`This app can't run on your PC`,
+        `App not installed`, `cannot open shared object file`, …).
+      placeholder: |
+        Double-clicking FlCroc.exe shows a dialog saying "...".
+        Running it from a terminal prints: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps you took
+      description: How you unpacked and launched it, from the download onward.
+      placeholder: |
+        1. Downloaded FlCroc-1.2.4-windows-x64.zip
+        2. Right-click → Extract All… to D:\FlCroc
+        3. Ran FlCroc.exe
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: platform_checks
+    attributes:
+      label: Platform checklist
+      description: Please confirm the ones that apply to your platform.
+      options:
+        - label: "**Windows:** I extracted the archive and kept `FlCroc.exe` next to `libcroc_bridge.dll` and the `data/` folder — running the `.exe` straight out of the `.zip` does not work."
+          required: false
+        - label: "**Linux:** I extracted the whole archive and launched `./fl_croc` from inside it, so that `lib/libcroc_bridge.so` resolves, with the GTK 3 runtime installed."
+          required: false
+        - label: "**Android:** the APK's ABI matches the device (the ARM64 APK will not install on an x86 emulator, and vice versa)."
+          required: false
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true

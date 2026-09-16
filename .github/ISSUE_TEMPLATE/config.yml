@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Building from source
+    url: https://github.com/576576/FlCroc/blob/main/docs/BUILD.md
+    about: Prerequisites, platform-specific build commands, and what each release channel contains.
+  - name: 🌍 Translations & language bundles
+    url: https://github.com/576576/FlCroc/blob/main/docs/i18n.md
+    about: How assets/bundles/*.json work, and how to add or fix a translation.

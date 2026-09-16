@@ -1,0 +1,90 @@
+name: 🌍 Translation / i18n issue
+description: A string that is missing, wrong, awkward, or overflowing in one of the language bundles.
+title: "[i18n]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **English or 简体中文 — 用中文写也完全可以。**
+
+        UI strings live in `assets/bundles/<language>.json` and are keyed by name
+        (camelCase, e.g. `transferComplete`). The bundles currently shipped are
+        `en`, `zh`, `zh-Hant`, `ja` and `fr` — see
+        [docs/i18n.md](https://github.com/576576/FlCroc/blob/main/docs/i18n.md) for
+        the per-language status. A pull request with the corrected JSON is more than
+        welcome; this form is for reporting what is wrong.
+
+  - type: dropdown
+    id: language
+    attributes:
+      label: Which language?
+      options:
+        - 简体中文 (zh)
+        - 繁體中文 (zh-Hant)
+        - 日本語 (ja)
+        - Français (fr)
+        - English (en)
+        - A language that is not shipped yet
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue_kind
+    attributes:
+      label: What is wrong?
+      options:
+        - Text is missing — English is shown where the translation should be
+        - The translation is wrong or misleading
+        - The wording is awkward or unnatural
+        - The text is cut off or overflows its widget
+        - Something else (describe below)
+    validations:
+      required: true
+
+  - type: input
+    id: string_key
+    attributes:
+      label: String key (if you know it)
+      description: The key in the JSON bundle. Leave empty if you don't — the location below is enough.
+      placeholder: "transferComplete"
+
+  - type: textarea
+    id: location
+    attributes:
+      label: Where does it appear in the app?
+      description: The screen and how to reach it, e.g. *Settings → Transfer → Save path* or the dialog shown after a transfer finishes.
+      placeholder: |
+        1. Open the Dashboard
+        2. Tap "..."
+        3. The banner at the bottom reads "..."
+    validations:
+      required: true
+
+  - type: input
+    id: current_text
+    attributes:
+      label: Text shown now
+      placeholder: "The exact string that appears in the UI"
+
+  - type: input
+    id: suggested_text
+    attributes:
+      label: Suggested replacement
+      description: Keep it roughly as short as the current string where possible, otherwise it may overflow.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Screenshots or additional context
+      description: Drag images into this box; a screenshot makes layout problems obvious.
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true
+        - label: I read docs/i18n.md and understand that a pull request against `assets/bundles/` is the fastest fix.
+          required: false

@@ -1,0 +1,74 @@
+name: ✨ Feature request
+description: Suggest a new capability or an improvement to an existing one.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **English or 简体中文 — 用中文写也完全可以。**
+
+        FlCroc is a GUI on top of [croc](https://github.com/schollz/croc), so it
+        inherits croc's transfer semantics: no accounts, no server-side storage,
+        relay-assisted peer-to-peer. Requests that change those semantics have to be
+        solved upstream first, but everything around them (UI, workflow, platform
+        integration) is fair game here.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the situation you are stuck in, not the solution you have in mind.
+      placeholder: "When I receive several files in a row I have to ... every time, which ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like FlCroc to do?
+      description: Concrete behaviour beats a general direction. Mockups or screenshots of another app are welcome.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Transfer (send / receive / progress / QR)
+        - Dashboard
+        - Settings
+        - UI, theme & layout
+        - Language & translations
+        - Platform integration (files, clipboard, tray, shares)
+        - Build, packaging & CI
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform_scope
+    attributes:
+      label: Which platforms does this concern?
+      options:
+        - All platforms
+        - Windows
+        - Linux
+        - Android
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you have considered
+      description: Existing settings, workarounds, or how another tool handles it.
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true
