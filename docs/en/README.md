@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="assets/images/icon.png" width="64" alt="FlCroc">
+  <img src="../../assets/images/icon.png" width="64" alt="FlCroc">
 </p>
 
 <h1 align="center">FlCroc</h1>
 
 <p align="center">
-<a href="docs/zh/README.md">中文 (简体)</a> &nbsp;|&nbsp; <a href="docs/zh-Hant/README.md">中文 (繁體)</a> &nbsp;|&nbsp; <a href="docs/ja/README.md">日本語</a> &nbsp;|&nbsp; <a href="docs/fr/README.md">Français</a> &nbsp;|&nbsp; English
+<a href="../zh/README.md">中文 (简体)</a> &nbsp;|&nbsp; <a href="../zh-Hant/README.md">中文 (繁體)</a> &nbsp;|&nbsp; <a href="../ja/README.md">日本語</a> &nbsp;|&nbsp; <a href="../fr/README.md">Français</a> &nbsp;|&nbsp; English
 </p>
 
 <p align="center">
@@ -26,14 +26,14 @@
 |---|-----|
 | 🖥️ | Cross-platform (Windows, Linux, Android) |
 | 🔒 | End-to-end encrypted file transfer via croc |
-| 🌍 | Native multi-language support (see [i18n.md](docs/i18n.md) for details) |
+| 🌍 | Native multi-language support (see [i18n.md](../i18n.md) for details) |
 | 🌙 | Modern Flutter UI with adaptive layout, animations, and custom color schemes |
 
 ---
 
 ## 🚀 Build
 
-See [BUILD.md](docs/BUILD.md) for build instructions and platform-specific guides.
+See [BUILD.md](../BUILD.md) for build instructions and platform-specific guides.
 
 ---
 
@@ -65,7 +65,7 @@ FlCroc/
 
 ## 🌍 I18n
 
-See [docs/i18n.md](docs/i18n.md) for language status and contribution guide.
+See [docs/i18n.md](../i18n.md) for language status and contribution guide.
 
 ---
 

@@ -16,9 +16,6 @@ class CoreLib extends CoreInterface {
   DynamicLibrary? _lib;
   bool _isAvailable = false;
 
-  /// Built-in croc version (synced with submodules/croc vendored source).
-  static const builtinCrocVersion = '10.4.4';
-
   // Cached FFI function for freeing Go-allocated strings
   void Function(Pointer<Utf8>)? _freeGoString;
 
@@ -250,6 +247,13 @@ class CoreLib extends CoreInterface {
               totalSize: (event['total_size'] as int?) ?? 0,
               codePhrase: event['code_phrase'] as String?,
             );
+          } else if (type == 5) {
+            // croc v11 reconnect notice (from Go bridge stderr capture).
+            yield TransferProgress(
+              transferId: transferId,
+              status: TransferProgressStatus.transferring,
+              error: event['error'] as String?,
+            );
           }
         } catch (_) {
           // Ignore malformed poll events; keep polling
@@ -389,6 +393,13 @@ class CoreLib extends CoreInterface {
               status: TransferProgressStatus.transferring,
               totalFiles: (event['total_files'] as int?) ?? 0,
               totalSize: (event['total_size'] as int?) ?? 0,
+            );
+          } else if (type == 5) {
+            // croc v11 reconnect notice (from Go bridge stderr capture).
+            yield TransferProgress(
+              transferId: transferId,
+              status: TransferProgressStatus.transferring,
+              error: event['error'] as String?,
             );
           }
         } catch (_) {

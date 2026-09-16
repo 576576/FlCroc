@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GO_VERSION: '1.25'
+  GO_VERSION: '1.27.1'
 
 jobs:
   # ── Prebuild: submodule update + platform detection + branch detection ──
@@ -88,7 +88,7 @@ jobs:
                 ;;
               *)
                 TAG="v$VER"
-                REL_NAME="$VER"
+                REL_NAME="Release $VER"
                 ;;
             esac
             echo "Syncing release version: $NEW_VERSION (build $CUR_BUILD → $NEW_BUILD)"
@@ -119,21 +119,6 @@ jobs:
             echo "synced_version=$NEW_VERSION" >> $GITHUB_OUTPUT
             echo "new_build=$NEW_BUILD" >> $GITHUB_OUTPUT
           fi
-
-      - name: Update submodule to latest croc
-        run: |
-          cd submodules/croc
-          for i in 1 2 3; do
-            echo "Attempt $i..."
-            git fetch --tags --depth 1 && break
-            sleep $((i * 5))
-          done || echo "⚠️ Fetch failed — using existing submodule ref"
-          latest=$(git tag -l 'v*' --sort=-v:refname | head -1)
-          if [ -n "$latest" ]; then
-            git checkout "$latest" 2>/dev/null || echo "⚠️ Checkout failed — using existing ref"
-          fi
-          cd ../..
-          find submodules/croc -name '*_test.go' -delete
 
       - name: Detect croc version
         id: croc-ver
@@ -199,7 +184,7 @@ jobs:
           # Use short hashes (first 8 chars of SHA256)
           BUNDLES_HASH=$(find assets/bundles -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -c1-8)
           DOCS_HASH=$(find assets/docs -type f -name '*.json' -exec sha256sum {} \; | sort | sha256sum | cut -c1-8)
-          TEMPLATES_HASH=$(find assets/templates -type f -exec sha256sum {} \; | sort | sha256sum | cut -c1-8)
+          TEMPLATES_HASH=$(find assets/templates assets/.i18n_config -type f -exec sha256sum {} \; | sort | sha256sum | cut -c1-8)
 
           # b-doc: force i18n + docs regeneration
           if echo "$MSG" | grep -qE '\bb-doc\b'; then
@@ -288,18 +273,13 @@ jobs:
             [ "$PCT" -gt 100 ] && PCT=100
 
             DOCS=0
-            if [ "$CODE" = "en" ]; then
-              DOCS=$(ls docs/*.md 2>/dev/null | wc -l)
-              [ -f README.md ] && DOCS=$((DOCS + 1))
-            elif [ -d "docs/$CODE" ]; then
+            if [ -d "docs/$CODE" ]; then
               DOCS=$(find "docs/$CODE" -name '*.md' 2>/dev/null | wc -l)
             fi
             HAS_DOC_JSON=""
             [ -f "assets/docs/$CODE.json" ] && HAS_DOC_JSON=" 📄"
 
-            if [ "$CODE" = "en" ]; then README_LINK="../README.md"
-            else README_LINK="$CODE/README.md"
-            fi
+            README_LINK="$CODE/README.md"
 
             ROWS="$ROWS| [$LANG]($README_LINK) | \`$CODE\` | $REGION | $KEYS/$ACTUAL ($PCT%) | $DOCS$HAS_DOC_JSON |\n"
           done
@@ -328,11 +308,17 @@ jobs:
           VERSION="$APP_VERSION"
           FLUTTER_VER="$FLUTTER_VERSION"
           CROC_VER="$CROC_VERSION"
+          # Root README language, read from assets/.i18n_config/i18n.yml (default: en)
+          ROOT_LANG=$(awk -F: '/^[[:space:]]*root_lang[[:space:]]*:/{gsub(/[[:space:]"]/,"",$2); print $2; exit}' assets/.i18n_config/i18n.yml 2>/dev/null)
+          ROOT_LANG=${ROOT_LANG:-en}
+          echo "Root README language: $ROOT_LANG"
 
-          for DATA in assets/docs/*.json; do
-            LANG=$(basename "$DATA" .json)
-            if [ "$LANG" = "en" ]; then OUTPUT="README.md"
-            else mkdir -p "docs/$LANG"; OUTPUT="docs/$LANG/README.md"
+          render_readme() {
+            local DATA="$1" LANG="$2" OUTPUT="$3" ROOT_VIEW="$4"
+            local ICON_PREFIX="" DOC_PREFIX="docs/"
+            if [ "$ROOT_VIEW" = "false" ]; then
+              ICON_PREFIX="../../"
+              DOC_PREFIX="../"
             fi
             echo "Generating $OUTPUT from $DATA"
 
@@ -348,11 +334,11 @@ jobs:
               if [ "$other_count" -gt 1 ]; then
                 label="$label ($region)"
               fi
-              # Build relative link path from OUTPUT
-              if [ "$OUTPUT" = "README.md" ]; then
-                [ "$code" = "en" ] && path="README.md" || path="docs/$code/README.md"
+              # Build relative link path from the current view
+              if [ "$ROOT_VIEW" = "true" ]; then
+                path="docs/$code/README.md"
               else
-                [ "$code" = "en" ] && path="../../README.md" || path="../$code/README.md"
+                path="../$code/README.md"
               fi
               [ -n "$LANGS_HTML" ] && LANGS_HTML="$LANGS_HTML &nbsp;|&nbsp; "
               if [ "$code" = "$LANG" ]; then LANGS_HTML="$LANGS_HTML$label"
@@ -360,8 +346,7 @@ jobs:
               fi
             done
 
-            ICON_PREFIX=""; [[ "$OUTPUT" != "README.md" ]] && ICON_PREFIX="../../"
-            DOC_PREFIX="docs/"; [[ "$OUTPUT" != "README.md" ]] && DOC_PREFIX="../"
+            # ICON_PREFIX / DOC_PREFIX already set at function start based on ROOT_VIEW
 
             TITLE=$(jq -r '.title' "$DATA")
             TAGLINE=$(jq -r '.tagline_block' "$DATA")
@@ -449,6 +434,15 @@ jobs:
             sed -i "s|{{ack_flclash}}|$ACK_FLCLASH|" "$OUTPUT"
             sed -i "s|{{ack_crocapp}}|$ACK_CROCAPP|" "$OUTPUT"
             sed -i "s|](docs/|]($DOC_PREFIX|g" "$OUTPUT"
+          }
+
+          for DATA in assets/docs/*.json; do
+            LANG=$(basename "$DATA" .json)
+            mkdir -p "docs/$LANG"
+            render_readme "$DATA" "$LANG" "docs/$LANG/README.md" "false"
+            if [ "$LANG" = "$ROOT_LANG" ]; then
+              render_readme "$DATA" "$LANG" "README.md" "true"
+            fi
           done
 
       - uses: actions/upload-artifact@v4
@@ -518,6 +512,12 @@ jobs:
           git pull --rebase origin "$GITHUB_REF_NAME" || true
           git push
 
+      - uses: actions/upload-artifact@v4
+        if: needs.prebuild.outputs.new_build != '' && needs.test.result != 'failure'
+        with:
+          name: pubspec-synced
+          path: pubspec.yaml
+
   # ── Windows ──
   build-windows:
     needs: [commit, prebuild]
@@ -531,6 +531,11 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: pubspec-synced
+          path: .
+        continue-on-error: true
       - name: Get short SHA
         id: sha
         run: echo "sha=$(git rev-parse --short HEAD)" >> $env:GITHUB_OUTPUT
@@ -675,6 +680,11 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: pubspec-synced
+          path: .
+        continue-on-error: true
       - name: Get short SHA
         id: sha
         run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
@@ -749,6 +759,11 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: pubspec-synced
+          path: .
+        continue-on-error: true
       - name: Get short SHA
         id: sha
         run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
@@ -906,25 +921,34 @@ jobs:
           MSG: ${{ github.event.head_commit.message || '' }}
           TITLE: ${{ steps.ver.outputs.title }}
         run: |
-          BODY="## $TITLE
-
-          **Commit**: \`${{ steps.sha.outputs.sha }}\`
-
-          > $MSG
-
-          > ⚠️ This is an automated dev-branch build. May be unstable.
-
-          ### Downloads"
+          WIN_CELL=""
+          LINUX_CELL=""
+          ANDROID_CELL=""
           for f in artifacts/FlCroc-*; do
             fname=$(basename "$f")
+            URL="https://github.com/\${{ github.repository }}/releases/download/nightly/$fname"
             case "$fname" in
-              *windows*) icon="🪟 Windows" ;;
-              *linux*)   icon="🐧 Linux" ;;
-              *android*) icon="🤖 Android" ;;
-              *)         icon="📦" ;;
+              *windows-arm64*) WIN_CELL="$WIN_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/ARM64-blue.svg?logo=windows\"></a><br>" ;;
+              *windows*)       WIN_CELL="$WIN_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-blue.svg?logo=windows\"></a><br>" ;;
+              *linux*)         LINUX_CELL="$LINUX_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-orange.svg?logo=linux\"></a><br>" ;;
+              *android-arm64*) ANDROID_CELL="$ANDROID_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/ARM64-green.svg?logo=android\"></a><br>" ;;
+              *android*)       ANDROID_CELL="$ANDROID_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-green.svg?logo=android\"></a><br>" ;;
             esac
-            BODY="$BODY"$'\n'"- $icon | \`$fname\`"
           done
+          BODY="**Commit**: \`${{ steps.sha.outputs.sha }}\`
+
+          $MSG
+
+          > ⚠️ Automated dev-branch build — may be unstable.
+
+          **Download based on your OS:**
+
+          <table>
+          <tr><th>Platform</th><th>Download</th></tr>"
+          [ -n "$WIN_CELL" ] && BODY="$BODY<tr><td>Windows</td><td>$WIN_CELL</td></tr>"
+          [ -n "$LINUX_CELL" ] && BODY="$BODY<tr><td>Linux</td><td>$LINUX_CELL</td></tr>"
+          [ -n "$ANDROID_CELL" ] && BODY="$BODY<tr><td>Android</td><td>$ANDROID_CELL</td></tr>"
+          BODY="$BODY</table>"
           echo "body<<EOF" >> $GITHUB_OUTPUT
           echo "$BODY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -986,17 +1010,17 @@ jobs:
               VERSION=$(echo "$COMMIT_MSG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
               echo "version=$VERSION" >> $GITHUB_OUTPUT
               echo "tag=v$VERSION" >> $GITHUB_OUTPUT
-              echo "release_name=FlCroc $VERSION" >> $GITHUB_OUTPUT
+              echo "release_name=Release $VERSION" >> $GITHUB_OUTPUT
             elif echo "$COMMIT_MSG" | grep -qE '^beta-[0-9]+\.[0-9]+\.[0-9]+'; then
               VERSION=$(echo "$COMMIT_MSG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
               echo "version=$VERSION" >> $GITHUB_OUTPUT
               echo "tag=v$VERSION-beta" >> $GITHUB_OUTPUT
-              echo "release_name=FlCroc Beta $VERSION" >> $GITHUB_OUTPUT
+              echo "release_name=Beta $VERSION" >> $GITHUB_OUTPUT
             else
               VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
               echo "version=$VERSION" >> $GITHUB_OUTPUT
               echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-              echo "release_name=FlCroc $VERSION" >> $GITHUB_OUTPUT
+              echo "release_name=Release $VERSION" >> $GITHUB_OUTPUT
             fi
           fi
 
@@ -1011,24 +1035,29 @@ jobs:
       - name: Build release body
         id: body
         run: |
-          BODY="## 📦 ${{ steps.version.outputs.release_name }}
-
-          Cross-platform file transfer GUI powered by croc.
-
-          ### Downloads"
+          WIN_CELL=""
+          LINUX_CELL=""
+          ANDROID_CELL=""
           for f in artifacts/FlCroc-*; do
             [ -f "$f" ] || continue
             fname=$(basename "$f")
+            URL="https://github.com/\${{ github.repository }}/releases/download/\${{ steps.version.outputs.tag }}/$fname"
             case "$fname" in
-              *windows-arm64*)          icon="🪟 Windows ARM64" ;;
-              *windows*)                icon="🪟 Windows" ;;
-              *linux*)                  icon="🐧 Linux" ;;
-              *android-arm64*)          icon="🤖 Android ARM64" ;;
-              *android*)                icon="🤖 Android" ;;
-              *)                        icon="📦" ;;
+              *windows-arm64*) WIN_CELL="$WIN_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/ARM64-blue.svg?logo=windows\"></a><br>" ;;
+              *windows*)       WIN_CELL="$WIN_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-blue.svg?logo=windows\"></a><br>" ;;
+              *linux*)         LINUX_CELL="$LINUX_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-orange.svg?logo=linux\"></a><br>" ;;
+              *android-arm64*) ANDROID_CELL="$ANDROID_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/ARM64-green.svg?logo=android\"></a><br>" ;;
+              *android*)       ANDROID_CELL="$ANDROID_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-green.svg?logo=android\"></a><br>" ;;
             esac
-            BODY="$BODY"$'\n'"- $icon | \`$fname\`"
           done
+          BODY="**Download based on your OS:**
+
+          <table>
+          <tr><th>Platform</th><th>Download</th></tr>"
+          [ -n "$WIN_CELL" ] && BODY="$BODY<tr><td>Windows</td><td>$WIN_CELL</td></tr>"
+          [ -n "$LINUX_CELL" ] && BODY="$BODY<tr><td>Linux</td><td>$LINUX_CELL</td></tr>"
+          [ -n "$ANDROID_CELL" ] && BODY="$BODY<tr><td>Android</td><td>$ANDROID_CELL</td></tr>"
+          BODY="$BODY</table>"
           echo "body<<EOF" >> $GITHUB_OUTPUT
           echo "$BODY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -1037,7 +1066,7 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: ${{ steps.version.outputs.release_name }}
-          body: ${{ steps.body.outputs.body }}
+          append_body: ${{ steps.body.outputs.body }}
           files: |
             artifacts/FlCroc-*
           draft: false

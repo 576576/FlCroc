@@ -25,7 +25,7 @@ echo ========================================
 REM --- Check Go installation ---
 where go >nul 2>&1
 if %ERRORLEVEL% neq 0 (
-    echo [ERROR] Go is not installed. Please install Go 1.25+ from https://go.dev/dl/
+    echo [ERROR] Go is not installed. Please install Go 1.27+ from https://go.dev/dl/
     exit /b 1
 )
 echo [OK] Go found:
