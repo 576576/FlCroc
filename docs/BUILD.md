@@ -10,6 +10,14 @@ branches and pull requests only run the maintenance jobs: tests, plus i18n/READM
 regeneration when the tracked inputs change. No commit-message keywords are
 involved.
 
+Changes that cannot affect the binaries — `docs/**`, root-level `*.md`, `LICENSE` and
+`.github/ISSUE_TEMPLATE/**` — are excluded from the `push` trigger, so a docs-only push
+produces **no workflow run at all** (nothing in the Actions tab, no error anywhere). Every
+change under `assets/` still triggers a run: `assets/docs/` and `assets/templates/` are
+inputs to the i18n renderer, so they must be re-rendered. The filter is deliberately not
+applied to pull requests — they never build, and their i18n job is what validates that
+`docs/i18n.md` and the READMEs are fresh.
+
 Because a push uses the defaults, the extra targets (`windows_arm64`,
 `linux_arm64`, `android_x64`) are **never** built automatically — dispatch a run if
 you want them.
