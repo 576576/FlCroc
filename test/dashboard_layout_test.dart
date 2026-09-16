@@ -229,6 +229,40 @@ void main() {
           reason: '切走再切回，删除应当仍在（issue #6 症状 2）');
     });
 
+    testWidgets('a removed card can be added back from the editor', (t) async {
+      // The view used to silently re-insert quickTransfer on every mount. That
+      // is gone now, so the editor's "available widgets" chips are the only way
+      // back — this test pins that recovery path down.
+      final c = ProviderContainer();
+      addTearDown(c.dispose);
+      final pc = PageController();
+      addTearDown(pc.dispose);
+
+      await _seed(c, const [_ts, _rt]);
+      await t.pumpWidget(_twoPage(c, pc));
+      await _settleFrames(t);
+
+      await t.tap(_appBarAction(Icons.edit_outlined));
+      await _settleFrames(t);
+      expect(find.byKey(const ValueKey(_qt)), findsNothing);
+
+      // quickTransfer is the only card not on the dashboard, so it is the only
+      // entry offered in the "available widgets" list.
+      final chip = find.byType(ActionChip);
+      expect(chip, findsOneWidget, reason: '缺的那张卡片应当出现在可添加列表里');
+      await t.ensureVisible(chip);
+      await _settleFrames(t);
+      await t.tap(chip);
+      await _settleFrames(t);
+      expect(_onScreenOrder(t), const [_ts, _rt, _qt]);
+
+      await t.tap(_appBarAction(Icons.check));
+      await _settleFrames(t);
+      await _switchTabAndBack(t, pc);
+      expect(_onScreenOrder(t), const [_ts, _rt, _qt],
+          reason: '重新加回来的卡片与位置都应当保存住');
+    });
+
     testWidgets('a reorder survives a tab round-trip', (t) async {
       final c = ProviderContainer();
       addTearDown(c.dispose);
