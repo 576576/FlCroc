@@ -506,7 +506,13 @@ jobs:
           MSG="Auto commit by Github Actions\n${LINES}"
           echo "message=$MSG" >> $GITHUB_OUTPUT
 
+      # On pull_request events GITHUB_REF_NAME is "<n>/merge" — a read-only ref
+      # that has no remote counterpart, so the rebase/push below always failed
+      # with "couldn't find remote ref <n>/merge" + "not currently on a branch"
+      # (exit 128), turning every PR red. Docs are regenerated and pushed on
+      # branch pushes only; on PRs the artifacts are validated, not published.
       - name: Commit and push
+        if: github.event_name != 'pull_request'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
