@@ -295,11 +295,14 @@ jobs:
       # 裸跑时要长：build-essential 提供 Go bridge 的 CGO 需要的 gcc 与 Flutter Linux
       # 侧 C++ 需要的 libstdc++ 头；curl / unzip / xz-utils 是 Flutter 工具自己下载并
       # 解包 engine 与 Dart SDK 用的；file 与 binutils 供下面的产物校验用。
+      # jq 是 subosito/flutter-action 的 setup.sh 解析版本清单用的 —— 托管 runner 镜像
+      # 自带，裸 ubuntu 镜像没有，缺了会直接报 "jq not found" 并让这一步失败。
+      # （build-linux-arm64 不需要 jq：它不走这个 action，改为手工 clone Flutter SDK。）
       - name: Install Linux deps
         run: |
           apt-get update -qq
           apt-get install -y -qq clang cmake ninja-build pkg-config libgtk-3-dev \
-            liblzma-dev build-essential curl unzip xz-utils file binutils
+            liblzma-dev build-essential curl unzip xz-utils file binutils jq
 
       - name: Build Go bridge (.so)
         run: |
