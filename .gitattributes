@@ -1,2 +1,10 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Git 钩子必须以 LF 落盘：CRLF 会让 sh 把 "#!/bin/sh\r" 整个当成解释器路径，
+# 在 Git Bash / macOS / Linux 上都直接报 "bad interpreter"。
+.githooks/** text eol=lf
+
+# 同理：shell 脚本在 Linux/macOS 上执行时，CRLF 的 shebang 同样会 "bad interpreter"。
+# 仓库工作区默认是 CRLF，所以这条必须显式写出来。
+*.sh text eol=lf

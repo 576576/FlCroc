@@ -1,0 +1,71 @@
+#!/bin/sh
+# ============================================================================
+# FlCroc pre-commit hook —— 递增 pubspec.yaml 的 build 号
+#
+#   version: x.y.z+N   →   version: x.y.z+(N+1)
+#
+# 为什么在钩子里做：build 号是「这次提交」的属性，只有本地提交时才知道。原先由
+# CI 的 commit job 递增并回写分支，代价是每个出包 commit 都多一次机器人提交、
+# 多一次 [skip ci] 规避，以及「产物对应的那个 commit 到底是不是源码 commit」的
+# 一层间接。改成钩子后 pubspec.yaml 里就是真值，CI 只读不写。
+#
+# 启用（每个 clone 各跑一次，见 docs/BUILD.md）：
+#   git config core.hooksPath .githooks
+#
+# 逃生舱：
+#   FL_CROC_NO_BUMP=1 git commit ...   本次不递增
+#   git commit --no-verify             完全跳过钩子
+#
+# 已知边界：
+#   * `git commit --amend` 会再 +1 —— git 不告诉钩子这是 amend。要精确就配 --no-verify。
+#   * 钩子只保证「一个分支上每个 commit 都比上一个号大」，不保证全局唯一：用
+#     --no-verify 提交、或没配 core.hooksPath 的机器会原地不动。
+#   * 多个分支各自递增后合流，pubspec 的 version 行必然冲突，按「取较大的号」解即可。
+# ============================================================================
+
+set -u
+
+# ── 逃生舱 ──
+[ -n "${FL_CROC_NO_BUMP:-}" ] && exit 0
+
+# ── 定位仓库根（git 通常已把 cwd 设成顶层，这里只是兜底）──
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+cd "$ROOT" || exit 0
+
+# ── 自动化场景一律不碰 ──
+# rebase / merge / cherry-pick / revert 由 git 的 sequencer 自行落提交，此时改
+# pubspec 只会让冲突更难收拾。实测 `git rebase` 本身不会调用 pre-commit，这几道
+# 保险是给「冲突解决后 git rebase --continue」之类的路径留的。
+# 必须在 cd "$ROOT" 之后取 git-dir：它是相对路径，换个 cwd 就找不到。
+GITDIR=$(git rev-parse --git-dir 2>/dev/null) || exit 0
+for marker in rebase-merge rebase-apply MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD; do
+  [ -e "$GITDIR/$marker" ] && exit 0
+done
+
+[ -f pubspec.yaml ] || exit 0
+
+# ── 读「将要被提交的」版本号 ──
+# 优先暂存区（:pubspec.yaml）—— 那才是这次 commit 会写进历史的内容。没暂存过
+# pubspec 时索引与 HEAD 一致，读到的就是 HEAD 的值，语义同样正确。
+# tr -d '\r' 不能省：Windows 上文件可能以 CRLF 检出，带着 \r 的 "99\r" 过不了
+# 下面的纯数字校验，会被当成 0 而算出错误的 +1。
+CUR=$(git show :pubspec.yaml 2>/dev/null | sed -n 's/^version: *//p' | head -1 | tr -d '\r')
+[ -n "$CUR" ] || CUR=$(sed -n 's/^version: *//p' pubspec.yaml | head -1 | tr -d '\r')
+[ -n "$CUR" ] || exit 0
+
+BASE=${CUR%%+*}
+BUILD=${CUR##*+}
+# 没有 +N 后缀、或后缀不是纯数字时按 0 处理（与 CI 原先的口径一致）
+case "$BUILD" in ''|*[!0-9]*) BUILD=0 ;; esac
+NEW="${BASE}+$((BUILD + 1))"
+
+# ── 写回 ──
+# 故意写成 LF 行尾：.gitattributes 的 `* text=auto` 保证 blob 里就是 LF，写 CRLF
+# 反而会多出一层「靠 autocrlf 在检出时补回来」的隐式依赖。
+# sed -i.bak 而不是 sed -i：macOS 的 BSD sed 要求 -i 必须带后缀参数。
+sed -i.bak "s|^version: .*|version: ${NEW}|" pubspec.yaml && rm -f pubspec.yaml.bak
+
+git add -- pubspec.yaml || exit 0
+
+echo "pre-commit: build 号 $CUR → $NEW" >&2
+exit 0
