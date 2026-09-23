@@ -33,9 +33,19 @@ name: Release
 # 「Latest release cannot be draft or prerelease.」；实测 PATCH 直接 422、POST
 # 创建则静默忽略（HTTP 200 但不生效）。Latest 只由 channel=release 更新。
 #
-# dispatch 一共 6 个平台开关，产物名统一 FlCroc-<x.y.z>-<os>-<arch>.<ext>，
-# 架构一律写 x64 / arm64（amd64 只出现在 go build 的 GOARCH 参数里，不进产物名）：
-#   windows_x64 / windows_arm64 / linux_x64 / linux_arm64 / android_arm64 / android_x64
+# dispatch 的选项（见文件末尾 on.workflow_dispatch.inputs）：
+#
+#   7 个平台开关，产物名统一 FlCroc-<x.y.z>-<os>-<arch>.<ext>，架构一律写 x64 /
+#   arm64（amd64 只出现在 go build 的 GOARCH 参数里，不进产物名）：
+#     Windows x64 / Windows arm64 / Linux x64 / Linux arm64
+#     Android arm64 / Android x64 / macOS arm64（macOS 只有 arm64 一个目标）
+#
+#   两个非架构开关：release_notes（发行说明，**追加在自动生成正文的最上方**，不覆盖
+#   Commit / 下载表）、force_docs（强制重新生成 i18n 与 README）。
+#
+# 表单里每项的标签就是它的 description（缺失才退回显示输入 id）。GitHub 的
+# workflow_dispatch 也只认 description / required / default / type / options ——
+# 没有分组或标题语法，所以表单是一列平铺的字段。
 #
 # 与原 build.yml 的差别：
 #   * 提交信息文本触发器（b-all / b-win / b-linux / b-mobile / b-none / arch-all /
@@ -43,8 +53,10 @@ name: Release
 #   * 不再有 push tag 触发 —— tag 由本文件的 publish job 依 channel 自行创建；
 #   * 「Build」拆到 build.yml（on: workflow_call），本文件只负责算参数与发布。
 #
-# 版本号仍以 pubspec.yaml 的 x.y.z+N 为唯一事实来源：出包时把 N 递增 1，
-# 由 commit job 提交回分支（dispatch 到标签 ref 时不动版本号）。
+# 版本号仍以 pubspec.yaml 的 x.y.z+N 为唯一事实来源，但**递增发生在本地**：
+# .githooks/pre-commit 每次提交把 N 加 1，所以本工作流只读不写、不再回写分支。
+# 这里只负责把 pubspec 里的值取出来交给 build.yml。dispatch **没有**覆盖版本的
+# 入口（曾经的 version 输入已移除）：要换版本就改 pubspec.yaml 再提交。
 #
 # action 版本都已升到当前最新大版本（与 build.yml 同一批，Node 24 运行时）。
 # 只有本文件用到的两个需要留意的破坏性变更：
@@ -78,36 +90,55 @@ on:
   workflow_dispatch:
     inputs:
       channel:
-        description: 发布通道：nightly 更新预发布 / release 打正式 tag / none 只出产物
+        description: 发布通道
         type: choice
         options: [nightly, release, none]
         default: nightly
-      version:
-        description: 覆盖版本号，留空用 pubspec 现值；build 号自动 +1
-        type: string
-        default: ''
       windows_x64:
+        description: Windows x64
         type: boolean
         default: true
       windows_arm64:
+        description: Windows arm64
         type: boolean
         default: false
       linux_x64:
+        description: Linux x64
         type: boolean
         default: true
       linux_arm64:
+        description: Linux arm64
         type: boolean
         default: false
       android_arm64:
+        description: Android arm64
         type: boolean
         default: true
       android_x64:
+        description: Android x64
         type: boolean
         default: false
+      # macOS 只有 arm64 一个目标：Flutter 已停止支持 Intel macOS，其 release
+      # manifest 也不再发布 x64 归档。
+      macos_arm64:
+        description: macOS arm64
+        type: boolean
+        default: false
+      # 内容**追加在自动生成正文的最上方**，不是替换 —— Commit / 下载表照常保留。
+      release_notes:
+        description: 发行说明（追加在正文最上方，不覆盖自动生成的内容）
+        type: string
+        default: ''
       force_docs:
         description: 强制重新生成 i18n 与 README
         type: boolean
         default: false
+
+# 编译用的 SDK 版本在这里钉死。本文件只用到 FLUTTER_VERSION —— 它既是 README 徽章
+# 与「技术栈」表格里印出来的版本，也是 build.yml 真正拿去编译的那个版本；两处各自
+# 有一份同名 env，改一处必须同步改另一处。
+env:
+  FLUTTER_VERSION: '3.47.5'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -127,7 +158,6 @@ jobs:
       tag: ${{ steps.ver.outputs.tag }}
       prerelease: ${{ steps.ver.outputs.prerelease }}
       has_targets: ${{ steps.ver.outputs.has_targets }}
-      new_build: ${{ steps.ver.outputs.new_build }}
       nightly_date: ${{ steps.ver.outputs.nightly_date }}
       win_x64: ${{ steps.ver.outputs.win_x64 }}
       win_arm64: ${{ steps.ver.outputs.win_arm64 }}
@@ -135,6 +165,7 @@ jobs:
       linux_arm64: ${{ steps.ver.outputs.linux_arm64 }}
       android_arm64: ${{ steps.ver.outputs.android_arm64 }}
       android_x64: ${{ steps.ver.outputs.android_x64 }}
+      macos_arm64: ${{ steps.ver.outputs.macos_arm64 }}
       app_version: ${{ steps.app-ver.outputs.version }}
       flutter_version: ${{ steps.flutter-ver.outputs.version }}
       croc_version: ${{ steps.croc-ver.outputs.version }}
@@ -178,11 +209,9 @@ jobs:
         id: ver
         env:
           EVENT: ${{ github.event_name }}
-          REF_TYPE: ${{ github.ref_type }}
           # push 事件要不要自动出包，取决于是不是 main（见下方 Resolve 步骤）
           REF_NAME: ${{ github.ref_name }}
           IN_CHANNEL: ${{ github.event.inputs.channel }}
-          IN_VERSION: ${{ github.event.inputs.version }}
           IN_FORCE_DOCS: ${{ github.event.inputs.force_docs }}
           IN_WIN64: ${{ github.event.inputs.windows_x64 }}
           IN_WIN_A64: ${{ github.event.inputs.windows_arm64 }}
@@ -190,16 +219,17 @@ jobs:
           IN_LINUX_A64: ${{ github.event.inputs.linux_arm64 }}
           IN_A64: ${{ github.event.inputs.android_arm64 }}
           IN_AX64: ${{ github.event.inputs.android_x64 }}
+          IN_MACOS_A64: ${{ github.event.inputs.macos_arm64 }}
         run: |
           set -euo pipefail
 
           # 默认不出包：pull_request 只做维护（可能来自 fork，拿不到 secrets，
           # 也不该发布），非 main 分支的 push 同理。
-          CHANNEL='none'; VERSION_INPUT=''; FORCE_DOCS='false'
+          CHANNEL='none'; FORCE_DOCS='false'
           W64='false'; WA64='false'; L64='false'; LA64='false'; A64='false'; AX64='false'
+          MA64='false'
           if [ "$EVENT" = "workflow_dispatch" ]; then
             CHANNEL="${IN_CHANNEL:-none}"
-            VERSION_INPUT="${IN_VERSION:-}"
             # input 没填时 github.event.inputs.X 渲染成空串（而不是 'false'），统一兜 false
             FORCE_DOCS="${IN_FORCE_DOCS:-false}"
             W64="${IN_WIN64:-false}"
@@ -208,6 +238,7 @@ jobs:
             LA64="${IN_LINUX_A64:-false}"
             A64="${IN_A64:-false}"
             AX64="${IN_AX64:-false}"
+            MA64="${IN_MACOS_A64:-false}"
           elif [ "$EVENT" = "push" ] && [ "$REF_NAME" = "main" ]; then
             # ── push main：自动出包并更新 nightly 预发布 ──
             # 目标与 dispatch 的默认勾选**完全一致**（Windows x64 / Linux x64 /
@@ -216,7 +247,7 @@ jobs:
             #
             # 只认 main：nightly 是**一个共享 tag**，多分支各自发 nightly 会互相覆盖。
             # 不会自我触发循环：commit job 的提交信息固定以 `[skip ci]` 结尾
-            # （见 Commit and push 步骤），版本号回写那一次 push 不会再拉起本工作流。
+            # （见 Commit and push 步骤），i18n/文档回写那一次 push 不会再拉起本工作流。
             # 也不用 release 通道做自动发布：release 的 tag 是 `v<x.y.z>`（不含 build
             # 号），同版本第二次 push 会撞上已存在的 tag，只能 nightly。
             CHANNEL='nightly'
@@ -229,27 +260,19 @@ jobs:
           # 正文与附件里都不会出现 windows-x64。这里**不**再把 W64 置 true：
           # 一旦置 true，x64 包就会被当成用户主动选择的目标发出去。
           HAS_TARGETS='false'
-          for f in "$W64" "$WA64" "$L64" "$LA64" "$A64" "$AX64"; do
+          for f in "$W64" "$WA64" "$L64" "$LA64" "$A64" "$AX64" "$MA64"; do
             if [ "$f" = "true" ]; then HAS_TARGETS='true'; fi
           done
 
-          # 版本号：pubspec 的 x.y.z+N 是唯一事实来源，出包时 N 递增 1 并提交回分支
-          CUR_FULL=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}')
-          CUR_BASE="${CUR_FULL%%+*}"
-          CUR_BUILD="${CUR_FULL##*+}"
-          case "$CUR_BUILD" in ''|*[!0-9]*) CUR_BUILD=0 ;; esac
-
-          BASE="${VERSION_INPUT:-$CUR_BASE}"
-          if [ "$HAS_TARGETS" = "true" ] && [ "$REF_TYPE" = "branch" ]; then
-            NEW_BUILD=$((CUR_BUILD + 1))
-            FULL="${BASE}+${NEW_BUILD}"
-            echo "版本 $CUR_FULL → $FULL（build $CUR_BUILD → $NEW_BUILD）"
-          else
-            # 不出包、或 dispatch 选了标签 ref：不动版本号（不回写历史 ref）
-            NEW_BUILD=''
-            FULL="$CUR_FULL"
-            echo "版本保持 $FULL（无构建目标或 ref 不是分支，不递增 build 号）"
-          fi
+          # 版本号：pubspec 的 x.y.z+N 是唯一事实来源，且**由本地 pre-commit 钩子
+          # 递增**（.githooks/pre-commit）。CI 刻意不再递增、也不再回写分支 ——
+          # 出包时用的就是提交里那个号，产物与 commit 一一对应，不需要再靠
+          # [skip ci] 去规避「回写触发新一轮构建」。
+          # dispatch 也没有覆盖入口（曾经的 version 输入已移除）：要换版本就改
+          # pubspec.yaml 再提交，让本地钩子把 build 号带上去。
+          FULL=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}')
+          [ -n "$FULL" ] || { echo "::error::pubspec.yaml 里读不到 version:"; exit 1; }
+          echo "版本取自 pubspec：$FULL"
           DISPLAY="${FULL%%+*}"
 
           # 通道 → tag / 预发布标志。
@@ -295,17 +318,17 @@ jobs:
             echo "tag=$TAG"
             echo "prerelease=$PRE"
             echo "has_targets=$HAS_TARGETS"
-            echo "new_build=$NEW_BUILD"
             echo "win_x64=$W64"
             echo "win_arm64=$WA64"
             echo "linux_x64=$L64"
             echo "linux_arm64=$LA64"
             echo "android_arm64=$A64"
             echo "android_x64=$AX64"
+            echo "macos_arm64=$MA64"
             echo "force_docs=$FORCE_DOCS"
             echo "nightly_date=$(date +%Y%m%d)"
           } >> $GITHUB_OUTPUT
-          echo "目标 → win64:$W64 win-arm64:$WA64 linux64:$L64 linux-arm64:$LA64 android-arm64:$A64 android-x64:$AX64  channel:$CHANNEL"
+          echo "目标 → win64:$W64 win-arm64:$WA64 linux64:$L64 linux-arm64:$LA64 android-arm64:$A64 android-x64:$AX64 macos-arm64:$MA64  channel:$CHANNEL"
           echo "标签 → ${TAG:-（不发布）} prerelease:$PRE"
 
       - name: Check i18n & docs changes
@@ -538,7 +561,6 @@ jobs:
             sed -i "s#{{languages}}#$LANGS_ESC#" "$OUTPUT"
             sed -i "s|{{title}}|$TITLE|" "$OUTPUT"
             sed -i "s|{{version}}|$VERSION|" "$OUTPUT"
-            sed -i "s|{{flutter_version}}|$FLUTTER_VER|" "$OUTPUT"
             sed -i "s|{{croc_version}}|$CROC_VER|" "$OUTPUT"
             sed -i "s|{{tagline_block}}|$TAGLINE|" "$OUTPUT"
             sed -i "s|{{heading_features}}|$H_FEATURES|" "$OUTPUT"
@@ -578,6 +600,10 @@ jobs:
             sed -i "s|{{ack_flutter}}|$ACK_FLUTTER|" "$OUTPUT"
             sed -i "s|{{ack_flclash}}|$ACK_FLCLASH|" "$OUTPUT"
             sed -i "s|{{ack_crocapp}}|$ACK_CROCAPP|" "$OUTPUT"
+            # {{flutter_version}} 必须排在所有内容替换之后：assets/docs/*.json 的
+            # stack_tree.ui 里也写了这个占位符（这样版本只在 workflow 的 env 里维护
+            # 一份），而那段文本是通过 {{stack_ui}} 注入的 —— 排在前面就会被跳过。
+            sed -i "s|{{flutter_version}}|$FLUTTER_VER|" "$OUTPUT"
             sed -i "s|](docs/|]($DOC_PREFIX|g" "$OUTPUT"
           }
 
@@ -599,6 +625,8 @@ jobs:
             docs/*/README.md
 
   # ── Commit ──
+  # 只回写 i18n / README 这类由 CI 生成的产物。**版本号不在这里碰** ——
+  # pubspec 的 build 号由本地 .githooks/pre-commit 递增并随源码一起提交。
   commit:
     needs: [prep, test]
     if: always() && !cancelled()
@@ -607,13 +635,6 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
-
-      - name: Apply version update
-        if: needs.prep.outputs.new_build != '' && needs.test.result != 'failure'
-        run: |
-          NEW_VER="${{ needs.prep.outputs.version }}"
-          sed -i "s/^version: .*/version: $NEW_VER/" pubspec.yaml
-          grep '^version:' pubspec.yaml
 
       - name: Download i18n artifact
         if: needs.prep.outputs.i18n_do == 'true'
@@ -635,9 +656,6 @@ jobs:
           # 逐行攒数组、用真换行拼，不要写 "\n"：bash 双引号里的 \n 是两个字面字符，
           # 会原样进提交信息（曾写出 `- Update i18n.\n` 这种带反斜杠的行）。
           LINES=()
-          if [ -n "${{ needs.prep.outputs.new_build }}" ] && [ "${{ needs.test.result }}" != "failure" ]; then
-            LINES+=("- Update build number ${{ needs.prep.outputs.new_build }}.")
-          fi
           if [ "${{ needs.prep.outputs.i18n_do }}" == "true" ]; then
             LINES+=("- Update i18n.")
           fi
@@ -679,7 +697,7 @@ jobs:
           fi
           # -F - 从 stdin 读整条信息，所以不需要任何 \n 转义。
           # 末尾那个方括号标记是**必需**的：它让 GitHub 跳过这次 push 触发的 CI，
-          # 否则「push 出包 → 版本号回写 → 再触发」会死循环（ci_check 已钉成不变量）。
+          # 否则「push 出包 → i18n 回写 → 再触发」会死循环。
           { printf '%s\n\n' "$COMMIT_MSG"; echo '[skip ci]'; } | git commit -F -
           git pull --rebase origin "$GITHUB_REF_NAME" || true
           git push
@@ -698,6 +716,7 @@ jobs:
       linux_arm64: ${{ needs.prep.outputs.linux_arm64 == 'true' }}
       android_arm64: ${{ needs.prep.outputs.android_arm64 == 'true' }}
       android_x64: ${{ needs.prep.outputs.android_x64 == 'true' }}
+      macos_arm64: ${{ needs.prep.outputs.macos_arm64 == 'true' }}
     # 必须显式继承：workflow_call 的被调工作流默认拿不到调用方的 secret，
     # 不写这行时 build.yml 里的 secrets.ANDROID_KEYSTORE_* 恒为空 ——
     # 表现是「secret 配了但 APK 仍用 debug key 签名」，且只留一条 ::warning::。
@@ -733,9 +752,11 @@ jobs:
         env:
           CHANNEL: ${{ needs.prep.outputs.channel }}
           TAG: ${{ needs.prep.outputs.tag }}
+          IN_RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
         run: |
           WIN_CELL=""
           LINUX_CELL=""
+          MACOS_CELL=""
           ANDROID_CELL=""
           for f in artifacts/FlCroc-*; do
             [ -f "$f" ] || continue
@@ -752,16 +773,25 @@ jobs:
               *windows*)       WIN_CELL="$WIN_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-blue.svg?logo=windows\"></a><br>" ;;
               *linux-arm64*)   LINUX_CELL="$LINUX_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/ARM64-orange.svg?logo=linux\"></a><br>" ;;
               *linux*)         LINUX_CELL="$LINUX_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-orange.svg?logo=linux\"></a><br>" ;;
+              *macos-arm64*)   MACOS_CELL="$MACOS_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/ARM64-lightgrey.svg?logo=apple\"></a><br>" ;;
               *android-arm64*) ANDROID_CELL="$ANDROID_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/ARM64-green.svg?logo=android\"></a><br>" ;;
               *android*)       ANDROID_CELL="$ANDROID_CELL<a href=\"$URL\"><img src=\"https://img.shields.io/badge/x64-green.svg?logo=android\"></a><br>" ;;
             esac
           done
 
+          # 发行说明来自 dispatch 的 release_notes 输入，**追加在正文最上方**：自动
+          # 生成的 Commit / 警告 / 下载表全部保留，只是排在它下面。push 触发时没有
+          # 这个输入（github.event.inputs 里不存在），渲染成空串 → 整段不插入。
+          NOTES_HEAD=""
+          if [ -n "${IN_RELEASE_NOTES:-}" ]; then
+            NOTES_HEAD="${IN_RELEASE_NOTES}"$'\n\n'
+          fi
+
           # 旧 CI 这里是 "Automated dev-branch build" —— 那时 nightly 只在 dev 分支
           # 有平台构建时产生。现在 push main 与 workflow_dispatch 都能产出 nightly，
           # 且不限定分支（main / dev 都可能），故改成与分支无关的措辞。
           if [ "$CHANNEL" = "nightly" ]; then
-            BODY="**Commit**: \`$(git rev-parse --short HEAD)\`
+            BODY="${NOTES_HEAD}**Commit**: \`$(git rev-parse --short HEAD)\`
 
           $(git log -1 --pretty=%B)
 
@@ -769,7 +799,7 @@ jobs:
 
           "
           else
-            BODY=""
+            BODY="$NOTES_HEAD"
           fi
           BODY="${BODY}**Download based on your OS:**
 
@@ -777,6 +807,7 @@ jobs:
           <tr><th>Platform</th><th>Download</th></tr>"
           [ -n "$WIN_CELL" ] && BODY="$BODY<tr><td>Windows</td><td>$WIN_CELL</td></tr>"
           [ -n "$LINUX_CELL" ] && BODY="$BODY<tr><td>Linux</td><td>$LINUX_CELL</td></tr>"
+          [ -n "$MACOS_CELL" ] && BODY="$BODY<tr><td>macOS</td><td>$MACOS_CELL</td></tr>"
           [ -n "$ANDROID_CELL" ] && BODY="$BODY<tr><td>Android</td><td>$ANDROID_CELL</td></tr>"
           BODY="$BODY</table>"
           echo "body<<EOF" >> $GITHUB_OUTPUT
