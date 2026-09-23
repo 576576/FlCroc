@@ -113,6 +113,7 @@
   "phraseMode": "短语模式",
   "phraseModeOn": "由FlCroc管理",
   "autoCopyPhrase": "短语自动复制",
+  "crocClipboard": "允许 croc 写入系统剪贴板",
   "enterPhraseWarning": "请输入代码短语或选择\"默认\"",
   "enterTextWarning": "请输入文本。",
 

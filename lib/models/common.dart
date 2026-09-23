@@ -114,7 +114,13 @@ abstract class SendConfig with _$SendConfig {
     @Default(false) bool onlyLocal,
     @Default(false) bool disableLocal,
     @Default(false) bool showQrCode,
-    @Default(false) bool disableClipboard,
+
+    /// Opt-in: let croc copy the share code to the OS clipboard.
+    ///
+    /// Defaults to false — a GUI must not silently overwrite the user's
+    /// clipboard. (Replaces the old `disableClipboard` flag, which defaulted to
+    /// false and therefore kept hijacking the clipboard after upgrading.)
+    @Default(false) bool copyCodeToClipboard,
     @Default('') String codePhrase,
     @Default('') String socks5Proxy,
     @Default('') String httpProxy,

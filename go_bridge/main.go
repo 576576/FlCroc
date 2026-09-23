@@ -477,25 +477,36 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 
 	relayPorts := parseRelayPorts(opts.RelayPorts)
 
+	// croc's CLI copies the share code (and, in extended mode, the whole
+	// receive command) into the OS clipboard while printing its instructions.
+	// That silently destroys whatever the user had copied, and a GUI has no
+	// business doing it. Default to leaving the clipboard alone; the caller can
+	// still opt back in explicitly.
+	disableClipboard := true
+	if opts.DisableClipboard != nil {
+		disableClipboard = *opts.DisableClipboard
+	}
+
 	crocOpts := croc.Options{
-		IsSender:      true,
-		SharedSecret:  code,
-		Debug:         false,
-		RelayAddress:  relayAddr,
-		RelayAddress6: relayAddr6,
-		RelayPorts:    relayPorts,
-		RelayPassword: relayPass,
-		NoPrompt:      true,
-		DisableLocal:  opts.DisableLocal,
-		OnlyLocal:     opts.OnlyLocal,
-		Curve:         curve,
-		HashAlgorithm: hashAlgo,
-		NoCompress:    opts.NoCompress,
-		Overwrite:     opts.Overwrite,
-		ZipFolder:     opts.ZipFolder,
-		GitIgnore:     opts.GitIgnore,
-		SendingText:   sendingText,
-		Quiet:         true,
+		IsSender:         true,
+		SharedSecret:     code,
+		Debug:            false,
+		RelayAddress:     relayAddr,
+		RelayAddress6:    relayAddr6,
+		RelayPorts:       relayPorts,
+		RelayPassword:    relayPass,
+		NoPrompt:         true,
+		DisableLocal:     opts.DisableLocal,
+		OnlyLocal:        opts.OnlyLocal,
+		Curve:            curve,
+		HashAlgorithm:    hashAlgo,
+		NoCompress:       opts.NoCompress,
+		Overwrite:        opts.Overwrite,
+		ZipFolder:        opts.ZipFolder,
+		GitIgnore:        opts.GitIgnore,
+		SendingText:      sendingText,
+		Quiet:            true,
+		DisableClipboard: disableClipboard,
 	}
 
 	progressChan <- progressEvent{
@@ -725,6 +736,11 @@ type sendOptions struct {
 	SendingText   bool     `json:"sending_text"`
 	TextContent   string   `json:"text_content"`
 	TempDir       string   `json:"temp_dir"`
+
+	// DisableClipboard mirrors croc's --disable-clipboard. It is a pointer so
+	// that "field absent" can be told apart from an explicit false: the bridge
+	// defaults to NOT touching the system clipboard (see doSend).
+	DisableClipboard *bool `json:"disable_clipboard"`
 }
 
 type receiveOptions struct {

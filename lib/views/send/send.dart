@@ -500,6 +500,8 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       noCompress: _sendConfig.noCompress, overwrite: _sendConfig.overwrite,
       zipFolder: _sendConfig.zipFolder,
       onlyLocal: useNoRelay,
+      // A GUI must not clobber the clipboard unless the user asked for it.
+      disableClipboard: !_sendConfig.copyCodeToClipboard,
       relayAddress: useCustom ? relayConfig.address : null,
       relayPassword: useCustom ? relayConfig.password : null,
       relayPorts: useCustom ? relayConfig.port : null,
@@ -849,6 +851,14 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                 leading: const Icon(Icons.copy, size: 20),
                 title: Text(l10n.autoCopyPhrase),
                 delegate: SwitchDelegate(value: _autoCopyPhrase, onChanged: (v) => setState(() { _autoCopyPhrase = v; _saveSendPrefs(); })),
+              ),
+              ListItem.switchItem(
+                leading: const Icon(Icons.content_paste_go, size: 20),
+                title: Text(l10n.crocClipboard),
+                delegate: SwitchDelegate(
+                  value: _sendConfig.copyCodeToClipboard,
+                  onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(copyCodeToClipboard: v); _saveSendPrefs(); }),
+                ),
               ),
               ListItem.switchItem(
                 leading: const Icon(Icons.qr_code_2, size: 20),

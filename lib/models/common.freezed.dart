@@ -1029,7 +1029,13 @@ mixin _$SendConfig {
   bool get onlyLocal => throw _privateConstructorUsedError;
   bool get disableLocal => throw _privateConstructorUsedError;
   bool get showQrCode => throw _privateConstructorUsedError;
-  bool get disableClipboard => throw _privateConstructorUsedError;
+
+  /// Opt-in: let croc copy the share code to the OS clipboard.
+  ///
+  /// Defaults to false — a GUI must not silently overwrite the user's
+  /// clipboard. (Replaces the old `disableClipboard` flag, which defaulted to
+  /// false and therefore kept hijacking the clipboard after upgrading.)
+  bool get copyCodeToClipboard => throw _privateConstructorUsedError;
   String get codePhrase => throw _privateConstructorUsedError;
   String get socks5Proxy => throw _privateConstructorUsedError;
   String get httpProxy => throw _privateConstructorUsedError;
@@ -1063,7 +1069,7 @@ abstract class $SendConfigCopyWith<$Res> {
     bool onlyLocal,
     bool disableLocal,
     bool showQrCode,
-    bool disableClipboard,
+    bool copyCodeToClipboard,
     String codePhrase,
     String socks5Proxy,
     String httpProxy,
@@ -1096,7 +1102,7 @@ class _$SendConfigCopyWithImpl<$Res, $Val extends SendConfig>
     Object? onlyLocal = null,
     Object? disableLocal = null,
     Object? showQrCode = null,
-    Object? disableClipboard = null,
+    Object? copyCodeToClipboard = null,
     Object? codePhrase = null,
     Object? socks5Proxy = null,
     Object? httpProxy = null,
@@ -1141,9 +1147,9 @@ class _$SendConfigCopyWithImpl<$Res, $Val extends SendConfig>
                 ? _value.showQrCode
                 : showQrCode // ignore: cast_nullable_to_non_nullable
                       as bool,
-            disableClipboard: null == disableClipboard
-                ? _value.disableClipboard
-                : disableClipboard // ignore: cast_nullable_to_non_nullable
+            copyCodeToClipboard: null == copyCodeToClipboard
+                ? _value.copyCodeToClipboard
+                : copyCodeToClipboard // ignore: cast_nullable_to_non_nullable
                       as bool,
             codePhrase: null == codePhrase
                 ? _value.codePhrase
@@ -1190,7 +1196,7 @@ abstract class _$$SendConfigImplCopyWith<$Res>
     bool onlyLocal,
     bool disableLocal,
     bool showQrCode,
-    bool disableClipboard,
+    bool copyCodeToClipboard,
     String codePhrase,
     String socks5Proxy,
     String httpProxy,
@@ -1222,7 +1228,7 @@ class __$$SendConfigImplCopyWithImpl<$Res>
     Object? onlyLocal = null,
     Object? disableLocal = null,
     Object? showQrCode = null,
-    Object? disableClipboard = null,
+    Object? copyCodeToClipboard = null,
     Object? codePhrase = null,
     Object? socks5Proxy = null,
     Object? httpProxy = null,
@@ -1267,9 +1273,9 @@ class __$$SendConfigImplCopyWithImpl<$Res>
             ? _value.showQrCode
             : showQrCode // ignore: cast_nullable_to_non_nullable
                   as bool,
-        disableClipboard: null == disableClipboard
-            ? _value.disableClipboard
-            : disableClipboard // ignore: cast_nullable_to_non_nullable
+        copyCodeToClipboard: null == copyCodeToClipboard
+            ? _value.copyCodeToClipboard
+            : copyCodeToClipboard // ignore: cast_nullable_to_non_nullable
                   as bool,
         codePhrase: null == codePhrase
             ? _value.codePhrase
@@ -1309,7 +1315,7 @@ class _$SendConfigImpl implements _SendConfig {
     this.onlyLocal = false,
     this.disableLocal = false,
     this.showQrCode = false,
-    this.disableClipboard = false,
+    this.copyCodeToClipboard = false,
     this.codePhrase = '',
     this.socks5Proxy = '',
     this.httpProxy = '',
@@ -1347,9 +1353,15 @@ class _$SendConfigImpl implements _SendConfig {
   @override
   @JsonKey()
   final bool showQrCode;
+
+  /// Opt-in: let croc copy the share code to the OS clipboard.
+  ///
+  /// Defaults to false — a GUI must not silently overwrite the user's
+  /// clipboard. (Replaces the old `disableClipboard` flag, which defaulted to
+  /// false and therefore kept hijacking the clipboard after upgrading.)
   @override
   @JsonKey()
-  final bool disableClipboard;
+  final bool copyCodeToClipboard;
   @override
   @JsonKey()
   final String codePhrase;
@@ -1373,7 +1385,7 @@ class _$SendConfigImpl implements _SendConfig {
 
   @override
   String toString() {
-    return 'SendConfig(curve: $curve, hashAlgorithm: $hashAlgorithm, noCompress: $noCompress, overwrite: $overwrite, zipFolder: $zipFolder, gitIgnore: $gitIgnore, onlyLocal: $onlyLocal, disableLocal: $disableLocal, showQrCode: $showQrCode, disableClipboard: $disableClipboard, codePhrase: $codePhrase, socks5Proxy: $socks5Proxy, httpProxy: $httpProxy, throttleUpload: $throttleUpload, exclude: $exclude)';
+    return 'SendConfig(curve: $curve, hashAlgorithm: $hashAlgorithm, noCompress: $noCompress, overwrite: $overwrite, zipFolder: $zipFolder, gitIgnore: $gitIgnore, onlyLocal: $onlyLocal, disableLocal: $disableLocal, showQrCode: $showQrCode, copyCodeToClipboard: $copyCodeToClipboard, codePhrase: $codePhrase, socks5Proxy: $socks5Proxy, httpProxy: $httpProxy, throttleUpload: $throttleUpload, exclude: $exclude)';
   }
 
   @override
@@ -1398,8 +1410,8 @@ class _$SendConfigImpl implements _SendConfig {
                 other.disableLocal == disableLocal) &&
             (identical(other.showQrCode, showQrCode) ||
                 other.showQrCode == showQrCode) &&
-            (identical(other.disableClipboard, disableClipboard) ||
-                other.disableClipboard == disableClipboard) &&
+            (identical(other.copyCodeToClipboard, copyCodeToClipboard) ||
+                other.copyCodeToClipboard == copyCodeToClipboard) &&
             (identical(other.codePhrase, codePhrase) ||
                 other.codePhrase == codePhrase) &&
             (identical(other.socks5Proxy, socks5Proxy) ||
@@ -1424,7 +1436,7 @@ class _$SendConfigImpl implements _SendConfig {
     onlyLocal,
     disableLocal,
     showQrCode,
-    disableClipboard,
+    copyCodeToClipboard,
     codePhrase,
     socks5Proxy,
     httpProxy,
@@ -1457,7 +1469,7 @@ abstract class _SendConfig implements SendConfig {
     final bool onlyLocal,
     final bool disableLocal,
     final bool showQrCode,
-    final bool disableClipboard,
+    final bool copyCodeToClipboard,
     final String codePhrase,
     final String socks5Proxy,
     final String httpProxy,
@@ -1486,8 +1498,14 @@ abstract class _SendConfig implements SendConfig {
   bool get disableLocal;
   @override
   bool get showQrCode;
+
+  /// Opt-in: let croc copy the share code to the OS clipboard.
+  ///
+  /// Defaults to false — a GUI must not silently overwrite the user's
+  /// clipboard. (Replaces the old `disableClipboard` flag, which defaulted to
+  /// false and therefore kept hijacking the clipboard after upgrading.)
   @override
-  bool get disableClipboard;
+  bool get copyCodeToClipboard;
   @override
   String get codePhrase;
   @override

@@ -23,6 +23,11 @@ abstract class SendOptions with _$SendOptions {
     @Default('') String httpProxy,
     @Default('') String throttleUpload,
     @Default(<String>[]) List<String> exclude,
+
+    /// When true (the default) croc must not write the share code into the OS
+    /// clipboard. croc's CLI does that unconditionally while printing its
+    /// instructions, which clobbers whatever the user had copied.
+    @Default(true) bool disableClipboard,
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,

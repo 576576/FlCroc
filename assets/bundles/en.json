@@ -113,6 +113,7 @@
   "phraseMode": "Phrase Mode",
   "phraseModeOn": "By FlCroc",
   "autoCopyPhrase": "Auto-copy phrase",
+  "crocClipboard": "Let croc write the code to the clipboard",
   "enterPhraseWarning": "Enter code phrase or use default",
   "enterTextWarning": "Please enter text.",
 

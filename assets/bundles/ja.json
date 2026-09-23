@@ -113,6 +113,7 @@
   "phraseMode": "フレーズモード",
   "phraseModeOn": "FlCroc管理",
   "autoCopyPhrase": "フレーズを自動コピー",
+  "crocClipboard": "croc にクリップボードへの書き込みを許可",
   "enterPhraseWarning": "コードフレーズを入力するか「デフォルト」を選択してください",
   "enterTextWarning": "テキストを入力してください。",
 

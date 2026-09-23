@@ -38,6 +38,11 @@ mixin _$SendOptions {
   String get httpProxy => throw _privateConstructorUsedError;
   String get throttleUpload => throw _privateConstructorUsedError;
   List<String> get exclude => throw _privateConstructorUsedError;
+
+  /// When true (the default) croc must not write the share code into the OS
+  /// clipboard. croc's CLI does that unconditionally while printing its
+  /// instructions, which clobbers whatever the user had copied.
+  bool get disableClipboard => throw _privateConstructorUsedError;
   String? get relayAddress => throw _privateConstructorUsedError;
   String? get relayAddress6 => throw _privateConstructorUsedError;
   String? get relayPassword => throw _privateConstructorUsedError;
@@ -78,6 +83,7 @@ abstract class $SendOptionsCopyWith<$Res> {
     String httpProxy,
     String throttleUpload,
     List<String> exclude,
+    bool disableClipboard,
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,
@@ -117,6 +123,7 @@ class _$SendOptionsCopyWithImpl<$Res, $Val extends SendOptions>
     Object? httpProxy = null,
     Object? throttleUpload = null,
     Object? exclude = null,
+    Object? disableClipboard = null,
     Object? relayAddress = freezed,
     Object? relayAddress6 = freezed,
     Object? relayPassword = freezed,
@@ -192,6 +199,10 @@ class _$SendOptionsCopyWithImpl<$Res, $Val extends SendOptions>
                 ? _value.exclude
                 : exclude // ignore: cast_nullable_to_non_nullable
                       as List<String>,
+            disableClipboard: null == disableClipboard
+                ? _value.disableClipboard
+                : disableClipboard // ignore: cast_nullable_to_non_nullable
+                      as bool,
             relayAddress: freezed == relayAddress
                 ? _value.relayAddress
                 : relayAddress // ignore: cast_nullable_to_non_nullable
@@ -241,6 +252,7 @@ abstract class _$$SendOptionsImplCopyWith<$Res>
     String httpProxy,
     String throttleUpload,
     List<String> exclude,
+    bool disableClipboard,
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,
@@ -279,6 +291,7 @@ class __$$SendOptionsImplCopyWithImpl<$Res>
     Object? httpProxy = null,
     Object? throttleUpload = null,
     Object? exclude = null,
+    Object? disableClipboard = null,
     Object? relayAddress = freezed,
     Object? relayAddress6 = freezed,
     Object? relayPassword = freezed,
@@ -354,6 +367,10 @@ class __$$SendOptionsImplCopyWithImpl<$Res>
             ? _value._exclude
             : exclude // ignore: cast_nullable_to_non_nullable
                   as List<String>,
+        disableClipboard: null == disableClipboard
+            ? _value.disableClipboard
+            : disableClipboard // ignore: cast_nullable_to_non_nullable
+                  as bool,
         relayAddress: freezed == relayAddress
             ? _value.relayAddress
             : relayAddress // ignore: cast_nullable_to_non_nullable
@@ -396,6 +413,7 @@ class _$SendOptionsImpl implements _SendOptions {
     this.httpProxy = '',
     this.throttleUpload = '',
     final List<String> exclude = const <String>[],
+    this.disableClipboard = true,
     this.relayAddress,
     this.relayAddress6,
     this.relayPassword,
@@ -467,6 +485,12 @@ class _$SendOptionsImpl implements _SendOptions {
     return EqualUnmodifiableListView(_exclude);
   }
 
+  /// When true (the default) croc must not write the share code into the OS
+  /// clipboard. croc's CLI does that unconditionally while printing its
+  /// instructions, which clobbers whatever the user had copied.
+  @override
+  @JsonKey()
+  final bool disableClipboard;
   @override
   final String? relayAddress;
   @override
@@ -478,7 +502,7 @@ class _$SendOptionsImpl implements _SendOptions {
 
   @override
   String toString() {
-    return 'SendOptions(filePaths: $filePaths, codePhrase: $codePhrase, curve: $curve, hashAlgorithm: $hashAlgorithm, noCompress: $noCompress, overwrite: $overwrite, zipFolder: $zipFolder, gitIgnore: $gitIgnore, onlyLocal: $onlyLocal, disableLocal: $disableLocal, sendingText: $sendingText, textContent: $textContent, tempDir: $tempDir, socks5Proxy: $socks5Proxy, httpProxy: $httpProxy, throttleUpload: $throttleUpload, exclude: $exclude, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword, relayPorts: $relayPorts)';
+    return 'SendOptions(filePaths: $filePaths, codePhrase: $codePhrase, curve: $curve, hashAlgorithm: $hashAlgorithm, noCompress: $noCompress, overwrite: $overwrite, zipFolder: $zipFolder, gitIgnore: $gitIgnore, onlyLocal: $onlyLocal, disableLocal: $disableLocal, sendingText: $sendingText, textContent: $textContent, tempDir: $tempDir, socks5Proxy: $socks5Proxy, httpProxy: $httpProxy, throttleUpload: $throttleUpload, exclude: $exclude, disableClipboard: $disableClipboard, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword, relayPorts: $relayPorts)';
   }
 
   @override
@@ -519,6 +543,8 @@ class _$SendOptionsImpl implements _SendOptions {
             (identical(other.throttleUpload, throttleUpload) ||
                 other.throttleUpload == throttleUpload) &&
             const DeepCollectionEquality().equals(other._exclude, _exclude) &&
+            (identical(other.disableClipboard, disableClipboard) ||
+                other.disableClipboard == disableClipboard) &&
             (identical(other.relayAddress, relayAddress) ||
                 other.relayAddress == relayAddress) &&
             (identical(other.relayAddress6, relayAddress6) ||
@@ -550,6 +576,7 @@ class _$SendOptionsImpl implements _SendOptions {
     httpProxy,
     throttleUpload,
     const DeepCollectionEquality().hash(_exclude),
+    disableClipboard,
     relayAddress,
     relayAddress6,
     relayPassword,
@@ -589,6 +616,7 @@ abstract class _SendOptions implements SendOptions {
     final String httpProxy,
     final String throttleUpload,
     final List<String> exclude,
+    final bool disableClipboard,
     final String? relayAddress,
     final String? relayAddress6,
     final String? relayPassword,
@@ -632,6 +660,12 @@ abstract class _SendOptions implements SendOptions {
   String get throttleUpload;
   @override
   List<String> get exclude;
+
+  /// When true (the default) croc must not write the share code into the OS
+  /// clipboard. croc's CLI does that unconditionally while printing its
+  /// instructions, which clobbers whatever the user had copied.
+  @override
+  bool get disableClipboard;
   @override
   String? get relayAddress;
   @override

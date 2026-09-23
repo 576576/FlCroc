@@ -86,7 +86,7 @@ class AppLocalizations {
     'codePhrase', 'enterCodePhrase', 'phraseHintCroc', 'phraseHintRandom',
     'textHint', 'textSizeLimit', 'unlimited',
     'autoGeneratePhrase', 'phraseMode',
-    'phraseModeOn', 'autoCopyPhrase',
+    'phraseModeOn', 'autoCopyPhrase', 'crocClipboard',
     'enterPhraseWarning', 'enterTextWarning',
 
     // ── Receive ──
@@ -257,6 +257,7 @@ class AppLocalizations {
   String get phraseMode => _('phraseMode');
   String get phraseModeOn => _('phraseModeOn');
   String get autoCopyPhrase => _('autoCopyPhrase');
+  String get crocClipboard => _('crocClipboard');
   String get enterPhraseWarning => _('enterPhraseWarning');
   String get enterTextWarning => _('enterTextWarning');
 

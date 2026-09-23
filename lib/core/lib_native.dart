@@ -191,6 +191,9 @@ class CoreLib extends CoreInterface {
       }
       if (options.exclude.isNotEmpty) opts['exclude'] = options.exclude;
       if (options.tempDir.isNotEmpty) opts['temp_dir'] = options.tempDir;
+      // Always sent, so the bridge never has to guess. `true` keeps croc away
+      // from the OS clipboard.
+      opts['disable_clipboard'] = options.disableClipboard;
       final optsJson = jsonEncode(opts);
 
       final pathsPtr = pathsJson.toNativeUtf8();
