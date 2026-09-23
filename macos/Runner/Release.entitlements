@@ -4,5 +4,17 @@
 <dict>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
+	<!-- croc 要主动连 relay 与对端；沙盒下缺这一项 socket 直接 EPERM -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- 局域网直传要对端连回来，croc 同时会起监听套接字 -->
+	<key>com.apple.security.network.server</key>
+	<true/>
+	<!-- 选文件发送 / 选保存目录都走 file_picker -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<!-- 默认保存路径是系统 Downloads（AppPaths.getDefaultSavePath） -->
+	<key>com.apple.security.files.downloads.read-write</key>
+	<true/>
 </dict>
 </plist>

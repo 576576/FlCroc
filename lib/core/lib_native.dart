@@ -65,6 +65,15 @@ class CoreLib extends CoreInterface {
       if (File(localPath).existsSync()) {
         return DynamicLibrary.open(localPath);
       }
+      // macOS: the .app bundle keeps its dylib in Contents/Frameworks — that is
+      // where the bundle's rpath (@executable_path/../Frameworks) points, and the
+      // only nested-code location codesign seals properly.
+      if (Platform.isMacOS) {
+        final fwPath = '$exeDir/../Frameworks/$libName';
+        if (File(fwPath).existsSync()) {
+          return DynamicLibrary.open(fwPath);
+        }
+      }
       // Fallback: look in lib/ subdirectory (Linux bundle convention)
       final libPath = '$exeDir/lib/$libName';
       if (File(libPath).existsSync()) {
