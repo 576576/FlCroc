@@ -231,6 +231,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
     final options = ReceiveOptions(
       codePhrase: code,
       overwrite: _receiveConfig.overwrite,
+      rename: _receiveConfig.rename,
       onlyLocal: useNoRelay,
       outputPath: effectivePath,
       relayAddress: useCustom ? relayConfig.address : null,
@@ -599,6 +600,19 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                     onChanged: (v) {
                       setState(() {
                         _receiveConfig = _receiveConfig.copyWith(overwrite: v);
+                        _saveReceivePrefs();
+                      });
+                    },
+                  ),
+                ),
+                ListItem.switchItem(
+                  leading: const Icon(Icons.drive_file_rename_outline),
+                  title: Text(l10n.renameOnCollision),
+                  delegate: SwitchDelegate(
+                    value: _receiveConfig.rename,
+                    onChanged: (v) {
+                      setState(() {
+                        _receiveConfig = _receiveConfig.copyWith(rename: v);
                         _saveReceivePrefs();
                       });
                     },

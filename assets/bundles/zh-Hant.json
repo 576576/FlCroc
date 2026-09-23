@@ -139,6 +139,7 @@
   "hashAlgorithm": "雜湊演算法",
   "enableCompression": "啟用壓縮",
   "overwrite": "覆蓋檔案",
+  "renameOnCollision": "重名時自動改名",
   "zipFolder": "壓縮資料夾",
 
   "_comment_relay": "── 中繼 ──",

@@ -139,6 +139,7 @@ Map<String, dynamic> _$$SendConfigImplToJson(_$SendConfigImpl instance) =>
 _$ReceiveConfigImpl _$$ReceiveConfigImplFromJson(Map<String, dynamic> json) =>
     _$ReceiveConfigImpl(
       overwrite: json['overwrite'] as bool? ?? false,
+      rename: json['rename'] as bool? ?? true,
       onlyLocal: json['onlyLocal'] as bool? ?? false,
       outputPath: json['outputPath'] as String? ?? '',
     );
@@ -146,6 +147,7 @@ _$ReceiveConfigImpl _$$ReceiveConfigImplFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$$ReceiveConfigImplToJson(_$ReceiveConfigImpl instance) =>
     <String, dynamic>{
       'overwrite': instance.overwrite,
+      'rename': instance.rename,
       'onlyLocal': instance.onlyLocal,
       'outputPath': instance.outputPath,
     };

@@ -139,6 +139,7 @@
   "hashAlgorithm": "Algorithme de hachage",
   "enableCompression": "Activer la compression",
   "overwrite": "Écraser les fichiers",
+  "renameOnCollision": "Renommer en cas de conflit de nom",
   "zipFolder": "Compresser le dossier",
 
   "_comment_relay": "── Relais ──",

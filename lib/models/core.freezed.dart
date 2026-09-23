@@ -694,6 +694,12 @@ mixin _$ReceiveOptions {
   bool get onlyLocal => throw _privateConstructorUsedError;
   String get outputPath => throw _privateConstructorUsedError;
   String get curve => throw _privateConstructorUsedError;
+
+  /// When the destination name is already taken, save under an unused name
+  /// instead of letting croc ask "(y/N) Overwrite?" on stdin. Defaults to
+  /// true: the GUI has no stdin, so croc used to read the empty answer as
+  /// "no" and silently skip the file.
+  bool get rename => throw _privateConstructorUsedError;
   String? get relayAddress => throw _privateConstructorUsedError;
   String? get relayAddress6 => throw _privateConstructorUsedError;
   String? get relayPassword => throw _privateConstructorUsedError;
@@ -722,6 +728,7 @@ abstract class $ReceiveOptionsCopyWith<$Res> {
     bool onlyLocal,
     String outputPath,
     String curve,
+    bool rename,
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,
@@ -749,6 +756,7 @@ class _$ReceiveOptionsCopyWithImpl<$Res, $Val extends ReceiveOptions>
     Object? onlyLocal = null,
     Object? outputPath = null,
     Object? curve = null,
+    Object? rename = null,
     Object? relayAddress = freezed,
     Object? relayAddress6 = freezed,
     Object? relayPassword = freezed,
@@ -776,6 +784,10 @@ class _$ReceiveOptionsCopyWithImpl<$Res, $Val extends ReceiveOptions>
                 ? _value.curve
                 : curve // ignore: cast_nullable_to_non_nullable
                       as String,
+            rename: null == rename
+                ? _value.rename
+                : rename // ignore: cast_nullable_to_non_nullable
+                      as bool,
             relayAddress: freezed == relayAddress
                 ? _value.relayAddress
                 : relayAddress // ignore: cast_nullable_to_non_nullable
@@ -813,6 +825,7 @@ abstract class _$$ReceiveOptionsImplCopyWith<$Res>
     bool onlyLocal,
     String outputPath,
     String curve,
+    bool rename,
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,
@@ -839,6 +852,7 @@ class __$$ReceiveOptionsImplCopyWithImpl<$Res>
     Object? onlyLocal = null,
     Object? outputPath = null,
     Object? curve = null,
+    Object? rename = null,
     Object? relayAddress = freezed,
     Object? relayAddress6 = freezed,
     Object? relayPassword = freezed,
@@ -866,6 +880,10 @@ class __$$ReceiveOptionsImplCopyWithImpl<$Res>
             ? _value.curve
             : curve // ignore: cast_nullable_to_non_nullable
                   as String,
+        rename: null == rename
+            ? _value.rename
+            : rename // ignore: cast_nullable_to_non_nullable
+                  as bool,
         relayAddress: freezed == relayAddress
             ? _value.relayAddress
             : relayAddress // ignore: cast_nullable_to_non_nullable
@@ -896,6 +914,7 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
     this.onlyLocal = false,
     this.outputPath = '',
     this.curve = 'p256',
+    this.rename = true,
     this.relayAddress,
     this.relayAddress6,
     this.relayPassword,
@@ -919,6 +938,14 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
   @override
   @JsonKey()
   final String curve;
+
+  /// When the destination name is already taken, save under an unused name
+  /// instead of letting croc ask "(y/N) Overwrite?" on stdin. Defaults to
+  /// true: the GUI has no stdin, so croc used to read the empty answer as
+  /// "no" and silently skip the file.
+  @override
+  @JsonKey()
+  final bool rename;
   @override
   final String? relayAddress;
   @override
@@ -930,7 +957,7 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
 
   @override
   String toString() {
-    return 'ReceiveOptions(codePhrase: $codePhrase, overwrite: $overwrite, onlyLocal: $onlyLocal, outputPath: $outputPath, curve: $curve, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword, relayPorts: $relayPorts)';
+    return 'ReceiveOptions(codePhrase: $codePhrase, overwrite: $overwrite, onlyLocal: $onlyLocal, outputPath: $outputPath, curve: $curve, rename: $rename, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword, relayPorts: $relayPorts)';
   }
 
   @override
@@ -947,6 +974,7 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
             (identical(other.outputPath, outputPath) ||
                 other.outputPath == outputPath) &&
             (identical(other.curve, curve) || other.curve == curve) &&
+            (identical(other.rename, rename) || other.rename == rename) &&
             (identical(other.relayAddress, relayAddress) ||
                 other.relayAddress == relayAddress) &&
             (identical(other.relayAddress6, relayAddress6) ||
@@ -966,6 +994,7 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
     onlyLocal,
     outputPath,
     curve,
+    rename,
     relayAddress,
     relayAddress6,
     relayPassword,
@@ -996,6 +1025,7 @@ abstract class _ReceiveOptions implements ReceiveOptions {
     final bool onlyLocal,
     final String outputPath,
     final String curve,
+    final bool rename,
     final String? relayAddress,
     final String? relayAddress6,
     final String? relayPassword,
@@ -1015,6 +1045,13 @@ abstract class _ReceiveOptions implements ReceiveOptions {
   String get outputPath;
   @override
   String get curve;
+
+  /// When the destination name is already taken, save under an unused name
+  /// instead of letting croc ask "(y/N) Overwrite?" on stdin. Defaults to
+  /// true: the GUI has no stdin, so croc used to read the empty answer as
+  /// "no" and silently skip the file.
+  @override
+  bool get rename;
   @override
   String? get relayAddress;
   @override

@@ -136,6 +136,11 @@ abstract class SendConfig with _$SendConfig {
 abstract class ReceiveConfig with _$ReceiveConfig {
   const factory ReceiveConfig({
     @Default(false) bool overwrite,
+
+    /// Save under an unused name when the destination already exists.
+    /// Defaults to true — croc's overwrite prompt cannot be answered without a
+    /// stdin, and the empty answer used to make it skip the file entirely.
+    @Default(true) bool rename,
     @Default(false) bool onlyLocal,
     @Default('') String outputPath,
   }) = _ReceiveConfig;

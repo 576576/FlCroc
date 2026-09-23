@@ -593,6 +593,17 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		hashAlgo = defaultHashAlgo
 	}
 
+	// Default to croc's --rename behaviour. Without it croc asks
+	// "(y/N) Overwrite?" on stdin when the destination already exists
+	// (croc.go:3424 -> askReceiveOverwrite); a GUI has nothing on stdin, the
+	// read returns empty, the answer is read as "no", and croc `continue`s —
+	// the file is silently dropped. Renaming is the only lossless choice that
+	// needs no user interaction.
+	rename := true
+	if opts.Rename != nil {
+		rename = *opts.Rename
+	}
+
 	crocOpts := croc.Options{
 		IsSender:      false,
 		SharedSecret:  code,
@@ -606,6 +617,7 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		Curve:         curve,
 		HashAlgorithm: hashAlgo,
 		Overwrite:     opts.Overwrite,
+		Rename:        rename,
 		Quiet:         true,
 	}
 
@@ -753,6 +765,13 @@ type receiveOptions struct {
 	RelayAddress6 string `json:"relay_address6"`
 	RelayPassword string `json:"relay_password"`
 	RelayPorts    string `json:"relay_ports"`
+
+	// Rename mirrors croc's --rename: on a name collision the incoming file is
+	// saved under an unused name instead of prompting. Pointer for the same
+	// reason as sendOptions.DisableClipboard — nil means "default", and the
+	// default here is true, because a GUI has no stdin to answer croc's
+	// (y/N) prompt with, which used to make croc silently skip the file.
+	Rename *bool `json:"rename"`
 }
 
 // parseRelayPorts parses comma-separated port string into []string.

@@ -139,6 +139,7 @@
   "hashAlgorithm": "ハッシュアルゴリズム",
   "enableCompression": "圧縮を有効化",
   "overwrite": "ファイルを上書き",
+  "renameOnCollision": "名前が衝突したら自動リネーム",
   "zipFolder": "フォルダをZIP圧縮",
 
   "_comment_relay": "── リレー ──",

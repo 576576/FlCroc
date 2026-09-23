@@ -96,7 +96,7 @@ class AppLocalizations {
 
     // ── Settings: Transfer Options ──
     'options', 'transferOptions', 'encryptionCurve', 'hashAlgorithm',
-    'enableCompression', 'overwrite', 'zipFolder',
+    'enableCompression', 'overwrite', 'zipFolder', 'renameOnCollision',
 
     // ── Settings: Relay ──
     'relayType', 'relaySettings', 'relayAddress', 'relayPassword',
@@ -284,6 +284,7 @@ class AppLocalizations {
   String get enableCompression => _('enableCompression');
   String get overwrite => _('overwrite');
   String get zipFolder => _('zipFolder');
+  String get renameOnCollision => _('renameOnCollision');
 
   // ── Settings: Relay ──
   String get relayType => _('relayType');

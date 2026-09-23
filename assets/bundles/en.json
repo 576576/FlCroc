@@ -139,6 +139,7 @@
   "hashAlgorithm": "Hash Algorithm",
   "enableCompression": "Enable compression",
   "overwrite": "Overwrite",
+  "renameOnCollision": "Rename on name collision",
   "zipFolder": "Zip Folder",
 
   "_comment_relay": "── Relay ──",

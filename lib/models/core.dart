@@ -46,6 +46,12 @@ abstract class ReceiveOptions with _$ReceiveOptions {
     @Default(false) bool onlyLocal,
     @Default('') String outputPath,
     @Default('p256') String curve,
+
+    /// When the destination name is already taken, save under an unused name
+    /// instead of letting croc ask "(y/N) Overwrite?" on stdin. Defaults to
+    /// true: the GUI has no stdin, so croc used to read the empty answer as
+    /// "no" and silently skip the file.
+    @Default(true) bool rename,
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,

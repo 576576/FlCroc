@@ -139,6 +139,7 @@
   "hashAlgorithm": "哈希算法",
   "enableCompression": "启用压缩",
   "overwrite": "覆盖文件",
+  "renameOnCollision": "重名时自动改名",
   "zipFolder": "压缩文件夹",
 
   "_comment_relay": "── 中继 ──",

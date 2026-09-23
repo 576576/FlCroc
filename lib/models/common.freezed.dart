@@ -1532,6 +1532,11 @@ ReceiveConfig _$ReceiveConfigFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$ReceiveConfig {
   bool get overwrite => throw _privateConstructorUsedError;
+
+  /// Save under an unused name when the destination already exists.
+  /// Defaults to true — croc's overwrite prompt cannot be answered without a
+  /// stdin, and the empty answer used to make it skip the file entirely.
+  bool get rename => throw _privateConstructorUsedError;
   bool get onlyLocal => throw _privateConstructorUsedError;
   String get outputPath => throw _privateConstructorUsedError;
 
@@ -1552,7 +1557,7 @@ abstract class $ReceiveConfigCopyWith<$Res> {
     $Res Function(ReceiveConfig) then,
   ) = _$ReceiveConfigCopyWithImpl<$Res, ReceiveConfig>;
   @useResult
-  $Res call({bool overwrite, bool onlyLocal, String outputPath});
+  $Res call({bool overwrite, bool rename, bool onlyLocal, String outputPath});
 }
 
 /// @nodoc
@@ -1571,6 +1576,7 @@ class _$ReceiveConfigCopyWithImpl<$Res, $Val extends ReceiveConfig>
   @override
   $Res call({
     Object? overwrite = null,
+    Object? rename = null,
     Object? onlyLocal = null,
     Object? outputPath = null,
   }) {
@@ -1579,6 +1585,10 @@ class _$ReceiveConfigCopyWithImpl<$Res, $Val extends ReceiveConfig>
             overwrite: null == overwrite
                 ? _value.overwrite
                 : overwrite // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            rename: null == rename
+                ? _value.rename
+                : rename // ignore: cast_nullable_to_non_nullable
                       as bool,
             onlyLocal: null == onlyLocal
                 ? _value.onlyLocal
@@ -1603,7 +1613,7 @@ abstract class _$$ReceiveConfigImplCopyWith<$Res>
   ) = __$$ReceiveConfigImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({bool overwrite, bool onlyLocal, String outputPath});
+  $Res call({bool overwrite, bool rename, bool onlyLocal, String outputPath});
 }
 
 /// @nodoc
@@ -1621,6 +1631,7 @@ class __$$ReceiveConfigImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? overwrite = null,
+    Object? rename = null,
     Object? onlyLocal = null,
     Object? outputPath = null,
   }) {
@@ -1629,6 +1640,10 @@ class __$$ReceiveConfigImplCopyWithImpl<$Res>
         overwrite: null == overwrite
             ? _value.overwrite
             : overwrite // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        rename: null == rename
+            ? _value.rename
+            : rename // ignore: cast_nullable_to_non_nullable
                   as bool,
         onlyLocal: null == onlyLocal
             ? _value.onlyLocal
@@ -1648,6 +1663,7 @@ class __$$ReceiveConfigImplCopyWithImpl<$Res>
 class _$ReceiveConfigImpl implements _ReceiveConfig {
   const _$ReceiveConfigImpl({
     this.overwrite = false,
+    this.rename = true,
     this.onlyLocal = false,
     this.outputPath = '',
   });
@@ -1658,6 +1674,13 @@ class _$ReceiveConfigImpl implements _ReceiveConfig {
   @override
   @JsonKey()
   final bool overwrite;
+
+  /// Save under an unused name when the destination already exists.
+  /// Defaults to true — croc's overwrite prompt cannot be answered without a
+  /// stdin, and the empty answer used to make it skip the file entirely.
+  @override
+  @JsonKey()
+  final bool rename;
   @override
   @JsonKey()
   final bool onlyLocal;
@@ -1667,7 +1690,7 @@ class _$ReceiveConfigImpl implements _ReceiveConfig {
 
   @override
   String toString() {
-    return 'ReceiveConfig(overwrite: $overwrite, onlyLocal: $onlyLocal, outputPath: $outputPath)';
+    return 'ReceiveConfig(overwrite: $overwrite, rename: $rename, onlyLocal: $onlyLocal, outputPath: $outputPath)';
   }
 
   @override
@@ -1677,6 +1700,7 @@ class _$ReceiveConfigImpl implements _ReceiveConfig {
             other is _$ReceiveConfigImpl &&
             (identical(other.overwrite, overwrite) ||
                 other.overwrite == overwrite) &&
+            (identical(other.rename, rename) || other.rename == rename) &&
             (identical(other.onlyLocal, onlyLocal) ||
                 other.onlyLocal == onlyLocal) &&
             (identical(other.outputPath, outputPath) ||
@@ -1686,7 +1710,7 @@ class _$ReceiveConfigImpl implements _ReceiveConfig {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode =>
-      Object.hash(runtimeType, overwrite, onlyLocal, outputPath);
+      Object.hash(runtimeType, overwrite, rename, onlyLocal, outputPath);
 
   /// Create a copy of ReceiveConfig
   /// with the given fields replaced by the non-null parameter values.
@@ -1705,6 +1729,7 @@ class _$ReceiveConfigImpl implements _ReceiveConfig {
 abstract class _ReceiveConfig implements ReceiveConfig {
   const factory _ReceiveConfig({
     final bool overwrite,
+    final bool rename,
     final bool onlyLocal,
     final String outputPath,
   }) = _$ReceiveConfigImpl;
@@ -1714,6 +1739,12 @@ abstract class _ReceiveConfig implements ReceiveConfig {
 
   @override
   bool get overwrite;
+
+  /// Save under an unused name when the destination already exists.
+  /// Defaults to true — croc's overwrite prompt cannot be answered without a
+  /// stdin, and the empty answer used to make it skip the file entirely.
+  @override
+  bool get rename;
   @override
   bool get onlyLocal;
   @override

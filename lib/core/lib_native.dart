@@ -330,6 +330,9 @@ class CoreLib extends CoreInterface {
       if (options.curve != 'p256') opts['curve'] = options.curve;
       if (options.overwrite) opts['overwrite'] = true;
       if (options.onlyLocal) opts['only_local'] = true;
+      // Always sent: true keeps croc from asking on stdin (and silently
+      // skipping the file) when the destination name is taken.
+      opts['rename'] = options.rename;
       if (options.outputPath.isNotEmpty) opts['output_path'] = options.outputPath;
       if (options.relayAddress != null && options.relayAddress!.isNotEmpty) {
         opts['relay_address'] = options.relayAddress;
