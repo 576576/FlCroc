@@ -143,6 +143,11 @@
   "zipFolder": "Zip Folder",
   "respectGitIgnore": "Respect .gitignore",
   "disableLocalRelay": "Disable LAN direct",
+  "transportMode": "Transport",
+  "transportAuto": "Auto",
+  "transportDerp": "Prefer direct",
+  "transportRelay": "Relay only",
+  "transportLocalConflict": "Transport must be Auto when the relay is disabled",
   "excludePatterns": "Exclude patterns",
   "excludePatternsHint": "Comma separated, e.g. .log, node_modules",
 

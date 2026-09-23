@@ -143,6 +143,11 @@
   "zipFolder": "Compresser le dossier",
   "respectGitIgnore": "Respecter .gitignore",
   "disableLocalRelay": "Désactiver le direct LAN",
+  "transportMode": "Transport",
+  "transportAuto": "Auto",
+  "transportDerp": "Direct prioritaire",
+  "transportRelay": "Relais uniquement",
+  "transportLocalConflict": "Le transport doit être Auto lorsque le relais est désactivé",
   "excludePatterns": "Motifs à exclure",
   "excludePatternsHint": "Séparés par des virgules, ex. .log, node_modules",
 

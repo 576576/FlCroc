@@ -126,6 +126,9 @@ abstract class SendConfig with _$SendConfig {
     @Default('') String httpProxy,
     @Default('') String throttleUpload,
     @Default(<String>[]) List<String> exclude,
+
+    /// Sender file-data channel: `auto`, `derp` or `relay` (croc --transport).
+    @Default('auto') String transport,
   }) = _SendConfig;
 
   factory SendConfig.fromJson(Map<String, Object?> json) =>

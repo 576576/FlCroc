@@ -1042,6 +1042,9 @@ mixin _$SendConfig {
   String get throttleUpload => throw _privateConstructorUsedError;
   List<String> get exclude => throw _privateConstructorUsedError;
 
+  /// Sender file-data channel: `auto`, `derp` or `relay` (croc --transport).
+  String get transport => throw _privateConstructorUsedError;
+
   /// Serializes this SendConfig to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
@@ -1075,6 +1078,7 @@ abstract class $SendConfigCopyWith<$Res> {
     String httpProxy,
     String throttleUpload,
     List<String> exclude,
+    String transport,
   });
 }
 
@@ -1108,6 +1112,7 @@ class _$SendConfigCopyWithImpl<$Res, $Val extends SendConfig>
     Object? httpProxy = null,
     Object? throttleUpload = null,
     Object? exclude = null,
+    Object? transport = null,
   }) {
     return _then(
       _value.copyWith(
@@ -1171,6 +1176,10 @@ class _$SendConfigCopyWithImpl<$Res, $Val extends SendConfig>
                 ? _value.exclude
                 : exclude // ignore: cast_nullable_to_non_nullable
                       as List<String>,
+            transport: null == transport
+                ? _value.transport
+                : transport // ignore: cast_nullable_to_non_nullable
+                      as String,
           )
           as $Val,
     );
@@ -1202,6 +1211,7 @@ abstract class _$$SendConfigImplCopyWith<$Res>
     String httpProxy,
     String throttleUpload,
     List<String> exclude,
+    String transport,
   });
 }
 
@@ -1234,6 +1244,7 @@ class __$$SendConfigImplCopyWithImpl<$Res>
     Object? httpProxy = null,
     Object? throttleUpload = null,
     Object? exclude = null,
+    Object? transport = null,
   }) {
     return _then(
       _$SendConfigImpl(
@@ -1297,6 +1308,10 @@ class __$$SendConfigImplCopyWithImpl<$Res>
             ? _value._exclude
             : exclude // ignore: cast_nullable_to_non_nullable
                   as List<String>,
+        transport: null == transport
+            ? _value.transport
+            : transport // ignore: cast_nullable_to_non_nullable
+                  as String,
       ),
     );
   }
@@ -1321,6 +1336,7 @@ class _$SendConfigImpl implements _SendConfig {
     this.httpProxy = '',
     this.throttleUpload = '',
     final List<String> exclude = const <String>[],
+    this.transport = 'auto',
   }) : _exclude = exclude;
 
   factory _$SendConfigImpl.fromJson(Map<String, dynamic> json) =>
@@ -1383,9 +1399,14 @@ class _$SendConfigImpl implements _SendConfig {
     return EqualUnmodifiableListView(_exclude);
   }
 
+  /// Sender file-data channel: `auto`, `derp` or `relay` (croc --transport).
+  @override
+  @JsonKey()
+  final String transport;
+
   @override
   String toString() {
-    return 'SendConfig(curve: $curve, hashAlgorithm: $hashAlgorithm, noCompress: $noCompress, overwrite: $overwrite, zipFolder: $zipFolder, gitIgnore: $gitIgnore, onlyLocal: $onlyLocal, disableLocal: $disableLocal, showQrCode: $showQrCode, copyCodeToClipboard: $copyCodeToClipboard, codePhrase: $codePhrase, socks5Proxy: $socks5Proxy, httpProxy: $httpProxy, throttleUpload: $throttleUpload, exclude: $exclude)';
+    return 'SendConfig(curve: $curve, hashAlgorithm: $hashAlgorithm, noCompress: $noCompress, overwrite: $overwrite, zipFolder: $zipFolder, gitIgnore: $gitIgnore, onlyLocal: $onlyLocal, disableLocal: $disableLocal, showQrCode: $showQrCode, copyCodeToClipboard: $copyCodeToClipboard, codePhrase: $codePhrase, socks5Proxy: $socks5Proxy, httpProxy: $httpProxy, throttleUpload: $throttleUpload, exclude: $exclude, transport: $transport)';
   }
 
   @override
@@ -1420,7 +1441,9 @@ class _$SendConfigImpl implements _SendConfig {
                 other.httpProxy == httpProxy) &&
             (identical(other.throttleUpload, throttleUpload) ||
                 other.throttleUpload == throttleUpload) &&
-            const DeepCollectionEquality().equals(other._exclude, _exclude));
+            const DeepCollectionEquality().equals(other._exclude, _exclude) &&
+            (identical(other.transport, transport) ||
+                other.transport == transport));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1442,6 +1465,7 @@ class _$SendConfigImpl implements _SendConfig {
     httpProxy,
     throttleUpload,
     const DeepCollectionEquality().hash(_exclude),
+    transport,
   );
 
   /// Create a copy of SendConfig
@@ -1475,6 +1499,7 @@ abstract class _SendConfig implements SendConfig {
     final String httpProxy,
     final String throttleUpload,
     final List<String> exclude,
+    final String transport,
   }) = _$SendConfigImpl;
 
   factory _SendConfig.fromJson(Map<String, dynamic> json) =
@@ -1516,6 +1541,10 @@ abstract class _SendConfig implements SendConfig {
   String get throttleUpload;
   @override
   List<String> get exclude;
+
+  /// Sender file-data channel: `auto`, `derp` or `relay` (croc --transport).
+  @override
+  String get transport;
 
   /// Create a copy of SendConfig
   /// with the given fields replaced by the non-null parameter values.

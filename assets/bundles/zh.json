@@ -143,6 +143,11 @@
   "zipFolder": "压缩文件夹",
   "respectGitIgnore": "遵守 .gitignore",
   "disableLocalRelay": "禁用局域网直连",
+  "transportMode": "传输通道",
+  "transportAuto": "自动",
+  "transportDerp": "直连优先",
+  "transportRelay": "仅中继",
+  "transportLocalConflict": "关闭中继时，传输通道只能是「自动」",
   "excludePatterns": "排除规则",
   "excludePatternsHint": "逗号分隔，例如 .log, node_modules",
 

@@ -115,6 +115,7 @@ _$SendConfigImpl _$$SendConfigImplFromJson(Map<String, dynamic> json) =>
               ?.map((e) => e as String)
               .toList() ??
           const <String>[],
+      transport: json['transport'] as String? ?? 'auto',
     );
 
 Map<String, dynamic> _$$SendConfigImplToJson(_$SendConfigImpl instance) =>
@@ -134,6 +135,7 @@ Map<String, dynamic> _$$SendConfigImplToJson(_$SendConfigImpl instance) =>
       'httpProxy': instance.httpProxy,
       'throttleUpload': instance.throttleUpload,
       'exclude': instance.exclude,
+      'transport': instance.transport,
     };
 
 _$ReceiveConfigImpl _$$ReceiveConfigImplFromJson(Map<String, dynamic> json) =>

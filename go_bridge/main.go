@@ -487,6 +487,14 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 		disableClipboard = *opts.DisableClipboard
 	}
 
+	// Validate here so an unknown value surfaces as a readable error instead of
+	// a croc.New failure. Empty means "auto".
+	transport, err := croc.ParseTransportMode(opts.Transport)
+	if err != nil {
+		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: err.Error()}
+		return
+	}
+
 	crocOpts := croc.Options{
 		IsSender:         true,
 		SharedSecret:     code,
@@ -507,6 +515,7 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 		SendingText:      sendingText,
 		Quiet:            true,
 		DisableClipboard: disableClipboard,
+		Transport:        transport,
 	}
 
 	progressChan <- progressEvent{
@@ -753,6 +762,11 @@ type sendOptions struct {
 	// that "field absent" can be told apart from an explicit false: the bridge
 	// defaults to NOT touching the system clipboard (see doSend).
 	DisableClipboard *bool `json:"disable_clipboard"`
+
+	// Transport selects the sender's file-data channel: "auto" (default),
+	// "derp" (prefer the Tailcat/WireGuard direct path) or "relay".
+	// croc rejects anything else, and rejects non-auto for receivers.
+	Transport string `json:"transport"`
 }
 
 type receiveOptions struct {

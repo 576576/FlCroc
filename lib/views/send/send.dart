@@ -462,6 +462,13 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     final useNoRelay = relayConfig.type == RelayType.noRelay;
     final useCustom = relayConfig.type == RelayType.customRelay;
 
+    // croc refuses a non-auto transport together with --local (OnlyLocal), so
+    // fall back to auto rather than letting croc.New fail mid-flight.
+    final transport = useNoRelay ? 'auto' : _sendConfig.transport;
+    if (useNoRelay && _sendConfig.transport != 'auto' && mounted) {
+      context.showSnackBar(l10n.transportLocalConflict);
+    }
+
     // Resolve file paths for Go bridge (Android content URIs → temp files)
     final resolvedPaths = <String>[];
     String? tempDirPath;
@@ -505,6 +512,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       gitIgnore: _sendConfig.gitIgnore,
       disableLocal: _sendConfig.disableLocal,
       exclude: _sendConfig.exclude,
+      transport: transport,
       onlyLocal: useNoRelay,
       // A GUI must not clobber the clipboard unless the user asked for it.
       disableClipboard: !_sendConfig.copyCodeToClipboard,
@@ -872,6 +880,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                 delegate: SwitchDelegate(value: _whiteBgQR, onChanged: (v) => setState(() { _whiteBgQR = v; _saveSendPrefs(); })),
               ),
               ListItem(leading: const Icon(Icons.show_chart), title: Text(l10n.encryptionCurve), subtitle: _buildCurveChips(l10n)),
+              ListItem(leading: const Icon(Icons.swap_calls), title: Text(l10n.transportMode), subtitle: _buildTransportChips(l10n)),
               ListItem(leading: const Icon(Icons.tag), title: Text(l10n.hashAlgorithm), subtitle: _buildHashChips(l10n)),
               ListItem.switchItem(leading: const Icon(Icons.compress), title: Text(l10n.enableCompression), delegate: SwitchDelegate(value: !_sendConfig.noCompress, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(noCompress: !v); _saveSendPrefs(); }))),
               ListItem.switchItem(leading: const Icon(Icons.folder_zip), title: Text(l10n.zipFolder), delegate: SwitchDelegate(value: _sendConfig.zipFolder, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(zipFolder: v); _saveSendPrefs(); }))),
@@ -1084,6 +1093,28 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
             );
           }),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTransportChips(AppLocalizations l10n) {
+    // Values must match croc.TransportMode (auto / derp / relay).
+    final options = <String, String>{
+      'auto': l10n.transportAuto,
+      'derp': l10n.transportDerp,
+      'relay': l10n.transportRelay,
+    };
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Wrap(
+        spacing: 8,
+        children: options.entries.map((e) {
+          return ChoiceChip(
+            label: Text(e.value),
+            selected: _sendConfig.transport == e.key,
+            onSelected: (v) { if (v) setState(() { _sendConfig = _sendConfig.copyWith(transport: e.key); _saveSendPrefs(); }); },
+          );
+        }).toList(),
       ),
     );
   }

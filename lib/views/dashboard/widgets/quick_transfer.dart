@@ -468,6 +468,8 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
       disableLocal: sendConfig.disableLocal,
       exclude: sendConfig.exclude,
       disableClipboard: !sendConfig.copyCodeToClipboard,
+      // croc rejects a non-auto transport together with --local.
+      transport: relayConfig.type == RelayType.noRelay ? 'auto' : sendConfig.transport,
       onlyLocal: relayConfig.type == RelayType.noRelay,
       relayAddress: relayConfig.type == RelayType.customRelay ? relayConfig.address : null,
       relayPassword: relayConfig.type == RelayType.customRelay ? relayConfig.password : null,

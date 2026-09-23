@@ -98,6 +98,8 @@ class AppLocalizations {
     'options', 'transferOptions', 'encryptionCurve', 'hashAlgorithm',
     'enableCompression', 'overwrite', 'zipFolder', 'renameOnCollision',
     'respectGitIgnore', 'disableLocalRelay', 'excludePatterns', 'excludePatternsHint',
+    'transportMode', 'transportAuto', 'transportDerp', 'transportRelay',
+    'transportLocalConflict',
 
     // ── Settings: Relay ──
     'relayType', 'relaySettings', 'relayAddress', 'relayPassword',
@@ -290,6 +292,11 @@ class AppLocalizations {
   String get disableLocalRelay => _('disableLocalRelay');
   String get excludePatterns => _('excludePatterns');
   String get excludePatternsHint => _('excludePatternsHint');
+  String get transportMode => _('transportMode');
+  String get transportAuto => _('transportAuto');
+  String get transportDerp => _('transportDerp');
+  String get transportRelay => _('transportRelay');
+  String get transportLocalConflict => _('transportLocalConflict');
 
   // ── Settings: Relay ──
   String get relayType => _('relayType');

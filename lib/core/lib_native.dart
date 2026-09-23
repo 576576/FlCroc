@@ -194,6 +194,7 @@ class CoreLib extends CoreInterface {
       // Always sent, so the bridge never has to guess. `true` keeps croc away
       // from the OS clipboard.
       opts['disable_clipboard'] = options.disableClipboard;
+      opts['transport'] = options.transport;
       final optsJson = jsonEncode(opts);
 
       final pathsPtr = pathsJson.toNativeUtf8();

@@ -143,6 +143,11 @@
   "zipFolder": "フォルダをZIP圧縮",
   "respectGitIgnore": ".gitignore を尊重",
   "disableLocalRelay": "LAN 直接接続を無効化",
+  "transportMode": "転送経路",
+  "transportAuto": "自動",
+  "transportDerp": "直接接続を優先",
+  "transportRelay": "リレーのみ",
+  "transportLocalConflict": "リレー無効時は「自動」のみ選択できます",
   "excludePatterns": "除外パターン",
   "excludePatternsHint": "カンマ区切り、例: .log, node_modules",
 

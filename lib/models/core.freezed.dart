@@ -43,6 +43,11 @@ mixin _$SendOptions {
   /// clipboard. croc's CLI does that unconditionally while printing its
   /// instructions, which clobbers whatever the user had copied.
   bool get disableClipboard => throw _privateConstructorUsedError;
+
+  /// Sender file-data channel: `auto` (default), `derp` (prefer the direct
+  /// Tailcat/WireGuard path) or `relay`. Sender-only — croc rejects any
+  /// non-auto value on the receiving side.
+  String get transport => throw _privateConstructorUsedError;
   String? get relayAddress => throw _privateConstructorUsedError;
   String? get relayAddress6 => throw _privateConstructorUsedError;
   String? get relayPassword => throw _privateConstructorUsedError;
@@ -84,6 +89,7 @@ abstract class $SendOptionsCopyWith<$Res> {
     String throttleUpload,
     List<String> exclude,
     bool disableClipboard,
+    String transport,
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,
@@ -124,6 +130,7 @@ class _$SendOptionsCopyWithImpl<$Res, $Val extends SendOptions>
     Object? throttleUpload = null,
     Object? exclude = null,
     Object? disableClipboard = null,
+    Object? transport = null,
     Object? relayAddress = freezed,
     Object? relayAddress6 = freezed,
     Object? relayPassword = freezed,
@@ -203,6 +210,10 @@ class _$SendOptionsCopyWithImpl<$Res, $Val extends SendOptions>
                 ? _value.disableClipboard
                 : disableClipboard // ignore: cast_nullable_to_non_nullable
                       as bool,
+            transport: null == transport
+                ? _value.transport
+                : transport // ignore: cast_nullable_to_non_nullable
+                      as String,
             relayAddress: freezed == relayAddress
                 ? _value.relayAddress
                 : relayAddress // ignore: cast_nullable_to_non_nullable
@@ -253,6 +264,7 @@ abstract class _$$SendOptionsImplCopyWith<$Res>
     String throttleUpload,
     List<String> exclude,
     bool disableClipboard,
+    String transport,
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,
@@ -292,6 +304,7 @@ class __$$SendOptionsImplCopyWithImpl<$Res>
     Object? throttleUpload = null,
     Object? exclude = null,
     Object? disableClipboard = null,
+    Object? transport = null,
     Object? relayAddress = freezed,
     Object? relayAddress6 = freezed,
     Object? relayPassword = freezed,
@@ -371,6 +384,10 @@ class __$$SendOptionsImplCopyWithImpl<$Res>
             ? _value.disableClipboard
             : disableClipboard // ignore: cast_nullable_to_non_nullable
                   as bool,
+        transport: null == transport
+            ? _value.transport
+            : transport // ignore: cast_nullable_to_non_nullable
+                  as String,
         relayAddress: freezed == relayAddress
             ? _value.relayAddress
             : relayAddress // ignore: cast_nullable_to_non_nullable
@@ -414,6 +431,7 @@ class _$SendOptionsImpl implements _SendOptions {
     this.throttleUpload = '',
     final List<String> exclude = const <String>[],
     this.disableClipboard = true,
+    this.transport = 'auto',
     this.relayAddress,
     this.relayAddress6,
     this.relayPassword,
@@ -491,6 +509,13 @@ class _$SendOptionsImpl implements _SendOptions {
   @override
   @JsonKey()
   final bool disableClipboard;
+
+  /// Sender file-data channel: `auto` (default), `derp` (prefer the direct
+  /// Tailcat/WireGuard path) or `relay`. Sender-only — croc rejects any
+  /// non-auto value on the receiving side.
+  @override
+  @JsonKey()
+  final String transport;
   @override
   final String? relayAddress;
   @override
@@ -502,7 +527,7 @@ class _$SendOptionsImpl implements _SendOptions {
 
   @override
   String toString() {
-    return 'SendOptions(filePaths: $filePaths, codePhrase: $codePhrase, curve: $curve, hashAlgorithm: $hashAlgorithm, noCompress: $noCompress, overwrite: $overwrite, zipFolder: $zipFolder, gitIgnore: $gitIgnore, onlyLocal: $onlyLocal, disableLocal: $disableLocal, sendingText: $sendingText, textContent: $textContent, tempDir: $tempDir, socks5Proxy: $socks5Proxy, httpProxy: $httpProxy, throttleUpload: $throttleUpload, exclude: $exclude, disableClipboard: $disableClipboard, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword, relayPorts: $relayPorts)';
+    return 'SendOptions(filePaths: $filePaths, codePhrase: $codePhrase, curve: $curve, hashAlgorithm: $hashAlgorithm, noCompress: $noCompress, overwrite: $overwrite, zipFolder: $zipFolder, gitIgnore: $gitIgnore, onlyLocal: $onlyLocal, disableLocal: $disableLocal, sendingText: $sendingText, textContent: $textContent, tempDir: $tempDir, socks5Proxy: $socks5Proxy, httpProxy: $httpProxy, throttleUpload: $throttleUpload, exclude: $exclude, disableClipboard: $disableClipboard, transport: $transport, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword, relayPorts: $relayPorts)';
   }
 
   @override
@@ -545,6 +570,8 @@ class _$SendOptionsImpl implements _SendOptions {
             const DeepCollectionEquality().equals(other._exclude, _exclude) &&
             (identical(other.disableClipboard, disableClipboard) ||
                 other.disableClipboard == disableClipboard) &&
+            (identical(other.transport, transport) ||
+                other.transport == transport) &&
             (identical(other.relayAddress, relayAddress) ||
                 other.relayAddress == relayAddress) &&
             (identical(other.relayAddress6, relayAddress6) ||
@@ -577,6 +604,7 @@ class _$SendOptionsImpl implements _SendOptions {
     throttleUpload,
     const DeepCollectionEquality().hash(_exclude),
     disableClipboard,
+    transport,
     relayAddress,
     relayAddress6,
     relayPassword,
@@ -617,6 +645,7 @@ abstract class _SendOptions implements SendOptions {
     final String throttleUpload,
     final List<String> exclude,
     final bool disableClipboard,
+    final String transport,
     final String? relayAddress,
     final String? relayAddress6,
     final String? relayPassword,
@@ -666,6 +695,12 @@ abstract class _SendOptions implements SendOptions {
   /// instructions, which clobbers whatever the user had copied.
   @override
   bool get disableClipboard;
+
+  /// Sender file-data channel: `auto` (default), `derp` (prefer the direct
+  /// Tailcat/WireGuard path) or `relay`. Sender-only — croc rejects any
+  /// non-auto value on the receiving side.
+  @override
+  String get transport;
   @override
   String? get relayAddress;
   @override

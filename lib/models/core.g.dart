@@ -32,6 +32,7 @@ _$SendOptionsImpl _$$SendOptionsImplFromJson(Map<String, dynamic> json) =>
               .toList() ??
           const <String>[],
       disableClipboard: json['disableClipboard'] as bool? ?? true,
+      transport: json['transport'] as String? ?? 'auto',
       relayAddress: json['relayAddress'] as String?,
       relayAddress6: json['relayAddress6'] as String?,
       relayPassword: json['relayPassword'] as String?,
@@ -58,6 +59,7 @@ Map<String, dynamic> _$$SendOptionsImplToJson(_$SendOptionsImpl instance) =>
       'throttleUpload': instance.throttleUpload,
       'exclude': instance.exclude,
       'disableClipboard': instance.disableClipboard,
+      'transport': instance.transport,
       'relayAddress': instance.relayAddress,
       'relayAddress6': instance.relayAddress6,
       'relayPassword': instance.relayPassword,

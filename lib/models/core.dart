@@ -28,6 +28,11 @@ abstract class SendOptions with _$SendOptions {
     /// clipboard. croc's CLI does that unconditionally while printing its
     /// instructions, which clobbers whatever the user had copied.
     @Default(true) bool disableClipboard,
+
+    /// Sender file-data channel: `auto` (default), `derp` (prefer the direct
+    /// Tailcat/WireGuard path) or `relay`. Sender-only — croc rejects any
+    /// non-auto value on the receiving side.
+    @Default('auto') String transport,
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,
