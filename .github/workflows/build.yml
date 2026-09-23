@@ -252,11 +252,28 @@ jobs:
         run: |
           apt-get update -qq
           apt-get install -y -qq git ca-certificates
+          # 容器以 root 运行，而 /__w 是从宿主 /home/runner/work 挂进来的 bind mount，
+          # 属主是 runner 用户。git 2.34.1 带 dubious-ownership 检查（CVE-2022-24765
+          # 的 backport），root 操作别人拥有的仓库会直接 exit 128。
+          # actions/checkout 自己那份 safe.directory 写在**临时 HOME** 里，出了它那一步
+          # 就没了 —— 于是第一个被绊倒的是 `go build` 的 VCS stamping，报
+          # 「error obtaining VCS status: exit status 128」，且看不到 git 的原始错误。
+          # 用 --system 落到 /etc/gitconfig：不依赖 HOME，容器内后续所有 step 都有效。
+          git config --system --add safe.directory "${GITHUB_WORKSPACE}"
+          git config --system --get-all safe.directory
 
       - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0
+
+      # 把上面的推断当场验证掉：safe.directory 一旦失效就在这里失败，而不是等到
+      # go build 抛一句难查的 exit status 128。
+      - name: Assert git can operate on the repo
+        run: |
+          git -C "$GITHUB_WORKSPACE" rev-parse --short HEAD
+          git -C "$GITHUB_WORKSPACE" status --porcelain >/dev/null
+          echo "✓ 容器内 git 可正常操作仓库"
 
       - name: Apply version
         run: |
@@ -378,15 +395,25 @@ jobs:
       FLUTTER_SDK: ${{ github.workspace }}/.flutter-sdk
     steps:
       # 同 build-linux：裸 ubuntu 镜像没有 git，而 checkout 就需要它。
+      # safe.directory 的理由见 build-linux 的 Install git 步骤 —— 同样是容器以 root
+      # 操作 runner 用户拥有的 bind mount，不设就会让 go build 的 VCS stamping 挂掉。
       - name: Install git (base image has none)
         run: |
           apt-get update -qq
           apt-get install -y -qq git ca-certificates
+          git config --system --add safe.directory "${GITHUB_WORKSPACE}"
+          git config --system --get-all safe.directory
 
       - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0
+
+      - name: Assert git can operate on the repo
+        run: |
+          git -C "$GITHUB_WORKSPACE" rev-parse --short HEAD
+          git -C "$GITHUB_WORKSPACE" status --porcelain >/dev/null
+          echo "✓ 容器内 git 可正常操作仓库"
 
       - name: Apply version
         run: |
