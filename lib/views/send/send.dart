@@ -47,6 +47,9 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   static const _defaultTextLimit = 10000;
   final _limitCtrl = TextEditingController();
 
+  // Comma-separated substrings excluded from the transfer (croc --exclude).
+  final _excludeCtrl = TextEditingController();
+
   // Live progress reported by the bridge (type-1 events, see CoreLib._liveProgress).
   double _progress = 0;
   double _speed = 0;
@@ -172,6 +175,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     _codeController.dispose();
     _shakeCtrl.dispose();
     _limitCtrl.dispose();
+    _excludeCtrl.dispose();
     super.dispose();
   }
 
@@ -339,7 +343,6 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
   // ── Persistence ──
 
-  static const _prefSendConfig = 'send_config';
   static const _prefAutoCopy = 'send_autoCopy';
   static const _prefPhraseMode = 'send_phraseMode';
   static const _prefIsTextMode = 'send_isTextMode';
@@ -347,10 +350,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   static const _prefWhiteBgQR = 'send_whiteBgQR';
 
   void _loadSendPrefs() {
-    final json = AppPrefs.getJson(_prefSendConfig);
-    if (json.isNotEmpty) {
-      _sendConfig = SendConfig.fromJson(json);
-    }
+    _sendConfig = SendConfig.load();
     _autoCopyPhrase = AppPrefs.getBool(_prefAutoCopy);
     final pmIdx = AppPrefs.getString(_prefPhraseMode);
     if (pmIdx.isNotEmpty) {
@@ -365,10 +365,11 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
         _limitCtrl.text = _textByteLimit.toString();
       }
     }
+    _excludeCtrl.text = _sendConfig.exclude.join(', ');
   }
 
   void _saveSendPrefs() {
-    AppPrefs.setJson(_prefSendConfig, _sendConfig.toJson());
+    _sendConfig.save();
     AppPrefs.setBool(_prefAutoCopy, _autoCopyPhrase);
     AppPrefs.setString(_prefPhraseMode, _phraseMode.index.toString());
     AppPrefs.setBool(_prefIsTextMode, _isTextMode);
@@ -499,6 +500,11 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       curve: _sendConfig.curve, hashAlgorithm: _sendConfig.hashAlgorithm,
       noCompress: _sendConfig.noCompress, overwrite: _sendConfig.overwrite,
       zipFolder: _sendConfig.zipFolder,
+      // These three were declared in SendConfig but never reached the bridge,
+      // so the toggles below silently did nothing.
+      gitIgnore: _sendConfig.gitIgnore,
+      disableLocal: _sendConfig.disableLocal,
+      exclude: _sendConfig.exclude,
       onlyLocal: useNoRelay,
       // A GUI must not clobber the clipboard unless the user asked for it.
       disableClipboard: !_sendConfig.copyCodeToClipboard,
@@ -869,6 +875,35 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
               ListItem(leading: const Icon(Icons.tag), title: Text(l10n.hashAlgorithm), subtitle: _buildHashChips(l10n)),
               ListItem.switchItem(leading: const Icon(Icons.compress), title: Text(l10n.enableCompression), delegate: SwitchDelegate(value: !_sendConfig.noCompress, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(noCompress: !v); _saveSendPrefs(); }))),
               ListItem.switchItem(leading: const Icon(Icons.folder_zip), title: Text(l10n.zipFolder), delegate: SwitchDelegate(value: _sendConfig.zipFolder, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(zipFolder: v); _saveSendPrefs(); }))),
+              ListItem.switchItem(leading: const Icon(Icons.description_outlined), title: Text(l10n.respectGitIgnore), delegate: SwitchDelegate(value: _sendConfig.gitIgnore, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(gitIgnore: v); _saveSendPrefs(); }))),
+              ListItem.switchItem(leading: const Icon(Icons.lan_outlined), title: Text(l10n.disableLocalRelay), delegate: SwitchDelegate(value: _sendConfig.disableLocal, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(disableLocal: v); _saveSendPrefs(); }))),
+              ListItem(
+                leading: const Icon(Icons.filter_alt_outlined),
+                title: Text(l10n.excludePatterns),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: TextField(
+                    controller: _excludeCtrl,
+                    style: const TextStyle(fontSize: 13),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: l10n.excludePatternsHint,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      border: const OutlineInputBorder(),
+                    ),
+                    onChanged: (v) {
+                      // croc treats --exclude entries as plain substrings.
+                      final patterns = v
+                          .split(',')
+                          .map((s) => s.trim())
+                          .where((s) => s.isNotEmpty)
+                          .toList();
+                      _sendConfig = _sendConfig.copyWith(exclude: patterns);
+                      _saveSendPrefs();
+                    },
+                  ),
+                ),
+              ),
               ListItem(
                 leading: const Icon(Icons.text_snippet),
                 title: Text(l10n.textSizeLimit),

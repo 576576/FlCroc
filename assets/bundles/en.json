@@ -141,6 +141,10 @@
   "overwrite": "Overwrite",
   "renameOnCollision": "Rename on name collision",
   "zipFolder": "Zip Folder",
+  "respectGitIgnore": "Respect .gitignore",
+  "disableLocalRelay": "Disable LAN direct",
+  "excludePatterns": "Exclude patterns",
+  "excludePatternsHint": "Comma separated, e.g. .log, node_modules",
 
   "_comment_relay": "── Relay ──",
   "relayType": "Relay Type",

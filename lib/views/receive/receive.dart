@@ -95,17 +95,12 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
 
   // ── Persistence ──
 
-  static const _prefReceiveConfig = 'receive_config';
-
   void _loadReceivePrefs() {
-    final json = AppPrefs.getJson(_prefReceiveConfig);
-    if (json.isNotEmpty) {
-      _receiveConfig = ReceiveConfig.fromJson(json);
-    }
+    _receiveConfig = ReceiveConfig.load();
   }
 
   void _saveReceivePrefs() {
-    AppPrefs.setJson(_prefReceiveConfig, _receiveConfig.toJson());
+    _receiveConfig.save();
   }
 
   /// Build FileItem list from received file names, detecting folders.

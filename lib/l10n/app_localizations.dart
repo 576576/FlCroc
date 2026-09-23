@@ -97,6 +97,7 @@ class AppLocalizations {
     // ── Settings: Transfer Options ──
     'options', 'transferOptions', 'encryptionCurve', 'hashAlgorithm',
     'enableCompression', 'overwrite', 'zipFolder', 'renameOnCollision',
+    'respectGitIgnore', 'disableLocalRelay', 'excludePatterns', 'excludePatternsHint',
 
     // ── Settings: Relay ──
     'relayType', 'relaySettings', 'relayAddress', 'relayPassword',
@@ -285,6 +286,10 @@ class AppLocalizations {
   String get overwrite => _('overwrite');
   String get zipFolder => _('zipFolder');
   String get renameOnCollision => _('renameOnCollision');
+  String get respectGitIgnore => _('respectGitIgnore');
+  String get disableLocalRelay => _('disableLocalRelay');
+  String get excludePatterns => _('excludePatterns');
+  String get excludePatternsHint => _('excludePatternsHint');
 
   // ── Settings: Relay ──
   String get relayType => _('relayType');

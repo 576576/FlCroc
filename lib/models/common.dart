@@ -130,6 +130,24 @@ abstract class SendConfig with _$SendConfig {
 
   factory SendConfig.fromJson(Map<String, Object?> json) =>
       _$SendConfigFromJson(json);
+
+  /// SharedPreferences key holding the persisted send options.
+  static const prefKey = 'send_config';
+
+  /// Reads the persisted send options.
+  ///
+  /// Every entry point that can start a send must go through this, otherwise a
+  /// transfer started from somewhere else silently ignores the user's choices.
+  static SendConfig load() => SendConfig.fromJson(AppPrefs.getJson(prefKey));
+}
+
+/// Persistence helper for [SendConfig].
+///
+/// Declared as an extension because freezed generates its implementation with
+/// `implements`, so a concrete instance method on the freezed class itself
+/// would also have to be implemented by the generated class.
+extension SendConfigPrefs on SendConfig {
+  void save() => AppPrefs.setJson(SendConfig.prefKey, toJson());
 }
 
 @freezed
@@ -147,4 +165,16 @@ abstract class ReceiveConfig with _$ReceiveConfig {
 
   factory ReceiveConfig.fromJson(Map<String, Object?> json) =>
       _$ReceiveConfigFromJson(json);
+
+  /// SharedPreferences key holding the persisted receive options.
+  static const prefKey = 'receive_config';
+
+  static ReceiveConfig load() =>
+      ReceiveConfig.fromJson(AppPrefs.getJson(prefKey));
+}
+
+/// Persistence helper for [ReceiveConfig]. See [SendConfigPrefs] for why this
+/// is an extension rather than a method on the class.
+extension ReceiveConfigPrefs on ReceiveConfig {
+  void save() => AppPrefs.setJson(ReceiveConfig.prefKey, toJson());
 }

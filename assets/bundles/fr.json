@@ -141,6 +141,10 @@
   "overwrite": "Écraser les fichiers",
   "renameOnCollision": "Renommer en cas de conflit de nom",
   "zipFolder": "Compresser le dossier",
+  "respectGitIgnore": "Respecter .gitignore",
+  "disableLocalRelay": "Désactiver le direct LAN",
+  "excludePatterns": "Motifs à exclure",
+  "excludePatternsHint": "Séparés par des virgules, ex. .log, node_modules",
 
   "_comment_relay": "── Relais ──",
   "relayType": "Type de relais",

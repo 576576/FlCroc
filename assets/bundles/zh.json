@@ -141,6 +141,10 @@
   "overwrite": "覆盖文件",
   "renameOnCollision": "重名时自动改名",
   "zipFolder": "压缩文件夹",
+  "respectGitIgnore": "遵守 .gitignore",
+  "disableLocalRelay": "禁用局域网直连",
+  "excludePatterns": "排除规则",
+  "excludePatternsHint": "逗号分隔，例如 .log, node_modules",
 
   "_comment_relay": "── 中继 ──",
   "relayType": "中继类型",

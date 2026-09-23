@@ -141,6 +141,10 @@
   "overwrite": "ファイルを上書き",
   "renameOnCollision": "名前が衝突したら自動リネーム",
   "zipFolder": "フォルダをZIP圧縮",
+  "respectGitIgnore": ".gitignore を尊重",
+  "disableLocalRelay": "LAN 直接接続を無効化",
+  "excludePatterns": "除外パターン",
+  "excludePatternsHint": "カンマ区切り、例: .log, node_modules",
 
   "_comment_relay": "── リレー ──",
   "relayType": "中継種類",

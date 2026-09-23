@@ -429,6 +429,9 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
 
     final code = _quickSendCode.isNotEmpty ? _quickSendCode : null;
     final relayConfig = ref.read(appSettingProvider).relayConfig;
+    // Mirror the Send page: a transfer started from the dashboard must honour
+    // the same persisted options instead of silently falling back to defaults.
+    final sendConfig = SendConfig.load();
 
     final files = _isTextMode
         ? [FileItem(name: _textCtrl.text.trim(), path: '', size: _textCtrl.text.trim().length)]
@@ -456,6 +459,15 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
       sendingText: _isTextMode,
       textContent: _isTextMode ? _textCtrl.text.trim() : '',
       tempDir: tempDirPath ?? '',
+      curve: sendConfig.curve,
+      hashAlgorithm: sendConfig.hashAlgorithm,
+      noCompress: sendConfig.noCompress,
+      overwrite: sendConfig.overwrite,
+      zipFolder: sendConfig.zipFolder,
+      gitIgnore: sendConfig.gitIgnore,
+      disableLocal: sendConfig.disableLocal,
+      exclude: sendConfig.exclude,
+      disableClipboard: !sendConfig.copyCodeToClipboard,
       onlyLocal: relayConfig.type == RelayType.noRelay,
       relayAddress: relayConfig.type == RelayType.customRelay ? relayConfig.address : null,
       relayPassword: relayConfig.type == RelayType.customRelay ? relayConfig.password : null,
@@ -555,9 +567,14 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
     _activeRecord = record;
 
     final relayConfig = ref.read(appSettingProvider).relayConfig;
+    // Same reasoning as _quickSend: reuse the options persisted by the
+    // Receive page so the dashboard card behaves identically.
+    final receiveConfig = ReceiveConfig.load();
     final outputPath = AppPaths.savePathSync;
     final options = ReceiveOptions(
       codePhrase: code,
+      overwrite: receiveConfig.overwrite,
+      rename: receiveConfig.rename,
       onlyLocal: relayConfig.type == RelayType.noRelay,
       outputPath: outputPath,
       relayAddress: relayConfig.type == RelayType.customRelay ? relayConfig.address : null,
