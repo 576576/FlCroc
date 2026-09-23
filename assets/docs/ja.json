@@ -9,7 +9,7 @@
 
   "_comment_features": "── 機能 ──",
   "feat_table": {
-    "platform": "クロスプラットフォーム (Windows、Linux、Android)",
+    "platform": "クロスプラットフォーム (Windows、Linux、macOS、Android)",
     "encryption": "croc によるエンドツーエンド暗号化ファイル転送",
     "i18n": "ネイティブ多言語サポート (詳細は [i18n.md](docs/i18n.md) を参照)",
     "theme": "アダプティブレイアウト、アニメーション、カスタム配色を備えたモダンな Flutter UI"
@@ -43,7 +43,7 @@
     "l_backend": "バックエンド",
     "l_i18n": "国際化",
     "l_ci": "CI/CD",
-    "ui": "Flutter 3.44 · Material 3",
+    "ui": "Flutter {{flutter_version}} · Material 3",
     "state": "Riverpod · Freezed",
     "backend": "Go CGO FFI · croc サブモジュール",
     "i18n": "JSON バンドル",

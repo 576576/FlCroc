@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux-blue" alt="Platform">
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS%20%7C%20Android-blue" alt="Platform">
   <img src="https://img.shields.io/badge/license-GPL v3-green" alt="License">
   <img alt="version" src="https://img.shields.io/badge/version-1.2.4-informational" />
   <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.47.4-02569B?logo=flutter" />
@@ -24,7 +24,7 @@
 
 | | 機能 |
 |---|-----|
-| 🖥️ | クロスプラットフォーム (Windows、Linux、Android) |
+| 🖥️ | クロスプラットフォーム (Windows、Linux、macOS、Android) |
 | 🔒 | croc によるエンドツーエンド暗号化ファイル転送 |
 | 🌍 | ネイティブ多言語サポート (詳細は [i18n.md](../i18n.md) を参照) |
 | 🌙 | アダプティブレイアウト、アニメーション、カスタム配色を備えたモダンな Flutter UI |
@@ -55,7 +55,7 @@ FlCroc/
 
 | レイヤー | 技術 |
 |-------|------------|
-| UI | Flutter 3.44 · Material 3 |
+| UI | Flutter 3.47.5 · Material 3 |
 | 状態管理 | Riverpod · Freezed |
 | バックエンド | Go CGO FFI · croc サブモジュール |
 | 国際化 | JSON バンドル |

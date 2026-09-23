@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux-blue" alt="Platform">
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS%20%7C%20Android-blue" alt="Platform">
   <img src="https://img.shields.io/badge/license-GPL v3-green" alt="License">
   <img alt="version" src="https://img.shields.io/badge/version-1.2.4-informational" />
   <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.47.4-02569B?logo=flutter" />
@@ -24,7 +24,7 @@
 
 | | 功能特性 |
 |---|-----|
-| 🖥️ | 跨平台 (Windows、Linux、Android) |
+| 🖥️ | 跨平台 (Windows、Linux、macOS、Android) |
 | 🔒 | 通過 croc 實現端到端加密文件傳輸 |
 | 🌍 | 原生多語言支持 (詳見 [i18n.md](../i18n.md)) |
 | 🌙 | 現代的 Flutter UI，具有自適應頁面、動畫和自定義配色方案 |
@@ -55,7 +55,7 @@ FlCroc/
 
 | 層級 | 技術 |
 |-------|------------|
-| UI | Flutter 3.44 · Material 3 |
+| UI | Flutter 3.47.5 · Material 3 |
 | 狀態管理 | Riverpod · Freezed |
 | 後端 | Go CGO FFI · croc 子模塊 |
 | 國際化 | JSON 語言包 |

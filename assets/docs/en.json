@@ -9,7 +9,7 @@
 
   "_comment_features": "── Features ──",
   "feat_table": {
-    "platform": "Cross-platform (Windows, Linux, Android)",
+    "platform": "Cross-platform (Windows, Linux, macOS, Android)",
     "encryption": "End-to-end encrypted file transfer via croc",
     "i18n": "Native multi-language support (see [i18n.md](docs/i18n.md) for details)",
     "theme": "Modern Flutter UI with adaptive layout, animations, and custom color schemes"
@@ -43,7 +43,7 @@
     "l_backend": "Backend",
     "l_i18n": "I18n",
     "l_ci": "CI/CD",
-    "ui": "Flutter 3.44 · Material 3",
+    "ui": "Flutter {{flutter_version}} · Material 3",
     "state": "Riverpod · Freezed",
     "backend": "Go CGO FFI · croc submodule",
     "i18n": "JSON bundles",

@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux-blue" alt="Platform">
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS%20%7C%20Android-blue" alt="Platform">
   <img src="https://img.shields.io/badge/license-GPL v3-green" alt="License">
   <img alt="version" src="https://img.shields.io/badge/version-1.2.4-informational" />
   <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.47.4-02569B?logo=flutter" />
@@ -24,7 +24,7 @@
 
 | | Fonctionnalités |
 |---|-----|
-| 🖥️ | Multi-plateforme (Windows, Linux, Android) |
+| 🖥️ | Multi-plateforme (Windows, Linux, macOS, Android) |
 | 🔒 | Transfert de fichiers chiffré de bout en bout via croc |
 | 🌍 | Support multilingue natif (voir [i18n.md](../i18n.md) pour plus de détails) |
 | 🌙 | Interface Flutter moderne avec mise en page adaptative, animations et thèmes personnalisés |
@@ -55,7 +55,7 @@ FlCroc/
 
 | Couche | Technologie |
 |-------|------------|
-| UI | Flutter 3.44 · Material 3 |
+| UI | Flutter 3.47.5 · Material 3 |
 | État | Riverpod · Freezed |
 | Backend | Go CGO FFI · sous-module croc |
 | I18n | Bundles JSON |

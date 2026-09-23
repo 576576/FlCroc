@@ -9,7 +9,7 @@
 
   "_comment_features": "── 功能特性 ──",
   "feat_table": {
-    "platform": "跨平台 (Windows、Linux、Android)",
+    "platform": "跨平台 (Windows、Linux、macOS、Android)",
     "encryption": "通過 croc 實現端到端加密文件傳輸",
     "i18n": "原生多語言支持 (詳見 [i18n.md](docs/i18n.md))",
     "theme": "現代的 Flutter UI，具有自適應頁面、動畫和自定義配色方案"
@@ -43,7 +43,7 @@
     "l_backend": "後端",
     "l_i18n": "國際化",
     "l_ci": "CI/CD",
-    "ui": "Flutter 3.44 · Material 3",
+    "ui": "Flutter {{flutter_version}} · Material 3",
     "state": "Riverpod · Freezed",
     "backend": "Go CGO FFI · croc 子模塊",
     "i18n": "JSON 語言包",
