@@ -57,6 +57,8 @@ abstract class ReceiveOptions with _$ReceiveOptions {
     /// true: the GUI has no stdin, so croc used to read the empty answer as
     /// "no" and silently skip the file.
     @Default(true) bool rename,
+    @Default('') String socks5Proxy,
+    @Default('') String httpProxy,
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,

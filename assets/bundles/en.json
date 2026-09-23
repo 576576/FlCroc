@@ -148,6 +148,11 @@
   "transportDerp": "Prefer direct",
   "transportRelay": "Relay only",
   "transportLocalConflict": "Transport must be Auto when the relay is disabled",
+  "throttleUpload": "Upload limit",
+  "throttleUploadHint": "e.g. 500k or 5m; empty means unlimited",
+  "socks5Proxy": "SOCKS5 proxy",
+  "httpProxy": "HTTP proxy",
+  "proxyHint": "e.g. 127.0.0.1:1080",
   "excludePatterns": "Exclude patterns",
   "excludePatternsHint": "Comma separated, e.g. .log, node_modules",
 

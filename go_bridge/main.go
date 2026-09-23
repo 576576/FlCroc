@@ -22,11 +22,14 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 	"unsafe"
 
+	"github.com/schollz/croc/v11/src/comm"
 	"github.com/schollz/croc/v11/src/croc"
 	"github.com/schollz/croc/v11/src/models"
 	"github.com/schollz/croc/v11/src/utils"
@@ -495,6 +498,14 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 		return
 	}
 
+	throttle, err := normalizeThrottle(opts.ThrottleUpload)
+	if err != nil {
+		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: err.Error()}
+		return
+	}
+
+	applyProxies(opts.Socks5Proxy, opts.HttpProxy)
+
 	crocOpts := croc.Options{
 		IsSender:         true,
 		SharedSecret:     code,
@@ -516,6 +527,7 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 		Quiet:            true,
 		DisableClipboard: disableClipboard,
 		Transport:        transport,
+		ThrottleUpload:   throttle,
 	}
 
 	progressChan <- progressEvent{
@@ -612,6 +624,8 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 	if opts.Rename != nil {
 		rename = *opts.Rename
 	}
+
+	applyProxies(opts.Socks5Proxy, opts.HttpProxy)
 
 	crocOpts := croc.Options{
 		IsSender:      false,
@@ -767,6 +781,15 @@ type sendOptions struct {
 	// "derp" (prefer the Tailcat/WireGuard direct path) or "relay".
 	// croc rejects anything else, and rejects non-auto for receivers.
 	Transport string `json:"transport"`
+
+	// ThrottleUpload caps the upload rate, croc syntax: digits with an optional
+	// k/m/g suffix ("500k", "5m", "1048576").
+	ThrottleUpload string `json:"throttle_upload"`
+
+	// Socks5Proxy / HttpProxy are applied to croc's package-level proxy globals
+	// (see applyProxies).
+	Socks5Proxy string `json:"socks5_proxy"`
+	HttpProxy   string `json:"http_proxy"`
 }
 
 type receiveOptions struct {
@@ -786,6 +809,10 @@ type receiveOptions struct {
 	// default here is true, because a GUI has no stdin to answer croc's
 	// (y/N) prompt with, which used to make croc silently skip the file.
 	Rename *bool `json:"rename"`
+
+	// Proxy configuration; see applyProxies.
+	Socks5Proxy string `json:"socks5_proxy"`
+	HttpProxy   string `json:"http_proxy"`
 }
 
 // parseRelayPorts parses comma-separated port string into []string.
@@ -821,6 +848,55 @@ func defaultRelayPorts() []string {
 
 const defaultCurve = "p256"
 const defaultHashAlgo = "xxhash"
+
+// ── Upload throttle ─────────────────────────────────────────
+
+// throttleRe matches croc's accepted --throttleUpload syntax: a positive
+// integer with an optional single unit suffix (k/m/g, case-insensitive).
+var throttleRe = regexp.MustCompile(`^[0-9]+[kKmMgG]?$`)
+
+// normalizeThrottle validates an upload limit and returns the string to hand to
+// croc ("" meaning "no limit").
+//
+// This has to be validated on our side: croc panics on a malformed value
+// ("Could not parse given Upload Limit", croc.go:447/461) and a panic inside a
+// c-shared library takes the whole host process — the Flutter app — down with
+// it. A zero limit is equally fatal, because croc divides by it when building
+// the rate limiter.
+func normalizeThrottle(raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", nil
+	}
+	if !throttleRe.MatchString(raw) {
+		return "", fmt.Errorf("invalid upload limit %q: expected digits with an optional k/m/g suffix, e.g. 500k", raw)
+	}
+	amount, err := strconv.ParseInt(strings.TrimRight(raw, "kKmMgG"), 10, 64)
+	if err != nil {
+		return "", fmt.Errorf("invalid upload limit %q: %v", raw, err)
+	}
+	if amount <= 0 {
+		// "0" and "0k" would both make croc divide by zero. Treat them as
+		// "no limit" rather than rejecting an otherwise harmless input.
+		return "", nil
+	}
+	return raw, nil
+}
+
+// ── Proxies ─────────────────────────────────────────────────
+
+// applyProxies points croc at the configured SOCKS5 / HTTP proxies.
+//
+// croc reads these from package-level globals in src/comm, so they must be set
+// before croc.New dials anything. Because they are process-wide, only one proxy
+// configuration can be in flight at a time; the bridge drives a single transfer
+// at a time, so that constraint is acceptable. Assigning unconditionally —
+// including the empty string — also stops one transfer's proxy from leaking
+// into the next.
+func applyProxies(socks5, httpProxy string) {
+	comm.Socks5Proxy = socks5
+	comm.HttpProxy = httpProxy
+}
 
 // Fallback relay addresses used when models.DEFAULT_RELAY / DEFAULT_RELAY6
 // resolve to empty (e.g. DNS failure during croc's init()).

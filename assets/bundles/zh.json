@@ -148,6 +148,11 @@
   "transportDerp": "直连优先",
   "transportRelay": "仅中继",
   "transportLocalConflict": "关闭中继时，传输通道只能是「自动」",
+  "throttleUpload": "上传限速",
+  "throttleUploadHint": "例如 500k、5m，留空不限速",
+  "socks5Proxy": "SOCKS5 代理",
+  "httpProxy": "HTTP 代理",
+  "proxyHint": "例如 127.0.0.1:1080",
   "excludePatterns": "排除规则",
   "excludePatternsHint": "逗号分隔，例如 .log, node_modules",
 

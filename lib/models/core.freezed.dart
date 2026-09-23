@@ -735,6 +735,8 @@ mixin _$ReceiveOptions {
   /// true: the GUI has no stdin, so croc used to read the empty answer as
   /// "no" and silently skip the file.
   bool get rename => throw _privateConstructorUsedError;
+  String get socks5Proxy => throw _privateConstructorUsedError;
+  String get httpProxy => throw _privateConstructorUsedError;
   String? get relayAddress => throw _privateConstructorUsedError;
   String? get relayAddress6 => throw _privateConstructorUsedError;
   String? get relayPassword => throw _privateConstructorUsedError;
@@ -764,6 +766,8 @@ abstract class $ReceiveOptionsCopyWith<$Res> {
     String outputPath,
     String curve,
     bool rename,
+    String socks5Proxy,
+    String httpProxy,
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,
@@ -792,6 +796,8 @@ class _$ReceiveOptionsCopyWithImpl<$Res, $Val extends ReceiveOptions>
     Object? outputPath = null,
     Object? curve = null,
     Object? rename = null,
+    Object? socks5Proxy = null,
+    Object? httpProxy = null,
     Object? relayAddress = freezed,
     Object? relayAddress6 = freezed,
     Object? relayPassword = freezed,
@@ -823,6 +829,14 @@ class _$ReceiveOptionsCopyWithImpl<$Res, $Val extends ReceiveOptions>
                 ? _value.rename
                 : rename // ignore: cast_nullable_to_non_nullable
                       as bool,
+            socks5Proxy: null == socks5Proxy
+                ? _value.socks5Proxy
+                : socks5Proxy // ignore: cast_nullable_to_non_nullable
+                      as String,
+            httpProxy: null == httpProxy
+                ? _value.httpProxy
+                : httpProxy // ignore: cast_nullable_to_non_nullable
+                      as String,
             relayAddress: freezed == relayAddress
                 ? _value.relayAddress
                 : relayAddress // ignore: cast_nullable_to_non_nullable
@@ -861,6 +875,8 @@ abstract class _$$ReceiveOptionsImplCopyWith<$Res>
     String outputPath,
     String curve,
     bool rename,
+    String socks5Proxy,
+    String httpProxy,
     String? relayAddress,
     String? relayAddress6,
     String? relayPassword,
@@ -888,6 +904,8 @@ class __$$ReceiveOptionsImplCopyWithImpl<$Res>
     Object? outputPath = null,
     Object? curve = null,
     Object? rename = null,
+    Object? socks5Proxy = null,
+    Object? httpProxy = null,
     Object? relayAddress = freezed,
     Object? relayAddress6 = freezed,
     Object? relayPassword = freezed,
@@ -919,6 +937,14 @@ class __$$ReceiveOptionsImplCopyWithImpl<$Res>
             ? _value.rename
             : rename // ignore: cast_nullable_to_non_nullable
                   as bool,
+        socks5Proxy: null == socks5Proxy
+            ? _value.socks5Proxy
+            : socks5Proxy // ignore: cast_nullable_to_non_nullable
+                  as String,
+        httpProxy: null == httpProxy
+            ? _value.httpProxy
+            : httpProxy // ignore: cast_nullable_to_non_nullable
+                  as String,
         relayAddress: freezed == relayAddress
             ? _value.relayAddress
             : relayAddress // ignore: cast_nullable_to_non_nullable
@@ -950,6 +976,8 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
     this.outputPath = '',
     this.curve = 'p256',
     this.rename = true,
+    this.socks5Proxy = '',
+    this.httpProxy = '',
     this.relayAddress,
     this.relayAddress6,
     this.relayPassword,
@@ -982,6 +1010,12 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
   @JsonKey()
   final bool rename;
   @override
+  @JsonKey()
+  final String socks5Proxy;
+  @override
+  @JsonKey()
+  final String httpProxy;
+  @override
   final String? relayAddress;
   @override
   final String? relayAddress6;
@@ -992,7 +1026,7 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
 
   @override
   String toString() {
-    return 'ReceiveOptions(codePhrase: $codePhrase, overwrite: $overwrite, onlyLocal: $onlyLocal, outputPath: $outputPath, curve: $curve, rename: $rename, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword, relayPorts: $relayPorts)';
+    return 'ReceiveOptions(codePhrase: $codePhrase, overwrite: $overwrite, onlyLocal: $onlyLocal, outputPath: $outputPath, curve: $curve, rename: $rename, socks5Proxy: $socks5Proxy, httpProxy: $httpProxy, relayAddress: $relayAddress, relayAddress6: $relayAddress6, relayPassword: $relayPassword, relayPorts: $relayPorts)';
   }
 
   @override
@@ -1010,6 +1044,10 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
                 other.outputPath == outputPath) &&
             (identical(other.curve, curve) || other.curve == curve) &&
             (identical(other.rename, rename) || other.rename == rename) &&
+            (identical(other.socks5Proxy, socks5Proxy) ||
+                other.socks5Proxy == socks5Proxy) &&
+            (identical(other.httpProxy, httpProxy) ||
+                other.httpProxy == httpProxy) &&
             (identical(other.relayAddress, relayAddress) ||
                 other.relayAddress == relayAddress) &&
             (identical(other.relayAddress6, relayAddress6) ||
@@ -1030,6 +1068,8 @@ class _$ReceiveOptionsImpl implements _ReceiveOptions {
     outputPath,
     curve,
     rename,
+    socks5Proxy,
+    httpProxy,
     relayAddress,
     relayAddress6,
     relayPassword,
@@ -1061,6 +1101,8 @@ abstract class _ReceiveOptions implements ReceiveOptions {
     final String outputPath,
     final String curve,
     final bool rename,
+    final String socks5Proxy,
+    final String httpProxy,
     final String? relayAddress,
     final String? relayAddress6,
     final String? relayPassword,
@@ -1087,6 +1129,10 @@ abstract class _ReceiveOptions implements ReceiveOptions {
   /// "no" and silently skip the file.
   @override
   bool get rename;
+  @override
+  String get socks5Proxy;
+  @override
+  String get httpProxy;
   @override
   String? get relayAddress;
   @override

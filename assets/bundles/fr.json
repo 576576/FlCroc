@@ -148,6 +148,11 @@
   "transportDerp": "Direct prioritaire",
   "transportRelay": "Relais uniquement",
   "transportLocalConflict": "Le transport doit être Auto lorsque le relais est désactivé",
+  "throttleUpload": "Limite d'envoi",
+  "throttleUploadHint": "ex. 500k ou 5m ; vide = illimité",
+  "socks5Proxy": "Proxy SOCKS5",
+  "httpProxy": "Proxy HTTP",
+  "proxyHint": "ex. 127.0.0.1:1080",
   "excludePatterns": "Motifs à exclure",
   "excludePatternsHint": "Séparés par des virgules, ex. .log, node_modules",
 

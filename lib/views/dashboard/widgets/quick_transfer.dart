@@ -470,6 +470,9 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
       disableClipboard: !sendConfig.copyCodeToClipboard,
       // croc rejects a non-auto transport together with --local.
       transport: relayConfig.type == RelayType.noRelay ? 'auto' : sendConfig.transport,
+      throttleUpload: sendConfig.throttleUpload,
+      socks5Proxy: sendConfig.socks5Proxy,
+      httpProxy: sendConfig.httpProxy,
       onlyLocal: relayConfig.type == RelayType.noRelay,
       relayAddress: relayConfig.type == RelayType.customRelay ? relayConfig.address : null,
       relayPassword: relayConfig.type == RelayType.customRelay ? relayConfig.password : null,
@@ -577,6 +580,8 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
       codePhrase: code,
       overwrite: receiveConfig.overwrite,
       rename: receiveConfig.rename,
+      socks5Proxy: receiveConfig.socks5Proxy,
+      httpProxy: receiveConfig.httpProxy,
       onlyLocal: relayConfig.type == RelayType.noRelay,
       outputPath: outputPath,
       relayAddress: relayConfig.type == RelayType.customRelay ? relayConfig.address : null,

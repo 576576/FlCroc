@@ -100,6 +100,7 @@ class AppLocalizations {
     'respectGitIgnore', 'disableLocalRelay', 'excludePatterns', 'excludePatternsHint',
     'transportMode', 'transportAuto', 'transportDerp', 'transportRelay',
     'transportLocalConflict',
+    'throttleUpload', 'throttleUploadHint', 'socks5Proxy', 'httpProxy', 'proxyHint',
 
     // ── Settings: Relay ──
     'relayType', 'relaySettings', 'relayAddress', 'relayPassword',
@@ -297,6 +298,11 @@ class AppLocalizations {
   String get transportDerp => _('transportDerp');
   String get transportRelay => _('transportRelay');
   String get transportLocalConflict => _('transportLocalConflict');
+  String get throttleUpload => _('throttleUpload');
+  String get throttleUploadHint => _('throttleUploadHint');
+  String get socks5Proxy => _('socks5Proxy');
+  String get httpProxy => _('httpProxy');
+  String get proxyHint => _('proxyHint');
 
   // ── Settings: Relay ──
   String get relayType => _('relayType');

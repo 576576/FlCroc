@@ -186,9 +186,17 @@ class CoreService extends CoreInterface {
         if (options.noCompress) '--no-compress',
         if (options.overwrite) '--overwrite',
         if (options.zipFolder) '--zip',
+        if (options.gitIgnore) '--git',
         if (options.onlyLocal) '--local',
         if (options.disableLocal) '--no-local',
+        if (options.disableClipboard) '--disable-clipboard',
+        if (options.transport.isNotEmpty && options.transport != 'auto')
+          '--transport', options.transport,
+        if (options.throttleUpload.isNotEmpty)
+          '--throttleUpload', options.throttleUpload,
         if (options.socks5Proxy.isNotEmpty) '--socks5', options.socks5Proxy,
+        if (options.httpProxy.isNotEmpty) '--connect', options.httpProxy,
+        if (options.exclude.isNotEmpty) '--exclude', options.exclude.join(','),
         if (options.relayAddress != null && options.relayAddress!.isNotEmpty)
           '--relay', options.relayAddress!,
         if (options.relayPassword != null && options.relayPassword!.isNotEmpty)
@@ -261,8 +269,11 @@ class CoreService extends CoreInterface {
       final args = <String>[
         '--yes',
         if (options.overwrite) '--overwrite',
+        if (options.rename) '--rename',
         if (options.onlyLocal) '--local',
         if (options.outputPath.isNotEmpty) '--out', options.outputPath,
+        if (options.socks5Proxy.isNotEmpty) '--socks5', options.socks5Proxy,
+        if (options.httpProxy.isNotEmpty) '--connect', options.httpProxy,
         if (options.relayAddress != null && options.relayAddress!.isNotEmpty)
           '--relay', options.relayAddress!,
         if (options.relayPassword != null && options.relayPassword!.isNotEmpty)

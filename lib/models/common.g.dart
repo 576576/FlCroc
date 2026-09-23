@@ -144,6 +144,8 @@ _$ReceiveConfigImpl _$$ReceiveConfigImplFromJson(Map<String, dynamic> json) =>
       rename: json['rename'] as bool? ?? true,
       onlyLocal: json['onlyLocal'] as bool? ?? false,
       outputPath: json['outputPath'] as String? ?? '',
+      socks5Proxy: json['socks5Proxy'] as String? ?? '',
+      httpProxy: json['httpProxy'] as String? ?? '',
     );
 
 Map<String, dynamic> _$$ReceiveConfigImplToJson(_$ReceiveConfigImpl instance) =>
@@ -152,4 +154,6 @@ Map<String, dynamic> _$$ReceiveConfigImplToJson(_$ReceiveConfigImpl instance) =>
       'rename': instance.rename,
       'onlyLocal': instance.onlyLocal,
       'outputPath': instance.outputPath,
+      'socks5Proxy': instance.socks5Proxy,
+      'httpProxy': instance.httpProxy,
     };

@@ -164,6 +164,8 @@ abstract class ReceiveConfig with _$ReceiveConfig {
     @Default(true) bool rename,
     @Default(false) bool onlyLocal,
     @Default('') String outputPath,
+    @Default('') String socks5Proxy,
+    @Default('') String httpProxy,
   }) = _ReceiveConfig;
 
   factory ReceiveConfig.fromJson(Map<String, Object?> json) =>

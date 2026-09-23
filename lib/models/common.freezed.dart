@@ -1568,6 +1568,8 @@ mixin _$ReceiveConfig {
   bool get rename => throw _privateConstructorUsedError;
   bool get onlyLocal => throw _privateConstructorUsedError;
   String get outputPath => throw _privateConstructorUsedError;
+  String get socks5Proxy => throw _privateConstructorUsedError;
+  String get httpProxy => throw _privateConstructorUsedError;
 
   /// Serializes this ReceiveConfig to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -1586,7 +1588,14 @@ abstract class $ReceiveConfigCopyWith<$Res> {
     $Res Function(ReceiveConfig) then,
   ) = _$ReceiveConfigCopyWithImpl<$Res, ReceiveConfig>;
   @useResult
-  $Res call({bool overwrite, bool rename, bool onlyLocal, String outputPath});
+  $Res call({
+    bool overwrite,
+    bool rename,
+    bool onlyLocal,
+    String outputPath,
+    String socks5Proxy,
+    String httpProxy,
+  });
 }
 
 /// @nodoc
@@ -1608,6 +1617,8 @@ class _$ReceiveConfigCopyWithImpl<$Res, $Val extends ReceiveConfig>
     Object? rename = null,
     Object? onlyLocal = null,
     Object? outputPath = null,
+    Object? socks5Proxy = null,
+    Object? httpProxy = null,
   }) {
     return _then(
       _value.copyWith(
@@ -1627,6 +1638,14 @@ class _$ReceiveConfigCopyWithImpl<$Res, $Val extends ReceiveConfig>
                 ? _value.outputPath
                 : outputPath // ignore: cast_nullable_to_non_nullable
                       as String,
+            socks5Proxy: null == socks5Proxy
+                ? _value.socks5Proxy
+                : socks5Proxy // ignore: cast_nullable_to_non_nullable
+                      as String,
+            httpProxy: null == httpProxy
+                ? _value.httpProxy
+                : httpProxy // ignore: cast_nullable_to_non_nullable
+                      as String,
           )
           as $Val,
     );
@@ -1642,7 +1661,14 @@ abstract class _$$ReceiveConfigImplCopyWith<$Res>
   ) = __$$ReceiveConfigImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({bool overwrite, bool rename, bool onlyLocal, String outputPath});
+  $Res call({
+    bool overwrite,
+    bool rename,
+    bool onlyLocal,
+    String outputPath,
+    String socks5Proxy,
+    String httpProxy,
+  });
 }
 
 /// @nodoc
@@ -1663,6 +1689,8 @@ class __$$ReceiveConfigImplCopyWithImpl<$Res>
     Object? rename = null,
     Object? onlyLocal = null,
     Object? outputPath = null,
+    Object? socks5Proxy = null,
+    Object? httpProxy = null,
   }) {
     return _then(
       _$ReceiveConfigImpl(
@@ -1682,6 +1710,14 @@ class __$$ReceiveConfigImplCopyWithImpl<$Res>
             ? _value.outputPath
             : outputPath // ignore: cast_nullable_to_non_nullable
                   as String,
+        socks5Proxy: null == socks5Proxy
+            ? _value.socks5Proxy
+            : socks5Proxy // ignore: cast_nullable_to_non_nullable
+                  as String,
+        httpProxy: null == httpProxy
+            ? _value.httpProxy
+            : httpProxy // ignore: cast_nullable_to_non_nullable
+                  as String,
       ),
     );
   }
@@ -1695,6 +1731,8 @@ class _$ReceiveConfigImpl implements _ReceiveConfig {
     this.rename = true,
     this.onlyLocal = false,
     this.outputPath = '',
+    this.socks5Proxy = '',
+    this.httpProxy = '',
   });
 
   factory _$ReceiveConfigImpl.fromJson(Map<String, dynamic> json) =>
@@ -1716,10 +1754,16 @@ class _$ReceiveConfigImpl implements _ReceiveConfig {
   @override
   @JsonKey()
   final String outputPath;
+  @override
+  @JsonKey()
+  final String socks5Proxy;
+  @override
+  @JsonKey()
+  final String httpProxy;
 
   @override
   String toString() {
-    return 'ReceiveConfig(overwrite: $overwrite, rename: $rename, onlyLocal: $onlyLocal, outputPath: $outputPath)';
+    return 'ReceiveConfig(overwrite: $overwrite, rename: $rename, onlyLocal: $onlyLocal, outputPath: $outputPath, socks5Proxy: $socks5Proxy, httpProxy: $httpProxy)';
   }
 
   @override
@@ -1733,13 +1777,24 @@ class _$ReceiveConfigImpl implements _ReceiveConfig {
             (identical(other.onlyLocal, onlyLocal) ||
                 other.onlyLocal == onlyLocal) &&
             (identical(other.outputPath, outputPath) ||
-                other.outputPath == outputPath));
+                other.outputPath == outputPath) &&
+            (identical(other.socks5Proxy, socks5Proxy) ||
+                other.socks5Proxy == socks5Proxy) &&
+            (identical(other.httpProxy, httpProxy) ||
+                other.httpProxy == httpProxy));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, overwrite, rename, onlyLocal, outputPath);
+  int get hashCode => Object.hash(
+    runtimeType,
+    overwrite,
+    rename,
+    onlyLocal,
+    outputPath,
+    socks5Proxy,
+    httpProxy,
+  );
 
   /// Create a copy of ReceiveConfig
   /// with the given fields replaced by the non-null parameter values.
@@ -1761,6 +1816,8 @@ abstract class _ReceiveConfig implements ReceiveConfig {
     final bool rename,
     final bool onlyLocal,
     final String outputPath,
+    final String socks5Proxy,
+    final String httpProxy,
   }) = _$ReceiveConfigImpl;
 
   factory _ReceiveConfig.fromJson(Map<String, dynamic> json) =
@@ -1778,6 +1835,10 @@ abstract class _ReceiveConfig implements ReceiveConfig {
   bool get onlyLocal;
   @override
   String get outputPath;
+  @override
+  String get socks5Proxy;
+  @override
+  String get httpProxy;
 
   /// Create a copy of ReceiveConfig
   /// with the given fields replaced by the non-null parameter values.

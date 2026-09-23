@@ -148,6 +148,11 @@
   "transportDerp": "直接接続を優先",
   "transportRelay": "リレーのみ",
   "transportLocalConflict": "リレー無効時は「自動」のみ選択できます",
+  "throttleUpload": "アップロード速度制限",
+  "throttleUploadHint": "例: 500k、5m。空欄で無制限",
+  "socks5Proxy": "SOCKS5 プロキシ",
+  "httpProxy": "HTTP プロキシ",
+  "proxyHint": "例: 127.0.0.1:1080",
   "excludePatterns": "除外パターン",
   "excludePatternsHint": "カンマ区切り、例: .log, node_modules",
 

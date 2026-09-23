@@ -195,6 +195,15 @@ class CoreLib extends CoreInterface {
       // from the OS clipboard.
       opts['disable_clipboard'] = options.disableClipboard;
       opts['transport'] = options.transport;
+      if (options.throttleUpload.isNotEmpty) {
+        opts['throttle_upload'] = options.throttleUpload;
+      }
+      if (options.socks5Proxy.isNotEmpty) {
+        opts['socks5_proxy'] = options.socks5Proxy;
+      }
+      if (options.httpProxy.isNotEmpty) {
+        opts['http_proxy'] = options.httpProxy;
+      }
       final optsJson = jsonEncode(opts);
 
       final pathsPtr = pathsJson.toNativeUtf8();
@@ -334,6 +343,12 @@ class CoreLib extends CoreInterface {
       // Always sent: true keeps croc from asking on stdin (and silently
       // skipping the file) when the destination name is taken.
       opts['rename'] = options.rename;
+      if (options.socks5Proxy.isNotEmpty) {
+        opts['socks5_proxy'] = options.socks5Proxy;
+      }
+      if (options.httpProxy.isNotEmpty) {
+        opts['http_proxy'] = options.httpProxy;
+      }
       if (options.outputPath.isNotEmpty) opts['output_path'] = options.outputPath;
       if (options.relayAddress != null && options.relayAddress!.isNotEmpty) {
         opts['relay_address'] = options.relayAddress;

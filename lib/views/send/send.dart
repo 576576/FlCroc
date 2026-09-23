@@ -50,6 +50,11 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   // Comma-separated substrings excluded from the transfer (croc --exclude).
   final _excludeCtrl = TextEditingController();
 
+  // Upload cap ("500k") and proxy addresses.
+  final _throttleCtrl = TextEditingController();
+  final _socks5Ctrl = TextEditingController();
+  final _httpProxyCtrl = TextEditingController();
+
   // Live progress reported by the bridge (type-1 events, see CoreLib._liveProgress).
   double _progress = 0;
   double _speed = 0;
@@ -176,6 +181,9 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     _shakeCtrl.dispose();
     _limitCtrl.dispose();
     _excludeCtrl.dispose();
+    _throttleCtrl.dispose();
+    _socks5Ctrl.dispose();
+    _httpProxyCtrl.dispose();
     super.dispose();
   }
 
@@ -366,6 +374,9 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       }
     }
     _excludeCtrl.text = _sendConfig.exclude.join(', ');
+    _throttleCtrl.text = _sendConfig.throttleUpload;
+    _socks5Ctrl.text = _sendConfig.socks5Proxy;
+    _httpProxyCtrl.text = _sendConfig.httpProxy;
   }
 
   void _saveSendPrefs() {
@@ -513,6 +524,9 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       disableLocal: _sendConfig.disableLocal,
       exclude: _sendConfig.exclude,
       transport: transport,
+      throttleUpload: _sendConfig.throttleUpload,
+      socks5Proxy: _sendConfig.socks5Proxy,
+      httpProxy: _sendConfig.httpProxy,
       onlyLocal: useNoRelay,
       // A GUI must not clobber the clipboard unless the user asked for it.
       disableClipboard: !_sendConfig.copyCodeToClipboard,
@@ -886,32 +900,51 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
               ListItem.switchItem(leading: const Icon(Icons.folder_zip), title: Text(l10n.zipFolder), delegate: SwitchDelegate(value: _sendConfig.zipFolder, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(zipFolder: v); _saveSendPrefs(); }))),
               ListItem.switchItem(leading: const Icon(Icons.description_outlined), title: Text(l10n.respectGitIgnore), delegate: SwitchDelegate(value: _sendConfig.gitIgnore, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(gitIgnore: v); _saveSendPrefs(); }))),
               ListItem.switchItem(leading: const Icon(Icons.lan_outlined), title: Text(l10n.disableLocalRelay), delegate: SwitchDelegate(value: _sendConfig.disableLocal, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(disableLocal: v); _saveSendPrefs(); }))),
-              ListItem(
-                leading: const Icon(Icons.filter_alt_outlined),
-                title: Text(l10n.excludePatterns),
-                subtitle: Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: TextField(
-                    controller: _excludeCtrl,
-                    style: const TextStyle(fontSize: 13),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      hintText: l10n.excludePatternsHint,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      border: const OutlineInputBorder(),
-                    ),
-                    onChanged: (v) {
-                      // croc treats --exclude entries as plain substrings.
-                      final patterns = v
-                          .split(',')
-                          .map((s) => s.trim())
-                          .where((s) => s.isNotEmpty)
-                          .toList();
-                      _sendConfig = _sendConfig.copyWith(exclude: patterns);
-                      _saveSendPrefs();
-                    },
-                  ),
-                ),
+              _optionTextField(
+                icon: Icons.filter_alt_outlined,
+                title: l10n.excludePatterns,
+                hint: l10n.excludePatternsHint,
+                controller: _excludeCtrl,
+                onChanged: (v) {
+                  // croc treats --exclude entries as plain substrings.
+                  final patterns = v
+                      .split(',')
+                      .map((s) => s.trim())
+                      .where((s) => s.isNotEmpty)
+                      .toList();
+                  _sendConfig = _sendConfig.copyWith(exclude: patterns);
+                  _saveSendPrefs();
+                },
+              ),
+              _optionTextField(
+                icon: Icons.speed,
+                title: l10n.throttleUpload,
+                hint: l10n.throttleUploadHint,
+                controller: _throttleCtrl,
+                onChanged: (v) {
+                  _sendConfig = _sendConfig.copyWith(throttleUpload: v.trim());
+                  _saveSendPrefs();
+                },
+              ),
+              _optionTextField(
+                icon: Icons.vpn_lock_outlined,
+                title: l10n.socks5Proxy,
+                hint: l10n.proxyHint,
+                controller: _socks5Ctrl,
+                onChanged: (v) {
+                  _sendConfig = _sendConfig.copyWith(socks5Proxy: v.trim());
+                  _saveSendPrefs();
+                },
+              ),
+              _optionTextField(
+                icon: Icons.language_outlined,
+                title: l10n.httpProxy,
+                hint: l10n.proxyHint,
+                controller: _httpProxyCtrl,
+                onChanged: (v) {
+                  _sendConfig = _sendConfig.copyWith(httpProxy: v.trim());
+                  _saveSendPrefs();
+                },
               ),
               ListItem(
                 leading: const Icon(Icons.text_snippet),
@@ -1093,6 +1126,35 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
             );
           }),
         ],
+      ),
+    );
+  }
+
+  /// A labelled single-line text field inside a [ListItem] — used for the
+  /// exclude patterns, the upload cap and the proxy addresses.
+  Widget _optionTextField({
+    required IconData icon,
+    required String title,
+    required String hint,
+    required TextEditingController controller,
+    required ValueChanged<String> onChanged,
+  }) {
+    return ListItem(
+      leading: Icon(icon),
+      title: Text(title),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: TextField(
+          controller: controller,
+          style: const TextStyle(fontSize: 13),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: hint,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            border: const OutlineInputBorder(),
+          ),
+          onChanged: onChanged,
+        ),
       ),
     );
   }

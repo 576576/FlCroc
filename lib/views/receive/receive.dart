@@ -29,6 +29,10 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   bool _isReceiving = false;
   ReceiveConfig _receiveConfig = const ReceiveConfig();
 
+  // Proxy addresses (croc --socks5 / --connect).
+  final _socks5Ctrl = TextEditingController();
+  final _httpProxyCtrl = TextEditingController();
+
   ReceivePhase _phase = ReceivePhase.idle;
 
   // Live progress reported by the bridge (type-1 events, see CoreLib._liveProgress).
@@ -97,10 +101,41 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
 
   void _loadReceivePrefs() {
     _receiveConfig = ReceiveConfig.load();
+    _socks5Ctrl.text = _receiveConfig.socks5Proxy;
+    _httpProxyCtrl.text = _receiveConfig.httpProxy;
   }
 
   void _saveReceivePrefs() {
     _receiveConfig.save();
+  }
+
+  /// A labelled single-line text field inside a [ListItem], used for the
+  /// proxy addresses.
+  Widget _optionTextField({
+    required IconData icon,
+    required String title,
+    required String hint,
+    required TextEditingController controller,
+    required ValueChanged<String> onChanged,
+  }) {
+    return ListItem(
+      leading: Icon(icon),
+      title: Text(title),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: TextField(
+          controller: controller,
+          style: const TextStyle(fontSize: 13),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: hint,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            border: const OutlineInputBorder(),
+          ),
+          onChanged: onChanged,
+        ),
+      ),
+    );
   }
 
   /// Build FileItem list from received file names, detecting folders.
@@ -227,6 +262,8 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
       codePhrase: code,
       overwrite: _receiveConfig.overwrite,
       rename: _receiveConfig.rename,
+      socks5Proxy: _receiveConfig.socks5Proxy,
+      httpProxy: _receiveConfig.httpProxy,
       onlyLocal: useNoRelay,
       outputPath: effectivePath,
       relayAddress: useCustom ? relayConfig.address : null,
@@ -404,6 +441,8 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
     _codeController.dispose();
     _receivedTextController.dispose();
     _scrollCtrl.dispose();
+    _socks5Ctrl.dispose();
+    _httpProxyCtrl.dispose();
     super.dispose();
   }
 
@@ -667,6 +706,26 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                         ],
                       ),
                     );
+                  },
+                ),
+                _optionTextField(
+                  icon: Icons.vpn_lock_outlined,
+                  title: l10n.socks5Proxy,
+                  hint: l10n.proxyHint,
+                  controller: _socks5Ctrl,
+                  onChanged: (v) {
+                    _receiveConfig = _receiveConfig.copyWith(socks5Proxy: v.trim());
+                    _saveReceivePrefs();
+                  },
+                ),
+                _optionTextField(
+                  icon: Icons.language_outlined,
+                  title: l10n.httpProxy,
+                  hint: l10n.proxyHint,
+                  controller: _httpProxyCtrl,
+                  onChanged: (v) {
+                    _receiveConfig = _receiveConfig.copyWith(httpProxy: v.trim());
+                    _saveReceivePrefs();
                   },
                 ),
                 const SizedBox(height: 12),
