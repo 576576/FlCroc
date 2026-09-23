@@ -22,10 +22,14 @@ name: Build
 # 改一处要同步改另一处。
 #
 # Linux 两个 job 的宿主是 ubuntu-24.04，编译发生在 container: ubuntu:22.04 内 ——
-# 产物引用的 glibc 符号版本由容器里那套 libc 决定，宿主换代不动它。容器内的三条
-# 硬约束：默认 shell 是 sh（本文件显式声明 shell: bash）；裸 ubuntu 镜像既没有 git
-# 也没有 gcc（故 checkout 之前先装 git、构建之前装 build-essential）；容器内没有
-# sudo，直接调 apt-get。两个 Linux job 末尾都用 readelf 断言产物的 glibc 门槛。
+# 产物引用的 glibc 符号版本由容器里那套 libc 决定，宿主换代不动它。容器内的硬约束：
+# 默认 shell 是 sh（本文件显式声明 shell: bash）；裸 ubuntu 镜像既没有 git 也没有
+# gcc（故 checkout 之前先装 git、构建之前装 build-essential）；容器内没有 sudo，
+# 直接调 apt-get；容器以 root 运行，而挂进来的工作区与工具缓存都属 runner 用户，
+# 会被 git 的 dubious-ownership 检查拦下（故 checkout 前 `git config --system --add
+# safe.directory '*'`，详见 build-linux 的 Install git 步骤）；subosito/flutter-action
+# 的 setup.sh 靠 jq 解析版本清单，裸镜像里没有。两个 Linux job 末尾都用 readelf
+# 断言产物的 glibc 门槛。
 #
 # macOS 只有 arm64 一个目标。
 #
@@ -259,7 +263,17 @@ jobs:
           # 就没了 —— 于是第一个被绊倒的是 `go build` 的 VCS stamping，报
           # 「error obtaining VCS status: exit status 128」，且看不到 git 的原始错误。
           # 用 --system 落到 /etc/gitconfig：不依赖 HOME，容器内后续所有 step 都有效。
-          git config --system --add safe.directory "${GITHUB_WORKSPACE}"
+          #
+          # 但只加 ${GITHUB_WORKSPACE} 不够。这个 job 还要碰 runner 工具缓存里的
+          # Flutter SDK（宿主 /opt/hostedtoolcache，容器里 bind 挂成 /__t），SDK 自身
+          # 就是个 git 仓库，flutter_tools 会读它的版本，于是 `flutter pub get` 报：
+          #   fatal: detected dubious ownership in repository at
+          #   '/__t/flutter/stable-3.47.5-x64/flutter'
+          # safe.directory 是**精确匹配**（git 文档另有 `/dir/*` 的前缀写法，但容器里这
+          # 套 2.34.1 的 CVE backport 只认精确路径与 `*` 两种），而 /__t 下的路径带
+          # Flutter 版本号、会随 SDK 升级变化，写死迟早失效 —— 所以直接整体放开：容器
+          # 是一次性的，里面只有本仓库与官方 SDK，没有不可信的第三方仓库，放开的代价为零。
+          git config --system --add safe.directory '*'
           git config --system --get-all safe.directory
 
       - uses: actions/checkout@v7
@@ -317,6 +331,18 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+
+      # 与上面的 Assert 同一目的：把「safe.directory 没覆盖到 SDK」这类问题在 pub get
+      # 之前就点出来，否则只能看到一句 exit code 128（flutter_tools 会把 git 的 stderr
+      # 吞掉，看不到 fatal: 原文）。路径从 PATH 反推，不依赖这个 action 是否导出
+      # FLUTTER_ROOT。arm64 job 不需要这一步：它的 SDK 是容器内 root 自己 clone 的，
+      # 属主与执行者一致，压根不会触发 dubious ownership。
+      - name: Assert git can operate on the Flutter SDK
+        run: |
+          SDK=$(cd "$(dirname "$(command -v flutter)")/.." && pwd)
+          echo "Flutter SDK = $SDK"
+          git -C "$SDK" rev-parse --short HEAD
+          echo "✓ git 可操作 Flutter SDK"
 
       - name: Install Flutter dependencies
         run: flutter pub get
@@ -398,13 +424,15 @@ jobs:
       FLUTTER_SDK: ${{ github.workspace }}/.flutter-sdk
     steps:
       # 同 build-linux：裸 ubuntu 镜像没有 git，而 checkout 就需要它。
-      # safe.directory 的理由见 build-linux 的 Install git 步骤 —— 同样是容器以 root
-      # 操作 runner 用户拥有的 bind mount，不设就会让 go build 的 VCS stamping 挂掉。
+      # safe.directory 的理由与取值见 build-linux 的 Install git 步骤 —— 同样是容器以
+      # root 操作 runner 用户拥有的 bind mount，不设就会让 go build 的 VCS stamping
+      # 挂掉。这里同样用 '*'：Flutter SDK 是 clone 到工作区**子目录** .flutter-sdk 的，
+      # 精确匹配的 safe.directory 覆盖不到它。
       - name: Install git (base image has none)
         run: |
           apt-get update -qq
           apt-get install -y -qq git ca-certificates
-          git config --system --add safe.directory "${GITHUB_WORKSPACE}"
+          git config --system --add safe.directory '*'
           git config --system --get-all safe.directory
 
       - uses: actions/checkout@v7
