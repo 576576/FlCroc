@@ -78,7 +78,7 @@ creating any release at all.
 
 ```bash
 git clone --recurse-submodules https://github.com/576576/FlCroc.git
-cd FlCroc/fl_croc
+cd FlCroc
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs
 flutter run

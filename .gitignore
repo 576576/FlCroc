@@ -9,6 +9,7 @@
 build/
 .flutter-plugins
 .flutter-plugins-dependencies
+.flutter_tool_state
 **/generated_plugin_registrant.dart
 
 # ============================================================
@@ -148,6 +149,9 @@ go_bridge/flcroc_bridge.h
 # ============================================================
 submodules/croc/.github
 /go_bridge/test_send
+
+# AI 助手工作区数据（本地记忆 / 会话状态，不入库）
+/.workbuddy-ai/
 
 # ============================================================
 # iOS / Xcode 例外：保留默认模式文件
