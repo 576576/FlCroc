@@ -127,6 +127,7 @@ class _DashboardViewState extends ConsumerState<DashboardView>
                       label: status.label,
                       color: status.color,
                       progress: status.progress,
+                      detail: status.detail,
                     )
                   : Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

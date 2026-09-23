@@ -9,13 +9,43 @@ class CapsuleProgressChip extends StatelessWidget {
     required this.label,
     required this.color,
     this.progress = -1,
+    this.detail = '',
     this.animate = true,
   });
 
   final String label;
   final Color color;
   final double progress; // 0.0–1.0, or -1 for indeterminate
+
+  /// Optional secondary text rendered after [label], e.g. a live speed.
+  final String detail;
   final bool animate;
+
+  Widget _buildChild() {
+    final labelStyle = TextStyle(
+      fontSize: 12,
+      color: color,
+      fontWeight: FontWeight.w600,
+    );
+    if (detail.isEmpty) {
+      return Text(label, style: labelStyle);
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label, style: labelStyle),
+        const SizedBox(width: 6),
+        Text(
+          detail,
+          style: TextStyle(
+            fontSize: 12,
+            color: color.withValues(alpha: 0.8),
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,9 +63,7 @@ class CapsuleProgressChip extends StatelessWidget {
             color: color.withValues(alpha: 0.15),
             borderRadius: borderRadius,
           ),
-          child: Text(label,
-            style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
-          ),
+          child: _buildChild(),
         ),
       );
     }
@@ -56,9 +84,7 @@ class CapsuleProgressChip extends StatelessWidget {
               color: color.withValues(alpha: 0.15),
               borderRadius: borderRadius,
             ),
-            child: Text(label,
-              style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
-            ),
+            child: _buildChild(),
           ),
         );
       },

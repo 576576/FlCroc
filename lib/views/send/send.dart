@@ -47,46 +47,42 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   static const _defaultTextLimit = 10000;
   final _limitCtrl = TextEditingController();
 
-  double _simProgress = 0;
-  Timer? _progressTimer;
-  bool _progressDone = false;
+  // Live progress reported by the bridge (type-1 events, see CoreLib._liveProgress).
+  double _progress = 0;
+  double _speed = 0;
+  int _completedFiles = 0;
+  int _totalFiles = 0;
+  String _currentFile = '';
   bool _isPasteMode = true;
 
-  void _startSimProgress() {
-    _progressDone = false;
-    _simProgress = 0;
-    _progressTimer?.cancel();
-    int step = 0;
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 60), (t) {
-      if (!mounted) { t.cancel(); return; }
-      step++;
-      if (step <= 3) {
-        _simProgress = (step * 0.25 / 3);
-      } else if (_simProgress < 0.90) {
-        _simProgress += 0.01;
-        if (_simProgress > 0.90) _simProgress = 0.90;
-      }
-      setState(() {});
-    });
+  /// Fraction of the transfer that is done, or -1 while the bridge has not
+  /// reported a total size yet (renders as an indeterminate ring).
+  double get _progressRatio {
+    if (_progress >= 1) return 1;
+    return _progress;
   }
 
-  void _finishSimProgress() {
-    _progressTimer?.cancel();
-    _progressDone = true;
-    int step = 0;
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 16), (t) {
-      if (!mounted) { t.cancel(); return; }
-      step++;
-      if (step <= 10) {
-        _simProgress = 0.90 + (step * 0.01);
-      } else if (step <= 22) {
-        _simProgress = 1.0;
-      } else {
-        t.cancel();
-        if (mounted) setState(() => _phase = SendPhase.success);
-      }
-      setState(() {});
-    });
+  void _resetProgress() {
+    _progress = 0;
+    _speed = 0;
+    _completedFiles = 0;
+    _totalFiles = 0;
+    _currentFile = '';
+  }
+
+  DateTime? _lastRecordPersist;
+  static const _recordPersistInterval = Duration(seconds: 1);
+
+  /// `updateTransferRecord` writes the history to prefs, so during a transfer
+  /// (progress events every 200ms) only persist about once a second.
+  bool _shouldPersistRecord() {
+    final now = DateTime.now();
+    final last = _lastRecordPersist;
+    if (last != null && now.difference(last) < _recordPersistInterval) {
+      return false;
+    }
+    _lastRecordPersist = now;
+    return true;
   }
 
   int get _effectiveTextLimit => _textByteLimit ?? _defaultTextLimit;
@@ -94,6 +90,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   // Send lifecycle
   StreamSubscription<TransferProgress>? _sendSubscription;
   String? _activeTransferId;
+  String? _activeRecordId;
 
   // Shake
   late AnimationController _shakeCtrl;
@@ -169,7 +166,6 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   @override
   void dispose() {
     _savedCodePhrase = _codeController.text;
-    _progressTimer?.cancel();
     _saveSendPrefs();
     _sendSubscription?.cancel();
     _textController.dispose();
@@ -459,6 +455,7 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       codePhrase: code.isNotEmpty ? code : '(croc)',
     );
     appController.addTransferRecord(record);
+    _activeRecordId = record.id;
 
     final relayConfig = ref.read(appSettingProvider).relayConfig;
     final useNoRelay = relayConfig.type == RelayType.noRelay;
@@ -508,9 +505,10 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       relayPorts: useCustom ? relayConfig.port : null,
     );
 
-    setState(() => _phase = SendPhase.sending);
-
-    _startSimProgress();
+    setState(() {
+      _phase = SendPhase.sending;
+      _resetProgress();
+    });
 
     _sendSubscription = coreController.sendFiles(options).listen(
       (progress) {
@@ -525,12 +523,18 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
         }
         switch (progress.status) {
           case TransferProgressStatus.completed:
-            _finishSimProgress();
+            appController.setSpeed(record.id, 0);
+            setState(() {
+              _progress = 1;
+              _completedFiles = _totalFiles;
+              _speed = 0;
+              _phase = SendPhase.success;
+            });
             appController.updateTransferRecord(record.copyWith(status: TransferStatus.completed, transferredSize: totalSize, endTime: DateTime.now()));
             _sendSubscription = null;
             break;
           case TransferProgressStatus.failed:
-            _progressTimer?.cancel();
+            appController.setSpeed(record.id, 0);
             setState(() => _phase = SendPhase.fail);
             appController.updateTransferRecord(record.copyWith(status: TransferStatus.failed, endTime: DateTime.now()));
             if (progress.error != null && mounted) {
@@ -540,13 +544,36 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
             _sendSubscription = null;
             break;
           case TransferProgressStatus.cancelled:
+            appController.setSpeed(record.id, 0);
             setState(() => _phase = SendPhase.cancelled);
             appController.updateTransferRecord(record.copyWith(status: TransferStatus.cancelled, endTime: DateTime.now()));
             _sendSubscription = null;
             break;
           case TransferProgressStatus.initializing:
           case TransferProgressStatus.connecting:
+            break;
           case TransferProgressStatus.transferring:
+            // Real progress from the bridge: bytes, current file and speed.
+            setState(() {
+              if (progress.totalSize > 0) {
+                _progress = (progress.transferredSize / progress.totalSize).clamp(0.0, 1.0);
+              }
+              if (progress.totalFiles > 0) _totalFiles = progress.totalFiles;
+              _completedFiles = progress.completedFiles;
+              if (progress.currentFile.isNotEmpty) _currentFile = progress.currentFile;
+              if (progress.speed > 0) _speed = progress.speed;
+            });
+            appController.setSpeed(record.id, progress.speed);
+            // Persisting the record writes prefs, so throttle it while the
+            // bridge reports every 200ms.
+            if (_shouldPersistRecord()) {
+              appController.updateTransferRecord(
+                record.copyWith(
+                  status: TransferStatus.transferring,
+                  transferredSize: progress.transferredSize,
+                ),
+              );
+            }
             break;
         }
       },
@@ -568,6 +595,8 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   Future<void> _cancelSend() async {
     // Immediately show cancelled state — no delay
     if (mounted) setState(() => _phase = SendPhase.cancelled);
+    final rid = _activeRecordId;
+    if (rid != null) appController.setSpeed(rid, 0);
 
     // Always attempt Go-side cancel first — it uses the global activeClient
     final tid = _activeTransferId;
@@ -1037,6 +1066,18 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     );
   }
 
+  /// Secondary text for the progress chip: file counter and live speed,
+  /// e.g. `2/5 · 12.3 MB/s`. Empty until the bridge reports something useful.
+  String _buildProgressDetail() {
+    final parts = <String>[];
+    if (_totalFiles > 1) {
+      final done = _completedFiles.clamp(0, _totalFiles);
+      parts.add('$done/$_totalFiles');
+    }
+    if (_speed > 0) parts.add(_speed.transferSpeed);
+    return parts.join(' · ');
+  }
+
   Widget _buildStatusChip(AppLocalizations l10n) {
     final (label, color) = switch (_phase) {
       SendPhase.pending => (l10n.pending, Colors.orange),
@@ -1048,11 +1089,15 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     };
     if (label.isEmpty) return const SizedBox.shrink();
     if (_phase == SendPhase.sending) {
-      return CapsuleProgressChip(
+      final chip = CapsuleProgressChip(
         label: label,
         color: color,
-        progress: _simProgress,
+        progress: _progressRatio,
+        detail: _buildProgressDetail(),
       );
+      // The chip is too narrow for a file name, so surface it on hover.
+      if (_currentFile.isEmpty) return chip;
+      return Tooltip(message: _currentFile, child: chip);
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

@@ -22,7 +22,15 @@ class QuickStatus {
   final Color color;
   final double progress; // 0.0–1.0, or -1 for indeterminate
 
-  const QuickStatus({required this.label, required this.color, this.progress = -1});
+  /// Optional secondary text, e.g. `2/5 · 12.3 MB/s`.
+  final String detail;
+
+  const QuickStatus({
+    required this.label,
+    required this.color,
+    this.progress = -1,
+    this.detail = '',
+  });
 }
 
 /// Unified quick send + receive card for the dashboard.
@@ -62,8 +70,11 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   final List<FileItem> _receivedFiles = [];
   String _receivedText = '';
 
-  double _simProgress = 0;
-  Timer? _progressTimer;
+  // Live progress reported by the bridge (type-1 events).
+  double _progress = 0;
+  double _speed = 0;
+  int _completedFiles = 0;
+  int _totalFiles = 0;
 
   // Clipboard toggle: long-press paste button to switch paste/copy
   bool _isPasteMode = true;
@@ -93,7 +104,6 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
 
   @override
   void dispose() {
-    _progressTimer?.cancel();
     _textCtrl.dispose();
     QuickTransferWidget.statusNotifier.value = null;
     super.dispose();
@@ -104,7 +114,6 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   bool get _isActive => _phase != _QuickPhase.idle && _phase != _QuickPhase.completed && _phase != _QuickPhase.failed && _phase != _QuickPhase.cancelled;
 
   void _cancelTransfer() {
-    _progressTimer?.cancel();
     _activeSub?.cancel();
     _activeSub = null;
     if (_activeTransferId != null) {
@@ -292,42 +301,46 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
 
   // ── Status ──
 
-  void _startSimProgress() {
-    _simProgress = 0;
-    _progressTimer?.cancel();
-    int step = 0;
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 60), (t) {
-      if (!mounted) { t.cancel(); return; }
-      step++;
-      if (step <= 3) { _simProgress = (step * 0.25 / 3); }
-      else if (_simProgress < 0.90) { _simProgress += 0.01; if (_simProgress > 0.90) _simProgress = 0.90; }
-      final l10n = context.appLocalizations;
-      final isSend = _phase == _QuickPhase.sending;
-      QuickTransferWidget.statusNotifier.value = QuickStatus(
-        label: isSend ? l10n.sending : l10n.receiving,
-        color: Theme.of(context).colorScheme.primary,
-        progress: _simProgress,
-      );
-    });
+  void _resetProgress() {
+    _progress = 0;
+    _speed = 0;
+    _completedFiles = 0;
+    _totalFiles = 0;
   }
 
-  void _finishSimProgress(_QuickPhase donePhase) {
-    _progressTimer?.cancel();
-    int step = 0;
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 16), (t) {
-      if (!mounted) { t.cancel(); return; }
-      step++;
-      if (step <= 10) { _simProgress = 0.90 + (step * 0.01); }
-      else if (step <= 22) { _simProgress = 1.0; }
-      else { t.cancel(); _setPhase(donePhase); return; }
-      QuickTransferWidget.statusNotifier.value = QuickStatus(
-        label: _phase == _QuickPhase.sending
-            ? context.appLocalizations.sending
-            : context.appLocalizations.receiving,
-        color: Theme.of(context).colorScheme.primary,
-        progress: _simProgress,
-      );
-    });
+  /// Secondary text for the status chip, e.g. `2/5 · 12.3 MB/s`.
+  String _buildProgressDetail() {
+    final parts = <String>[];
+    if (_totalFiles > 1) {
+      final done = _completedFiles.clamp(0, _totalFiles);
+      parts.add('$done/$_totalFiles');
+    }
+    if (_speed > 0) parts.add(_speed.transferSpeed);
+    return parts.join(' · ');
+  }
+
+  /// Pushes the current transfer state into the shared AppBar status chip.
+  void _publishStatus() {
+    if (!mounted) return;
+    final l10n = context.appLocalizations;
+    final isSend = _phase == _QuickPhase.sending;
+    QuickTransferWidget.statusNotifier.value = QuickStatus(
+      label: isSend ? l10n.sending : l10n.receiving,
+      color: Theme.of(context).colorScheme.primary,
+      progress: _progress,
+      detail: _buildProgressDetail(),
+    );
+  }
+
+  /// Applies a bridge progress event and refreshes the chip.
+  void _applyProgress(TransferProgress progress) {
+    if (progress.totalSize > 0) {
+      _progress = (progress.transferredSize / progress.totalSize).clamp(0.0, 1.0);
+    }
+    if (progress.totalFiles > 0) _totalFiles = progress.totalFiles;
+    _completedFiles = progress.completedFiles;
+    if (progress.speed > 0) _speed = progress.speed;
+    _publishStatus();
   }
 
   void _setPhase(_QuickPhase phase) {
@@ -352,7 +365,8 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
       QuickTransferWidget.statusNotifier.value = QuickStatus(
         label: label,
         color: color,
-        progress: (phase == _QuickPhase.sending || phase == _QuickPhase.receiving) ? _simProgress : -1,
+        progress: (phase == _QuickPhase.sending || phase == _QuickPhase.receiving) ? _progress : -1,
+        detail: (phase == _QuickPhase.sending || phase == _QuickPhase.receiving) ? _buildProgressDetail() : '',
       );
     } else {
       QuickTransferWidget.statusNotifier.value = null;
@@ -381,8 +395,8 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
       return;
     }
 
+    _resetProgress();
     _setPhase(_QuickPhase.sending);
-    _startSimProgress();
 
     final transferId = appController.generateId();
     _activeTransferId = transferId;
@@ -459,24 +473,38 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
         if (progress.codePhrase != null && progress.codePhrase!.isNotEmpty) {
           appController.updateTransferRecord(record.copyWith(codePhrase: progress.codePhrase));
         }
-        if (progress.status == TransferProgressStatus.completed) {
-          _finishSimProgress(_QuickPhase.completed);
-          appController.updateTransferRecord(record.copyWith(status: TransferStatus.completed, totalSize: progress.totalSize, endTime: DateTime.now()));
-        } else if (progress.status == TransferProgressStatus.failed) {
-          _progressTimer?.cancel();
-          appController.updateTransferRecord(record.copyWith(status: TransferStatus.failed, endTime: DateTime.now()));
-          _setPhase(_QuickPhase.failed);
-          Future.delayed(const Duration(seconds: 1), () => _setPhase(_QuickPhase.idle));
-        } else if (progress.status == TransferProgressStatus.cancelled) {
-          _progressTimer?.cancel();
-          appController.updateTransferRecord(record.copyWith(status: TransferStatus.cancelled, endTime: DateTime.now()));
-          _setPhase(_QuickPhase.cancelled);
-          Future.delayed(const Duration(seconds: 1), () => _setPhase(_QuickPhase.idle));
+        switch (progress.status) {
+          case TransferProgressStatus.transferring:
+            _applyProgress(progress);
+            appController.setSpeed(record.id, progress.speed);
+            break;
+          case TransferProgressStatus.completed:
+            appController.setSpeed(record.id, 0);
+            _progress = 1;
+            _speed = 0;
+            appController.updateTransferRecord(record.copyWith(status: TransferStatus.completed, totalSize: progress.totalSize, endTime: DateTime.now()));
+            _setPhase(_QuickPhase.completed);
+            break;
+          case TransferProgressStatus.failed:
+            appController.setSpeed(record.id, 0);
+            appController.updateTransferRecord(record.copyWith(status: TransferStatus.failed, endTime: DateTime.now()));
+            _setPhase(_QuickPhase.failed);
+            Future.delayed(const Duration(seconds: 1), () => _setPhase(_QuickPhase.idle));
+            break;
+          case TransferProgressStatus.cancelled:
+            appController.setSpeed(record.id, 0);
+            appController.updateTransferRecord(record.copyWith(status: TransferStatus.cancelled, endTime: DateTime.now()));
+            _setPhase(_QuickPhase.cancelled);
+            Future.delayed(const Duration(seconds: 1), () => _setPhase(_QuickPhase.idle));
+            break;
+          case TransferProgressStatus.initializing:
+          case TransferProgressStatus.connecting:
+            break;
         }
       },
       onError: (_) {
         if (mounted && _phase != _QuickPhase.cancelled) {
-          _progressTimer?.cancel();
+          appController.setSpeed(record.id, 0);
           appController.updateTransferRecord(record.copyWith(status: TransferStatus.failed, endTime: DateTime.now()));
           _setPhase(_QuickPhase.failed);
           Future.delayed(const Duration(seconds: 1), () => _setPhase(_QuickPhase.idle));
@@ -499,8 +527,8 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
       return;
     }
 
+    _resetProgress();
     _setPhase(_QuickPhase.receiving);
-    _startSimProgress();
 
     // Clear previous input/results before receiving
     setState(() {
@@ -545,69 +573,83 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
         if (progress.status == TransferProgressStatus.failed && progress.error != null) {
           context.showSnackBar(l10n.localizeCrocError(progress.error!));
         }
-        if (progress.status == TransferProgressStatus.completed) {
-          _finishSimProgress(_QuickPhase.completed);
-          if (progress.isText) {
-            setState(() {
-              _receivedText = progress.textContent;
-              _receivedFiles.clear();
-              _isTextMode = true;
-            });
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!mounted) return;
-              _textCtrl
-                ..text = progress.textContent
-                ..selection = TextSelection.collapsed(offset: progress.textContent.length);
-            });
-            appController.updateTransferRecord(record.copyWith(
-              status: TransferStatus.completed,
-              totalSize: progress.textContent.length,
-              files: [FileItem(name: progress.textContent, path: '', size: progress.textContent.length)],
-              endTime: DateTime.now(),
-            ));
-          } else {
-            final fileNames = progress.currentFile.isNotEmpty
-                ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
-                : <String>[];
-            setState(() {
-              _receivedText = '';
-              _isTextMode = false;
-              _receivedFiles.clear();
-              _receivedFiles.addAll(fileNames.map((n) => FileItem(
-                name: n,
-                path: '${AppPaths.savePathSync}${Platform.pathSeparator}$n',
-                size: 0,
-              )));
-            });
-            appController.updateTransferRecord(record.copyWith(
-              status: TransferStatus.completed,
-              totalSize: progress.totalSize,
-              files: fileNames.isEmpty
-                  ? [const FileItem(name: 'file', path: '', size: 0)]
-                  : _receivedFiles.map((f) => f).toList(),
-              endTime: DateTime.now(),
-            ));
-            if (_receivedFiles.isNotEmpty && isAndroid) {
-              for (final f in _receivedFiles) {
-                AppPaths.exportToDownloads(f.path);
+        switch (progress.status) {
+          case TransferProgressStatus.transferring:
+            _applyProgress(progress);
+            appController.setSpeed(record.id, progress.speed);
+            break;
+          case TransferProgressStatus.completed:
+            appController.setSpeed(record.id, 0);
+            _progress = 1;
+            _speed = 0;
+            if (progress.isText) {
+              setState(() {
+                _receivedText = progress.textContent;
+                _receivedFiles.clear();
+                _isTextMode = true;
+              });
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                _textCtrl
+                  ..text = progress.textContent
+                  ..selection = TextSelection.collapsed(offset: progress.textContent.length);
+              });
+              appController.updateTransferRecord(record.copyWith(
+                status: TransferStatus.completed,
+                totalSize: progress.textContent.length,
+                files: [FileItem(name: progress.textContent, path: '', size: progress.textContent.length)],
+                endTime: DateTime.now(),
+              ));
+            } else {
+              final fileNames = progress.currentFile.isNotEmpty
+                  ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
+                  : <String>[];
+              setState(() {
+                _receivedText = '';
+                _isTextMode = false;
+                _receivedFiles.clear();
+                _receivedFiles.addAll(fileNames.map((n) => FileItem(
+                  name: n,
+                  path: '${AppPaths.savePathSync}${Platform.pathSeparator}$n',
+                  size: 0,
+                )));
+              });
+              appController.updateTransferRecord(record.copyWith(
+                status: TransferStatus.completed,
+                totalSize: progress.totalSize,
+                files: fileNames.isEmpty
+                    ? [const FileItem(name: 'file', path: '', size: 0)]
+                    : _receivedFiles.map((f) => f).toList(),
+                endTime: DateTime.now(),
+              ));
+              if (_receivedFiles.isNotEmpty && isAndroid) {
+                for (final f in _receivedFiles) {
+                  AppPaths.exportToDownloads(f.path);
+                }
               }
             }
-          }
-        } else if (progress.status == TransferProgressStatus.failed) {
-          _progressTimer?.cancel();
-          appController.updateTransferRecord(record.copyWith(status: TransferStatus.failed, files: [FileItem(name: l10n.receiveFailed, path: '', size: 0)], endTime: DateTime.now()));
-          _setPhase(_QuickPhase.failed);
-          Future.delayed(const Duration(seconds: 1), () => _setPhase(_QuickPhase.idle));
-        } else if (progress.status == TransferProgressStatus.cancelled) {
-          _progressTimer?.cancel();
-          appController.updateTransferRecord(record.copyWith(status: TransferStatus.cancelled, endTime: DateTime.now()));
-          _setPhase(_QuickPhase.cancelled);
-          Future.delayed(const Duration(seconds: 1), () => _setPhase(_QuickPhase.idle));
+            _setPhase(_QuickPhase.completed);
+            break;
+          case TransferProgressStatus.failed:
+            appController.setSpeed(record.id, 0);
+            appController.updateTransferRecord(record.copyWith(status: TransferStatus.failed, files: [FileItem(name: l10n.receiveFailed, path: '', size: 0)], endTime: DateTime.now()));
+            _setPhase(_QuickPhase.failed);
+            Future.delayed(const Duration(seconds: 1), () => _setPhase(_QuickPhase.idle));
+            break;
+          case TransferProgressStatus.cancelled:
+            appController.setSpeed(record.id, 0);
+            appController.updateTransferRecord(record.copyWith(status: TransferStatus.cancelled, endTime: DateTime.now()));
+            _setPhase(_QuickPhase.cancelled);
+            Future.delayed(const Duration(seconds: 1), () => _setPhase(_QuickPhase.idle));
+            break;
+          case TransferProgressStatus.initializing:
+          case TransferProgressStatus.connecting:
+            break;
         }
       },
       onError: (_) {
         if (mounted && _phase != _QuickPhase.cancelled) {
-          _progressTimer?.cancel();
+          appController.setSpeed(record.id, 0);
           appController.updateTransferRecord(record.copyWith(status: TransferStatus.failed, files: [FileItem(name: l10n.receiveFailed, path: '', size: 0)], endTime: DateTime.now()));
           _setPhase(_QuickPhase.failed);
           Future.delayed(const Duration(seconds: 1), () => _setPhase(_QuickPhase.idle));

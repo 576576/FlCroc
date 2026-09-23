@@ -90,6 +90,24 @@ class AppStateNotifier extends StateNotifier<AppState> {
     state = state.copyWith(speeds: speeds);
   }
 
+  /// Records the live speed of one transfer. Pass a speed <= 0 to drop the
+  /// entry, which is what the terminal states do so the dashboard stops
+  /// reporting a stale rate.
+  void setSpeed(String id, double speed) {
+    final current = state.speeds;
+    if (speed <= 0) {
+      if (!current.containsKey(id)) return;
+      state = state.copyWith(
+        speeds: Map<String, double>.from(current)..remove(id),
+      );
+      return;
+    }
+    if (current[id] == speed) return;
+    state = state.copyWith(
+      speeds: Map<String, double>.from(current)..[id] = speed,
+    );
+  }
+
   void clearTransfers() {
     state = state.copyWith(transfers: []);
     _saveTransfers();

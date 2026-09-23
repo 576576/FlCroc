@@ -10,6 +10,8 @@ build/
 .flutter-plugins
 .flutter-plugins-dependencies
 .flutter_tool_state
+# flutter 工具偶尔在工程根落下的 0 字节标记文件
+/.flutter
 **/generated_plugin_registrant.dart
 
 # ============================================================

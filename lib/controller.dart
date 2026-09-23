@@ -55,6 +55,13 @@ class AppController {
     _ref.read(appStateProvider.notifier).updateTransfer(record);
   }
 
+  /// Publishes the live transfer speed (bytes/s) for [id].
+  ///
+  /// Passing a value <= 0 removes the entry, which is what terminal states do.
+  void setSpeed(String id, double speed) {
+    _ref.read(appStateProvider.notifier).setSpeed(id, speed);
+  }
+
   String generateId() {
     return DateTime.now().millisecondsSinceEpoch.toString();
   }

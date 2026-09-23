@@ -31,34 +31,46 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
 
   ReceivePhase _phase = ReceivePhase.idle;
 
-  double _simProgress = 0;
-  Timer? _progressTimer;
+  // Live progress reported by the bridge (type-1 events, see CoreLib._liveProgress).
+  double _progress = 0;
+  double _speed = 0;
+  int _completedFiles = 0;
+  int _totalFiles = 0;
+  String _currentFile = '';
   StreamSubscription<TransferProgress>? _receiveSub;
 
-  void _startSimProgress() {
-    _simProgress = 0;
-    _progressTimer?.cancel();
-    int step = 0;
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 60), (t) {
-      if (!mounted) { t.cancel(); return; }
-      step++;
-      if (step <= 3) { _simProgress = (step * 0.25 / 3); }
-      else if (_simProgress < 0.90) { _simProgress += 0.01; if (_simProgress > 0.90) _simProgress = 0.90; }
-      setState(() {});
-    });
+  void _resetProgress() {
+    _progress = 0;
+    _speed = 0;
+    _completedFiles = 0;
+    _totalFiles = 0;
+    _currentFile = '';
   }
 
-  void _finishSimProgress() {
-    _progressTimer?.cancel();
-    int step = 0;
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 16), (t) {
-      if (!mounted) { t.cancel(); return; }
-      step++;
-      if (step <= 10) { _simProgress = 0.90 + (step * 0.01); }
-      else if (step <= 22) { _simProgress = 1.0; }
-      else { t.cancel(); if (mounted) setState(() => _phase = ReceivePhase.completed); }
-      setState(() {});
-    });
+  DateTime? _lastRecordPersist;
+  static const _recordPersistInterval = Duration(seconds: 1);
+
+  /// `updateTransferRecord` writes the history to prefs, so during a transfer
+  /// (progress events every 200ms) only persist about once a second.
+  bool _shouldPersistRecord() {
+    final now = DateTime.now();
+    final last = _lastRecordPersist;
+    if (last != null && now.difference(last) < _recordPersistInterval) {
+      return false;
+    }
+    _lastRecordPersist = now;
+    return true;
+  }
+
+  /// Secondary text for the progress chip, e.g. `2/5 · 12.3 MB/s`.
+  String _buildProgressDetail() {
+    final parts = <String>[];
+    if (_totalFiles > 1) {
+      final done = _completedFiles.clamp(0, _totalFiles);
+      parts.add('$done/$_totalFiles');
+    }
+    if (_speed > 0) parts.add(_speed.transferSpeed);
+    return parts.join(' · ');
   }
 
   // Received content tracking
@@ -233,25 +245,49 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
           case TransferProgressStatus.initializing:
           case TransferProgressStatus.connecting:
             if (mounted) {
-              setState(() { _phase = ReceivePhase.receiving; });
-              _startSimProgress();
+              setState(() {
+                _phase = ReceivePhase.receiving;
+                _resetProgress();
+              });
             }
             break;
           case TransferProgressStatus.transferring:
             if (_phase == ReceivePhase.pending) {
-              setState(() { _phase = ReceivePhase.receiving; });
-              _startSimProgress();
+              setState(() {
+                _phase = ReceivePhase.receiving;
+                _resetProgress();
+              });
             }
-            appController.updateTransferRecord(
-              record.copyWith(
-                status: TransferStatus.transferring,
-                transferredSize: progress.transferredSize,
-              ),
-            );
-            if (mounted) setState(() {});
+            // Real progress from the bridge: bytes, current file and speed.
+            setState(() {
+              if (progress.totalSize > 0) {
+                _progress = (progress.transferredSize / progress.totalSize).clamp(0.0, 1.0);
+              }
+              if (progress.totalFiles > 0) _totalFiles = progress.totalFiles;
+              _completedFiles = progress.completedFiles;
+              if (progress.currentFile.isNotEmpty) _currentFile = progress.currentFile;
+              if (progress.speed > 0) _speed = progress.speed;
+            });
+            appController.setSpeed(record.id, progress.speed);
+            // Persisting the record writes prefs, so throttle it while the
+            // bridge reports every 200ms.
+            if (_shouldPersistRecord()) {
+              appController.updateTransferRecord(
+                record.copyWith(
+                  status: TransferStatus.transferring,
+                  transferredSize: progress.transferredSize,
+                ),
+              );
+            }
             break;
           case TransferProgressStatus.completed:
-            _finishSimProgress();
+            appController.setSpeed(record.id, 0);
+            setState(() {
+              _progress = 1;
+              _completedFiles = _totalFiles;
+              _speed = 0;
+              _phase = ReceivePhase.completed;
+            });
             if (progress.isText) {
               setState(() {
                 _receivedFiles.clear();
@@ -305,7 +341,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
               );
             }
           case TransferProgressStatus.failed:
-            _progressTimer?.cancel();
+            appController.setSpeed(record.id, 0);
             setState(() { _isReceiving = false; _phase = ReceivePhase.failed; });
             appController.updateTransferRecord(
               record.copyWith(
@@ -322,7 +358,8 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
               context.showSnackBar(errMsg);
             }
           case TransferProgressStatus.cancelled:
-            setState(() => _isReceiving = false);
+            appController.setSpeed(record.id, 0);
+            setState(() { _isReceiving = false; _phase = ReceivePhase.cancelled; });
             appController.updateTransferRecord(
               record.copyWith(
                 status: TransferStatus.cancelled,
@@ -355,7 +392,6 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   }
 
   void _cancelReceive() {
-    _progressTimer?.cancel();
     _receiveSub?.cancel();
     _receiveSub = null;
     setState(() { _isReceiving = false; _phase = ReceivePhase.cancelled; });
@@ -367,7 +403,6 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   @override
   void dispose() {
     _savedCodePhrase = _codeController.text;
-    _progressTimer?.cancel();
     _receiveSub?.cancel();
     _saveReceivePrefs();
     _codeController.dispose();
@@ -647,11 +682,15 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
     };
     if (label.isEmpty) return const SizedBox.shrink();
     if (_phase == ReceivePhase.receiving) {
-      return CapsuleProgressChip(
+      final chip = CapsuleProgressChip(
         label: label,
         color: color,
-        progress: _simProgress,
+        progress: _progress,
+        detail: _buildProgressDetail(),
       );
+      // The chip is too narrow for a file name, so surface it on hover.
+      if (_currentFile.isEmpty) return chip;
+      return Tooltip(message: _currentFile, child: chip);
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

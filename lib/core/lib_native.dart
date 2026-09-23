@@ -99,6 +99,27 @@ class CoreLib extends CoreInterface {
     return raw.replaceAll(RegExp(r'^croc\s*v?'), '');
   }
 
+  /// Builds a live progress update from a type-1 bridge event.
+  ///
+  /// The Go bridge samples croc's exported transfer counters every 200ms
+  /// (`TotalSent` is per-file, so the bridge accumulates the finished files on
+  /// top of it) and reports cumulative bytes plus a smoothed speed.
+  TransferProgress _liveProgress(String transferId, Map<String, dynamic> event) {
+    // current_file_index is 1-based; 0 means the bridge has not resolved the
+    // manifest yet.
+    final fileIndex = (event['current_file_index'] as int?) ?? 0;
+    return TransferProgress(
+      transferId: transferId,
+      status: TransferProgressStatus.transferring,
+      totalFiles: (event['total_files'] as int?) ?? 0,
+      totalSize: (event['total_size'] as int?) ?? 0,
+      transferredSize: (event['transferred_size'] as int?) ?? 0,
+      currentFile: event['current_file'] as String? ?? '',
+      completedFiles: fileIndex > 0 ? fileIndex - 1 : 0,
+      speed: (event['speed'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+
   @override
   Future<String> generateCodePhrase() async {
     final rng = DateTime.now().microsecondsSinceEpoch;
@@ -219,7 +240,10 @@ class CoreLib extends CoreInterface {
           final event = jsonDecode(pollJson) as Map<String, dynamic>;
           final type = event['type'] as int? ?? 0;
 
-          if (type == 2) {
+          if (type == 1) {
+            // Live transfer progress sampled from croc's counters.
+            yield _liveProgress(transferId, event);
+          } else if (type == 2) {
             yield TransferProgress(
               transferId: transferId,
               status: TransferProgressStatus.completed,
@@ -365,7 +389,10 @@ class CoreLib extends CoreInterface {
           final event = jsonDecode(pollJson) as Map<String, dynamic>;
           final type = event['type'] as int? ?? 0;
 
-          if (type == 2) {
+          if (type == 1) {
+            // Live transfer progress sampled from croc's counters.
+            yield _liveProgress(transferId, event);
+          } else if (type == 2) {
             if (event['transfer_id'] != 'closed') {
               yield TransferProgress(
                 transferId: transferId,
