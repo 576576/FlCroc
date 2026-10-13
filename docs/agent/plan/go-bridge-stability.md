@@ -221,14 +221,53 @@ croc 跑成独立可执行文件，Flutter 通过 stdin/stdout JSON-Lines 或本
 
 ## 6. 怎么证明"稳了"
 
-`-race` 在 c-shared + Flutter 里没法直接用，所以在 `go_bridge/` 加一个纯 Go harness，
-模拟 Dart 的轮询节奏：
+**所有用例必须跑本地中继，一个包都不许打到公共中继。**
+`croc.schollz.com` 对入房频率有硬限制（`--source-join-limit` / `--room-join-limit` /
+`--join-limit-window`）：挂起回归那种单文件长跑、以及浸泡测试每分钟两次的循环，
+会把 IP 直接限掉，看起来像 bridge 的 bug，实际是被中继拦了。那也是拿别人的公共服务
+做压测，本来就不该那么跑。
 
-1. **挂起回归**：传一个 ≥500MB 的单文件，断言 5 分钟内必收到 type-2 或 type-3。
-   **修复前这条应该超时失败。**
-2. **panic 回归**：先占住 9009–9013 再发送 —— 修复前进程死，修复后收到 type-3 且进程存活。
-3. **串台回归**：并发调 send + receive，断言第二次收到"已有传输在进行"，且第一次的事件不被第二次接收。
-4. **竞争回归**：harness 里 `go test -race` 跑一次完整收发，断言无 race（配 A9 之后才可能干净）。
+`-race` 在 c-shared + Flutter 里没法直接用，所以在 `go_bridge/` 加一个纯 Go harness，
+模拟 Dart 的轮询节奏（每 200ms 取一条，与 `lib_native.dart` 一致）。
+
+### 6.1 先起一个本地中继
+
+```bash
+cd submodules/croc
+go run . relay --host 127.0.0.1 --ports 9009,9010,9011,9012,9013 \
+    --source-join-limit 100000 --room-join-limit 100000
+```
+
+后两项是中继**自己**的入房限流。默认值是按真人手动传文件定的，浸泡测试一轮 100MB、
+每分钟两次就会把配额打光，然后被自己的中继拦下来。
+
+### 6.2 harness 的固定选项
+
+| 选项 | 值 | 为什么 |
+|---|---|---|
+| `relay_address` | `127.0.0.1:9009` | 打到 6.1 那个进程 |
+| `relay_ports` | `9009,9010,9011,9012,9013` | 与中继一致 |
+| `disable_local` | `true` | 不让客户端再自己起一个本地中继 —— 那会去抢 9009–9013，正好撞上 F2 |
+| `transport` | `relay` | 固定走中继路径，不让 auto 挑 Tailcat，结果才可复现 |
+
+两条捷径都走不通：
+
+- `--local`（`OnlyLocal`）要求 `transport` 必须是 `auto`（`src/cli/cli.go` 里
+  `--transport must be auto for local-only transfers`），路径锁不住。
+- 只给 `relay_address` 而不关 `disable_local`，客户端仍会去连公共中继
+  （`!c.Options.OnlyLocal` 分支照跑），限流照样会来。
+
+### 6.3 用例
+
+1. **挂起回归（F1）**：传一个 ≥500MB 的单文件，断言 5 分钟内必收到 type-2 或 type-3。
+   **修复前这条应该超时失败** —— 进度条约 800 B/s 往 stderr 写，80 秒左右就把
+   `bufio.Scanner` 撑爆。
+2. **panic 回归（F2）**：先占住 9009–9013 再发送。修复前进程直接死，修复后收到
+   type-3 且进程存活。**注意**：6.2 里的 `disable_local=true` 会绕开这条路径
+   （`setupLocalRelay` 只在 `!DisableLocal` 时调用），所以这个用例要单独把本地中继打开。
+3. **串台回归（F5）**：并发调 send + receive，断言第二次收到
+   `a transfer is already in progress`，且第一次的事件不被第二次接收。
+4. **竞争回归（F4）**：`go test -race` 跑一次完整收发，断言无 race（配 A9 之后才可能干净）。
 5. **浸泡**：1 小时、每 30 秒一次的 100MB 收发循环，断言 `runtime.NumGoroutine()` 不单调增长。
 
 ---
