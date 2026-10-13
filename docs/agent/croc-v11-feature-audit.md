@@ -1,7 +1,7 @@
 # croc v10 → v11 特性落地审计
 
 > 审计对象：FlCroc @ commit `7f13b1e`，croc submodule 固定于 **v11.5.2**
-> 对照基线：**v10.4.4**（升级前的版本，见 `AGENTS.md`）
+> 对照基线：**v10.4.4**（升级前锁定的版本）
 > 审计方式：bridge 源码 + Dart 侧源码 + croc v11.5.2 源码逐项比对；关键结论均标注 file:line
 >
 > **落地状态**：本审计的 P0/P1 全部已实现，P2 除第 9/10 项外也已实现。
@@ -39,15 +39,14 @@
 | **重连状态透出** | bridge 抓 stderr 里的 "transfer interruption / Retrying securely"，转成 type-5 事件给 UI | `go_bridge/main.go:203-233` |
 | **渐进哈希 / 跳过未变文件** | 相同文件不再重传（`numberOfUnchangedFiles`） | `src/croc/progressive_hash.go`、`croc.go:3442-3451` |
 | **逐文件压缩协商** | 与旧版对端自动回落 | `peerPerFileCompression`，`croc.go:1379` |
-| **接收路径安全校验** | 拒绝绝对路径、`..` 穿越、`.ssh`、重复目标、逃逸符号链接 | `validateReceiveMetadata()`；`AGENTS.md` 已记录 |
+| **接收路径安全校验** | 拒绝绝对路径、`..` 穿越、`.ssh`、重复目标、逃逸符号链接 | `validateReceiveMetadata()` |
 | **文本传输 1 MiB 上限校验** | 发送端提前拦截，避免对端整单拒绝 | `go_bridge/main.go:50, 243-247` |
 | **内联元数据 / 分块 file info / 文件清单** | 大文件列表不再一次性塞满控制通道 | `file_manifest.go` |
 
 > 更正（复核后）：`--no-reconnect` 只作用于 `croc ssh` 子命令的**会话重连**
 > （`src/cli/ssh.go:78` 的 `Reconnect: !c.Bool("no-reconnect")`），与文件传输走的
-> `transferWithReconnect()` 是两套机制。文件传输在 v11.5.2 里**确实**没有关闭
-> 重连的开关，`AGENTS.md` 的原描述成立，只是可以写得更精确（已在 `AGENTS.md`
-> 里补上这条区分）。
+> `transferWithReconnect()` 是两套机制。文件传输在 v11.5.x 里**确实**没有关闭
+> 重连的开关。
 
 ---
 
@@ -151,7 +150,7 @@ Dart 侧也只认 2/3/4/5（`lib_native.dart:222-257`），于是 UI 只能用 `
 `numberOfTransferredFiles`（`:3439`/`:3457`）**完全裸奔**。宿主进程既拿不到这两把私有锁，
 也无法覆盖裸奔字段，所以「自己加锁同步」这条路在当前 API 下不存在。
 
-彻底干净的方案需要上游配合，已写成 PR 草稿：`docs/upstream-pr-lifecycle-accessor.md`。
+彻底干净的方案需要上游配合，已写成 PR 草稿：`docs/agent/upstream-pr-lifecycle-accessor.md`。
 
 ### 缺陷 2（中等）：接收时文件重名会被静默跳过
 
@@ -236,7 +235,7 @@ bridge 没设 `DisableClipboard`，所以**每次发送都会把码词写进系�
 | 8 | `SOCKS5_PROXY` / `HTTP_PROXY` 环境变量透传 | 受限网络场景；注意 bridge 是 CGO 共享库，env 由宿主进程传入 | ✅ `eaee481`（改为**显式配置**而非读 env，理由见该 commit message） |
 | 9 | 换用 `croc.NewCtx()` | 取消时向对端发 `SendError`，对端少等一个超时 | ⬜ 未做 |
 | 10 | 透出「直连 / 中继」标识 | 目前 croc 的 `peerToPeerDataPath()` 未导出，需上游 PR；可先用 type-5 事件近似 | ⬜ 未做（PR 草稿已备） |
-| 11 | 顺手更正 `AGENTS.md` 关于 reconnect 不可关闭的过时描述 | 文档债 | ✅ 复核后确认原描述**成立**，改为写得更精确 |
+| 11 | 复核 reconnect 能否关闭 | 文档债 | ✅ `--no-reconnect` 只作用于 `croc ssh`，文件传输无此开关 |
 
 ### 建议的落地顺序
 

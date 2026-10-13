@@ -3,6 +3,9 @@
 > **这份文件是 FlCroc 内部的 PR 草稿**，不是最终文档。下面从「PR 正文」开始的部分是
 > 准备直接贴到 `schollz/croc` 的英文内容，可以整段复制。
 >
+> **现状**：已按这份草稿在 fork（`576576/croc` 的 `flcroc` 分支，tag `v11.5.4-flcroc.1`）
+> 上实现并提交，尚未向上游提 PR。同步规则见 `docs/agent/plan/croc-fork-sync.md`。
+>
 > **背景**：FlCroc 的 Go bridge 以 `-buildmode=c-shared` 编进 Flutter 桌面/移动端进程，
 > 需要一个 200ms 的 ticker 去读传输进度来驱动进度条。croc 把进度字段直接导出在
 > `croc.Client` 上（`TotalSent`、`FilesToTransferCurrentNum`…），但它们的锁既不导出、
@@ -10,12 +13,11 @@
 > 最要命的是 `FilesHasFinished` 是 `map`：并发读会触发 Go 的 **fatal error**，
 > **不可 recover**，直接带走整个 Flutter 进程。
 >
-> **对 FlCroc 的影响**：`go_bridge/main.go` 的 `progressSampler` 目前刻意不读
-> `FilesHasFinished`，并用 `recover()` 包住切片读取（见 `AGENTS.md`
-> 「Live Transfer Progress」一节）。这份 PR 若被接受，bridge 就能去掉这些绕行，
-> 用一行 `c.ProgressSnapshot()` 拿到一致快照。
+> **对 FlCroc 的影响**：`go_bridge/main.go` 的 `progressSampler` 之前刻意不读
+> `FilesHasFinished`，并用 `recover()` 包住切片读取（`progressSampler.sample`）。
+> 访问器落地后 bridge 就能去掉这些绕行，用一行 `c.ProgressSnapshot()` 拿到一致快照。
 >
-> **本仓库内的相关改动**：`6ddba53`（真实进度）、`docs/croc-v11-feature-audit.md`
+> **本仓库内的相关改动**：`6ddba53`（真实进度）、`docs/agent/croc-v11-feature-audit.md`
 > 第五节的「注意并发」段。
 >
 > **上游仓库**：https://github.com/schollz/croc
