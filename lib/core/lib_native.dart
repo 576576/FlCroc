@@ -152,18 +152,11 @@ class CoreLib extends CoreInterface {
       return;
     }
 
-    final transferId = DateTime.now().millisecondsSinceEpoch.toString();
-    yield TransferProgress(
-      transferId: transferId,
-      status: TransferProgressStatus.initializing,
-    );
+    // The bridge owns the transfer id — CrocCancelTransfer compares it, so
+    // Dart must not invent one of its own.
+    var transferId = '';
 
     try {
-      yield TransferProgress(
-        transferId: transferId,
-        status: TransferProgressStatus.connecting,
-      );
-
       // Call CrocSendFiles
       final sendFunc = lib.lookupFunction<
           Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>),
@@ -237,11 +230,20 @@ class CoreLib extends CoreInterface {
         return;
       }
 
-      final codePhrase = result['code_phrase'] as String?;
+      transferId = result['transfer_id'] as String? ?? '';
+
+      yield TransferProgress(
+        transferId: transferId,
+        status: TransferProgressStatus.initializing,
+      );
+      yield TransferProgress(
+        transferId: transferId,
+        status: TransferProgressStatus.connecting,
+      );
       yield TransferProgress(
         transferId: transferId,
         status: TransferProgressStatus.transferring,
-        codePhrase: codePhrase,
+        codePhrase: result['code_phrase'] as String?,
       );
 
       // Poll progress until complete
@@ -329,18 +331,11 @@ class CoreLib extends CoreInterface {
       return;
     }
 
-    final transferId = DateTime.now().millisecondsSinceEpoch.toString();
-    yield TransferProgress(
-      transferId: transferId,
-      status: TransferProgressStatus.initializing,
-    );
+    // The bridge owns the transfer id — CrocCancelTransfer compares it, so
+    // Dart must not invent one of its own.
+    var transferId = '';
 
     try {
-      yield TransferProgress(
-        transferId: transferId,
-        status: TransferProgressStatus.connecting,
-      );
-
       final recvFunc = lib.lookupFunction<
           Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>),
           Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>)>('CrocReceiveFiles');
@@ -397,6 +392,16 @@ class CoreLib extends CoreInterface {
         return;
       }
 
+      transferId = result['transfer_id'] as String? ?? '';
+
+      yield TransferProgress(
+        transferId: transferId,
+        status: TransferProgressStatus.initializing,
+      );
+      yield TransferProgress(
+        transferId: transferId,
+        status: TransferProgressStatus.connecting,
+      );
       yield TransferProgress(
         transferId: transferId,
         status: TransferProgressStatus.transferring,

@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"errors"
+	"strings"
+	"testing"
+)
 
 // normalizeThrottle guards a panic: croc parses Options.ThrottleUpload itself
 // and panics on anything it cannot read, which inside a c-shared library takes
@@ -54,4 +58,66 @@ func TestParseRelayPorts(t *testing.T) {
 			t.Errorf("parseRelayPorts(%q) = %v, want the default range", in, got)
 		}
 	}
+}
+
+// scanNotices replaces a bufio.Scanner, which stopped reading for good once a
+// line exceeded 64 KiB. croc's progress bar only ends a line when a file
+// completes, so a single large file used to wedge the stderr pipe and hang the
+// transfer with no error anywhere.
+func TestScanNotices(t *testing.T) {
+	s := &session{}
+
+	// A notice split across two chunks is still recognised.
+	carry := scanNotices("...detected a transfer interru", s)
+	carry = scanNotices(carry+"ption. Retrying securely...\n", s)
+	if carry != "" {
+		t.Errorf("carry = %q, want empty after a terminated line", carry)
+	}
+
+	// An unterminated tail stays bounded: 200 KiB of progress-bar redraws must
+	// not pile up in memory.
+	for i := 0; i < 50; i++ {
+		carry = scanNotices(carry+strings.Repeat("x", 4096), s)
+	}
+	if len(carry) > 8192 {
+		t.Errorf("carry grew to %d bytes, want it bounded", len(carry))
+	}
+}
+
+// The sampler and the stderr reader outlive the transfer goroutine by a tick,
+// so emitting after the channel is closed must drop the event, not panic.
+func TestSessionEmitAfterClose(t *testing.T) {
+	s := &session{id: "7", events: make(chan progressEvent, 1)}
+	s.emit(progressEvent{Type: eventTypeProgress})
+	if got := <-s.events; got.TransferID != "7" {
+		t.Errorf("TransferID = %q, want %q", got.TransferID, "7")
+	}
+
+	s.closeEvents()
+	s.emit(progressEvent{Type: eventTypeProgress})
+	s.emit(progressEvent{Type: eventTypeProgress})
+	if _, ok := <-s.events; ok {
+		t.Error("received an event from a closed session")
+	}
+}
+
+// A second transfer used to steal the first one's event channel.
+func TestNewSessionSingleFlight(t *testing.T) {
+	first, err := newSession()
+	if err != nil {
+		t.Fatalf("newSession: %v", err)
+	}
+	if _, err := newSession(); !errors.Is(err, errTransferInProgress) {
+		t.Errorf("second newSession error = %v, want errTransferInProgress", err)
+	}
+
+	first.markFinished()
+	second, err := newSession()
+	if err != nil {
+		t.Fatalf("newSession after finish: %v", err)
+	}
+	if second.id == first.id {
+		t.Errorf("second session reused the id %q", second.id)
+	}
+	second.markFinished()
 }

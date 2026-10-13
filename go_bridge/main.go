@@ -15,9 +15,10 @@ package main
 import "C"
 
 import (
-	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -26,6 +27,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
@@ -38,10 +40,107 @@ import (
 
 // ── Global state ────────────────────────────────────────────
 var (
-	mu           sync.Mutex
-	activeClient *croc.Client
-	progressChan chan progressEvent
+	// mu guards active only. Everything else a transfer needs lives on its
+	// session, so a later transfer can never write into an earlier one's
+	// event channel.
+	mu     sync.Mutex
+	active *session
+
+	// transferSeq hands out process-unique transfer ids. os.Getpid() cannot:
+	// it returns the same value for the whole process lifetime.
+	transferSeq atomic.Uint64
 )
+
+// errTransferInProgress is returned when a transfer is started while another
+// one is still running.
+var errTransferInProgress = errors.New("a transfer is already in progress")
+
+// eventQueueDepth is how many events may pile up before the consumer polls.
+const eventQueueDepth = 100
+
+// session owns the state of one transfer: the channel its events travel on and
+// the context that cancels it.
+type session struct {
+	id     string
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	// emitMu guards closed against closeEvents. Holding it across the send is
+	// safe because the send never blocks.
+	emitMu sync.Mutex
+	events chan progressEvent
+	closed bool
+
+	// finished is set once the transfer goroutine has returned, which is what
+	// lets the next transfer claim the slot.
+	finished atomic.Bool
+
+	// drained is set once the consumer has seen the closed channel, so the
+	// terminal event is reported exactly once.
+	drained atomic.Bool
+}
+
+// newSession claims the single transfer slot. A finished session is replaced;
+// one that is still running blocks the new transfer.
+func newSession() (*session, error) {
+	mu.Lock()
+	defer mu.Unlock()
+	if active != nil && !active.finished.Load() {
+		return nil, errTransferInProgress
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	s := &session{
+		id:     strconv.FormatUint(transferSeq.Add(1), 10),
+		ctx:    ctx,
+		cancel: cancel,
+		events: make(chan progressEvent, eventQueueDepth),
+	}
+	active = s
+	return s, nil
+}
+
+// run starts fn on a goroutine and closes the event channel when it returns.
+// A panic in fn is turned into a type-3 error event instead of escaping the
+// c-shared boundary, where it would take the host process down with it.
+func (s *session) run(fn func(s *session)) {
+	go func() {
+		defer s.cancel()
+		defer s.markFinished()
+		defer s.closeEvents()
+		defer func() {
+			if r := recover(); r != nil {
+				s.emit(progressEvent{Type: 3, Error: fmt.Sprintf("bridge panic: %v", r)})
+			}
+		}()
+		fn(s)
+	}()
+}
+
+// emit queues an event. It drops the event when the consumer is behind rather
+// than blocking, and it never sends on a closed channel.
+func (s *session) emit(ev progressEvent) {
+	ev.TransferID = s.id
+	s.emitMu.Lock()
+	defer s.emitMu.Unlock()
+	if s.closed {
+		return
+	}
+	select {
+	case s.events <- ev:
+	default:
+	}
+}
+
+func (s *session) closeEvents() {
+	s.emitMu.Lock()
+	defer s.emitMu.Unlock()
+	if !s.closed {
+		s.closed = true
+		close(s.events)
+	}
+}
+
+func (s *session) markFinished() { s.finished.Store(true) }
 
 // Event type for status messages (e.g. croc v11 reconnect notices).
 // Dart clients that don't recognise type 5 simply ignore it.
@@ -96,24 +195,22 @@ func CrocSendFiles(pathsJSON *C.char, optionsJSON *C.char) *C.char {
 		return marshalError(fmt.Sprintf("invalid options: %s", err))
 	}
 
-	transferID := fmt.Sprintf("%d", os.Getpid())
+	s, err := newSession()
+	if err != nil {
+		return marshalError(err.Error())
+	}
+
 	code := opts.CodePhrase
 	if code == "" {
 		code = utils.GetRandomName()
 	}
 
-	mu.Lock()
-	progressChan = make(chan progressEvent, 100)
-	ch := progressChan
-	mu.Unlock()
-
-	go func() {
-		defer close(ch)
-		doSend(paths, code, opts, transferID)
-	}()
+	s.run(func(s *session) {
+		doSend(s, paths, code, opts)
+	})
 
 	// Return transfer_id + code immediately
-	return marshalResult(transferID, code)
+	return marshalResult(s.id, code)
 }
 
 //export CrocReceiveFiles
@@ -123,41 +220,37 @@ func CrocReceiveFiles(codePhrase *C.char, optionsJSON *C.char) *C.char {
 		return marshalError(fmt.Sprintf("invalid options: %s", err))
 	}
 
-	transferID := fmt.Sprintf("%d", os.Getpid())
+	s, err := newSession()
+	if err != nil {
+		return marshalError(err.Error())
+	}
+
 	code := C.GoString(codePhrase) // copy before goroutine (Dart frees ptr after return)
 
-	mu.Lock()
-	progressChan = make(chan progressEvent, 100)
-	ch := progressChan
-	mu.Unlock()
+	s.run(func(s *session) {
+		doReceive(s, code, opts)
+	})
 
-	go func() {
-		defer close(ch)
-		doReceive(code, opts, transferID)
-	}()
-
-	return marshalResult(transferID, "")
+	return marshalResult(s.id, "")
 }
 
 //export CrocPollProgress
 func CrocPollProgress() *C.char {
 	mu.Lock()
-	ch := progressChan
+	s := active
 	mu.Unlock()
-	if ch == nil {
-		return marshalEvent(nil)
+	if s == nil {
+		return C.CString("null")
 	}
 	select {
-	case ev, ok := <-ch:
+	case ev, ok := <-s.events:
 		if !ok {
-			// Channel closed — clear it.
-			mu.Lock()
-			if progressChan == ch {
-				progressChan = nil
+			// Report the closed channel once: reading it again would keep
+			// succeeding and flood the consumer with terminal events.
+			if !s.drained.Swap(true) {
+				return marshalEvent(&progressEvent{Type: 2, TransferID: "closed"})
 			}
-			mu.Unlock()
-			closedEvent := progressEvent{Type: 2, TransferID: "closed"}
-			return marshalEvent(&closedEvent)
+			return C.CString("null")
 		}
 		return marshalEvent(&ev)
 	default:
@@ -167,13 +260,20 @@ func CrocPollProgress() *C.char {
 
 //export CrocCancelTransfer
 func CrocCancelTransfer(transferID *C.char) C.int {
+	id := C.GoString(transferID)
 	mu.Lock()
-	defer mu.Unlock()
-	if activeClient != nil {
-		activeClient.Cancel()
-		return 1
+	s := active
+	mu.Unlock()
+	if s == nil || s.finished.Load() {
+		return 0
 	}
-	return 0
+	// An empty id means "whatever is running". A non-empty one must match, so
+	// a stale id left over from a finished transfer cannot cancel this one.
+	if id != "" && id != s.id {
+		return 0
+	}
+	s.cancel()
+	return 1
 }
 
 //export CrocFreeString
@@ -214,7 +314,7 @@ func marshalEvent(ev *progressEvent) *C.char {
 // croc.New() with Quiet=true replaces os.Stderr with os.DevNull and never
 // restores it, so this must be called AFTER croc.New() to take effect.
 // The returned restore function must be called when the transfer ends.
-func captureStderr(transferID string) (restore func()) {
+func captureStderr(s *session) (restore func()) {
 	oldStderr := os.Stderr
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -225,16 +325,16 @@ func captureStderr(transferID string) (restore func()) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		scanner := bufio.NewScanner(r)
-		for scanner.Scan() {
-			line := scanner.Text()
-			if strings.Contains(line, "transfer interruption") ||
-				strings.Contains(line, "Retrying securely") {
-				progressChan <- progressEvent{
-					Type:       eventTypeStatus,
-					TransferID: transferID,
-					Error:      "reconnecting",
-				}
+		defer r.Close()
+		buf := make([]byte, 4096)
+		carry := ""
+		for {
+			n, err := r.Read(buf)
+			if n > 0 {
+				carry = scanNotices(carry+string(buf[:n]), s)
+			}
+			if err != nil {
+				return
 			}
 		}
 	}()
@@ -246,34 +346,45 @@ func captureStderr(transferID string) (restore func()) {
 	}
 }
 
+// scanNotices emits a status event for every reconnect notice in chunk and
+// returns the trailing bytes that might still be part of an unfinished line.
+//
+// It deliberately does not use bufio.Scanner. croc's progress bar redraws with
+// "\r" and only writes "\n" once a file completes, so a single large file
+// blows past the scanner's 64 KiB token limit; the scanner then stops reading
+// for good, the pipe fills up, and croc blocks forever on its next write to
+// stderr — a transfer that hangs without producing any error.
+func scanNotices(chunk string, s *session) string {
+	for {
+		i := strings.IndexByte(chunk, '\n')
+		if i < 0 {
+			break
+		}
+		line := chunk[:i]
+		if strings.Contains(line, "transfer interruption") ||
+			strings.Contains(line, "Retrying securely") {
+			s.emit(progressEvent{Type: eventTypeStatus, Error: "reconnecting"})
+		}
+		chunk = chunk[i+1:]
+	}
+	// Unterminated tail: keep only enough to still recognise a notice that
+	// straddles a read boundary, so it cannot grow without bound.
+	if len(chunk) > 4096 {
+		return chunk[len(chunk)-512:]
+	}
+	return chunk
+}
+
 // ── Live progress sampling ──────────────────────────────────
 //
-// croc keeps its transfer counters on the *exported* fields of croc.Client
-// (src/croc/croc.go), so the bridge can read them without patching croc:
-//
-//	TotalSent                int64  — bytes moved for the CURRENT file
-//	                                 (reset per file: croc.go:3199 / 3519)
-//	FilesToTransferCurrentNum int   — index of the file in flight
-//	TotalNumberOfContents    int    — total number of entries
-//	FilesToTransfer          []FileInfo
-//
-// Overall progress therefore is:
-//
-//	sum(sizes[0 .. currentNum-1]) + TotalSent
-//
-// Caveat: croc mutates these fields from its own goroutines without a lock
-// that we can share, so a sample can observe a torn value. Every read is
-// wrapped in a recover() so a torn slice header degrades into a skipped
-// sample instead of taking the process down. Note that FilesHasFinished is a
-// map and is deliberately never read — a concurrent map read is a fatal
-// runtime error in Go, not a recoverable panic.
+// croc.ProgressSnapshot() returns a consistent copy of the transfer counters
+// (src/croc/progress.go in the croc fork). Reading the exported fields
+// directly instead would race with croc's own transfer goroutines — and
+// FilesHasFinished is a map, whose concurrent read is a fatal error that
+// cannot be recovered.
 type progressSampler struct {
-	transferID string
-	totalSize  int64
-	totalFiles int
-	// sizes is the sender's own file-size list. When nil (receiver side) the
-	// sizes are read from the client's manifest instead.
-	sizes []int64
+	session *session
+	client  *croc.Client
 
 	stopOnce sync.Once
 	done     chan struct{} // closed to ask the sampler to stop
@@ -283,137 +394,75 @@ type progressSampler struct {
 	lastAt   time.Time
 }
 
-// startProgressSampler begins emitting type-1 progress events. totalSize and
-// totalFiles may be 0, in which case they are derived from the client.
-// The returned sampler MUST be stopped before progressChan is closed.
-func startProgressSampler(transferID string, totalSize int64, totalFiles int, sizes []int64) *progressSampler {
-	s := &progressSampler{
-		transferID: transferID,
-		totalSize:  totalSize,
-		totalFiles: totalFiles,
-		sizes:      sizes,
-		done:       make(chan struct{}),
-		stopped:    make(chan struct{}),
-		lastAt:     time.Now(),
+// startProgressSampler begins emitting type-1 progress events. The returned
+// sampler MUST be stopped before the session's event channel is closed.
+func startProgressSampler(s *session, c *croc.Client) *progressSampler {
+	sm := &progressSampler{
+		session: s,
+		client:  c,
+		done:    make(chan struct{}),
+		stopped: make(chan struct{}),
+		lastAt:  time.Now(),
 	}
-	go s.run()
-	return s
+	go sm.run()
+	return sm
 }
 
-// stop halts the sampler and waits for the goroutine to exit, so no send can
-// race with the closing of progressChan.
-func (s *progressSampler) stop() {
-	if s == nil {
+// stop halts the sampler and waits for the goroutine to exit, so no sample can
+// race with the closing of the session's event channel.
+func (sm *progressSampler) stop() {
+	if sm == nil {
 		return
 	}
-	s.stopOnce.Do(func() { close(s.done) })
-	<-s.stopped
+	sm.stopOnce.Do(func() { close(sm.done) })
+	<-sm.stopped
 }
 
-func (s *progressSampler) run() {
-	defer close(s.stopped)
+func (sm *progressSampler) run() {
+	defer close(sm.stopped)
 	ticker := time.NewTicker(progressSampleInterval)
 	defer ticker.Stop()
 	for {
 		select {
-		case <-s.done:
+		case <-sm.done:
 			return
 		case <-ticker.C:
-			mu.Lock()
-			c := activeClient
-			mu.Unlock()
-			if c == nil {
-				continue
-			}
-			ev, ok := s.sample(c)
-			if !ok {
-				continue
-			}
-			// Drop the sample when the consumer is behind rather than block.
-			select {
-			case progressChan <- ev:
-			default:
-			}
+			sm.session.emit(sm.sample())
 		}
 	}
 }
 
-// sample builds one progress event. ok is false when the read hit a torn
-// value; callers should simply skip that tick.
-func (s *progressSampler) sample(c *croc.Client) (ev progressEvent, ok bool) {
-	defer func() {
-		if r := recover(); r != nil {
-			ok = false
-		}
-	}()
-
-	idx := c.FilesToTransferCurrentNum
-	n := len(c.FilesToTransfer)
-
-	totalSize := s.totalSize
-	totalFiles := s.totalFiles
-	sizes := s.sizes
-	if sizes == nil || totalSize == 0 {
-		if n > 0 {
-			if sizes == nil {
-				sizes = make([]int64, n)
-				for i := 0; i < n; i++ {
-					sizes[i] = c.FilesToTransfer[i].Size
-				}
-				// Cache for subsequent ticks.
-				s.sizes = sizes
-			}
-			if totalSize == 0 {
-				var sum int64
-				for _, size := range sizes {
-					sum += size
-				}
-				totalSize = sum
-				s.totalSize = sum
-			}
-		}
-	}
-	if totalFiles == 0 {
-		totalFiles = c.TotalNumberOfContents
-		if totalFiles == 0 {
-			totalFiles = n
-		}
-		s.totalFiles = totalFiles
-	}
-
-	// TotalSent counts only the current file, so add up the ones already done.
-	var done int64
-	for i := 0; i < idx && i < len(sizes); i++ {
-		done += sizes[i]
-	}
-	transferred := done + c.TotalSent
+// sample builds one progress event from croc's own snapshot, which is already
+// locked and therefore needs no recover() guard.
+func (sm *progressSampler) sample() progressEvent {
+	snap := sm.client.ProgressSnapshot()
 
 	now := time.Now()
-	elapsed := now.Sub(s.lastAt).Seconds()
+	elapsed := now.Sub(sm.lastAt).Seconds()
 	var speed float64
-	if elapsed > 0 && transferred >= s.lastSent {
-		speed = float64(transferred-s.lastSent) / elapsed
+	if elapsed > 0 && snap.TransferredSize >= sm.lastSent {
+		speed = float64(snap.TransferredSize-sm.lastSent) / elapsed
 	}
-	s.lastSent, s.lastAt = transferred, now
+	sm.lastSent, sm.lastAt = snap.TransferredSize, now
 
-	currentFile := ""
-	if idx >= 0 && idx < n {
-		currentFile = filepath.Base(c.FilesToTransfer[idx].Name)
+	index := snap.CurrentFileIndex
+	if snap.TotalFiles == 0 {
+		// The manifest has not arrived yet, so there is no current file.
+		index = 0
 	}
 
 	return progressEvent{
 		Type:             eventTypeProgress,
-		TransferID:       s.transferID,
-		TotalFiles:       totalFiles,
-		TotalSize:        totalSize,
-		TransferredSize:  transferred,
-		CurrentFile:      currentFile,
-		CurrentFileIndex: idx + 1,
+		TotalFiles:       snap.TotalFiles,
+		TotalSize:        snap.TotalSize,
+		TransferredSize:  snap.TransferredSize,
+		CurrentFile:      snap.CurrentFile,
+		CurrentFileIndex: index,
 		Speed:            speed,
-	}, true
+	}
 }
 
-func doSend(paths []string, code string, opts sendOptions, transferID string) {
+func doSend(s *session, paths []string, code string, opts sendOptions) {
 	// Handle text mode: write text content to a temp file.
 	// croc recognises the "croc-stdin-" prefix as stdin/text content.
 	sendingText := opts.SendingText && opts.TextContent != ""
@@ -422,19 +471,19 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 		// payloads here so the user gets a clear local error instead of a
 		// failed transfer ("text transfer size must be between 1 byte and 1 MiB").
 		if n := len(opts.TextContent); n > maxTextTransferBytes {
-			progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: fmt.Sprintf(
-				"text too large: %d bytes (croc limit is %d bytes / 1 MiB)", n, maxTextTransferBytes)}
+			s.emit(progressEvent{Type: 3, Error: fmt.Sprintf(
+				"text too large: %d bytes (croc limit is %d bytes / 1 MiB)", n, maxTextTransferBytes)})
 			return
 		}
 		tmpDir := opts.TempDir
 		tmpFile, err := os.CreateTemp(tmpDir, "croc-stdin-*.txt")
 		if err != nil {
-			progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: fmt.Sprintf("temp file: %s", err)}
+			s.emit(progressEvent{Type: 3, Error: fmt.Sprintf("temp file: %s", err)})
 			return
 		}
 		defer os.Remove(tmpFile.Name())
 		if _, err := tmpFile.WriteString(opts.TextContent); err != nil {
-			progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: fmt.Sprintf("write text: %s", err)}
+			s.emit(progressEvent{Type: 3, Error: fmt.Sprintf("write text: %s", err)})
 			return
 		}
 		tmpFile.Close()
@@ -443,7 +492,7 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 
 	// Ensure we have at least one path
 	if len(paths) == 0 {
-		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: "no files to send"}
+		s.emit(progressEvent{Type: 3, Error: "no files to send"})
 		return
 	}
 
@@ -494,13 +543,13 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 	// a croc.New failure. Empty means "auto".
 	transport, err := croc.ParseTransportMode(opts.Transport)
 	if err != nil {
-		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: err.Error()}
+		s.emit(progressEvent{Type: 3, Error: err.Error()})
 		return
 	}
 
 	throttle, err := normalizeThrottle(opts.ThrottleUpload)
 	if err != nil {
-		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: err.Error()}
+		s.emit(progressEvent{Type: 3, Error: err.Error()})
 		return
 	}
 
@@ -530,60 +579,54 @@ func doSend(paths []string, code string, opts sendOptions, transferID string) {
 		ThrottleUpload:   throttle,
 	}
 
-	progressChan <- progressEvent{
-		Type:       4,
-		TransferID: transferID,
-		CodePhrase: code,
-	}
+	s.emit(progressEvent{Type: 4, CodePhrase: code})
 
-	c, err := croc.New(crocOpts)
+	// NewCtx instead of New: it marks the client as GUI-driven, so a panic
+	// while processing the peer's PAKE message is logged and turned into a
+	// cancellation instead of being re-panicked out of the c-shared library,
+	// and it ties the relay and the file hashing to a cancellable context.
+	c, err := croc.NewCtx(s.ctx, crocOpts)
 	if err != nil {
-		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: err.Error()}
+		s.emit(progressEvent{Type: 3, Error: err.Error()})
 		return
 	}
 
 	// croc.New(Quiet) sent stderr to DevNull; restore + capture it so we can
 	// surface croc v11 reconnect notices as status events.
-	restoreStderr := captureStderr(transferID)
+	restoreStderr := captureStderr(s)
 	defer restoreStderr()
-
-	mu.Lock()
-	activeClient = c
-	mu.Unlock()
-	defer func() { mu.Lock(); activeClient = nil; mu.Unlock() }()
 
 	filesInfo, emptyFolders, totalFolders, err := croc.GetFilesInfo(
 		paths, crocOpts.ZipFolder, crocOpts.GitIgnore, opts.Exclude,
 	)
 	if err != nil {
-		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: err.Error()}
+		s.emit(progressEvent{Type: 3, Error: err.Error()})
 		return
 	}
 
 	var totalSize int64
-	sizes := make([]int64, 0, len(filesInfo))
 	for _, f := range filesInfo {
 		totalSize += f.Size
-		sizes = append(sizes, f.Size)
 	}
 
 	// Emit live progress while croc moves the data.
-	sampler := startProgressSampler(transferID, totalSize, len(filesInfo), sizes)
+	sampler := startProgressSampler(s, c)
 	defer sampler.stop()
 
 	err = c.Send(filesInfo, emptyFolders, totalFolders)
 	if err != nil {
-		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: err.Error()}
+		s.emit(progressEvent{Type: 3, Error: err.Error()})
 		return
 	}
 
-	progressChan <- progressEvent{
-		Type: 2, TransferID: transferID,
-		TotalFiles: len(filesInfo), TotalSize: totalSize,
-	}
+	s.emit(progressEvent{
+		Type:       2,
+		TotalFiles: len(filesInfo),
+		TotalSize:  totalSize,
+	})
 }
 
-func doReceive(code string, opts receiveOptions, transferID string) {
+func doReceive(s *session, code string, opts receiveOptions) {
 	relayAddr := opts.RelayAddress
 	if relayAddr == "" {
 		relayAddr = models.DEFAULT_RELAY
@@ -616,10 +659,10 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 
 	// Default to croc's --rename behaviour. Without it croc asks
 	// "(y/N) Overwrite?" on stdin when the destination already exists
-	// (croc.go:3424 -> askReceiveOverwrite); a GUI has nothing on stdin, the
-	// read returns empty, the answer is read as "no", and croc `continue`s —
-	// the file is silently dropped. Renaming is the only lossless choice that
-	// needs no user interaction.
+	// (askReceiveOverwrite); a GUI has nothing on stdin, the read returns
+	// empty, the answer is read as "no", and croc `continue`s — the file is
+	// silently dropped. Renaming is the only lossless choice that needs no user
+	// interaction.
 	rename := true
 	if opts.Rename != nil {
 		rename = *opts.Rename
@@ -644,43 +687,32 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		Quiet:         true,
 	}
 
-	c, err := croc.New(crocOpts)
+	c, err := croc.NewCtx(s.ctx, crocOpts)
 	if err != nil {
-		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: err.Error()}
+		s.emit(progressEvent{Type: 3, Error: err.Error()})
 		return
 	}
 
 	// croc.New(Quiet) sent stderr to DevNull; restore + capture it so we can
 	// surface croc v11 reconnect notices as status events.
-	restoreStderr := captureStderr(transferID)
+	restoreStderr := captureStderr(s)
 	defer restoreStderr()
-
-	mu.Lock()
-	activeClient = c
-	mu.Unlock()
-	defer func() { mu.Lock(); activeClient = nil; mu.Unlock() }()
 
 	if opts.OutputPath != "" {
 		os.Chdir(opts.OutputPath)
 	}
 
 	// Signal that transfer has started (type 4 — mirrors doSend)
-	progressChan <- progressEvent{
-		Type:       4,
-		TransferID: transferID,
-	}
+	s.emit(progressEvent{Type: 4})
 
-	// Emit live progress while croc moves the data. The receiver learns the
-	// file manifest during the handshake, so sizes/counts are derived from the
-	// client (pass 0 / nil).
-	sampler := startProgressSampler(transferID, 0, 0, nil)
+	// Emit live progress while croc moves the data.
+	sampler := startProgressSampler(s, c)
 	defer sampler.stop()
 
 	// Capture stdout during receive — croc echoes the text payload to stdout
 	// when SendingText is true, then `transfer()` deletes the received file
-	// (`if c.Options.Stdout && !c.Options.IsSender { root.Remove(pathToFile) }`,
-	// croc v11.5.2). By capturing stdout we get the text without modifying
-	// croc source.
+	// (`if c.Options.Stdout && !c.Options.IsSender { root.Remove(pathToFile) }`).
+	// By capturing stdout we get the text without modifying croc source.
 	var capturedStdout string
 	oldStdout := os.Stdout
 	r, w, pipeErr := os.Pipe()
@@ -705,7 +737,7 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 	}
 
 	if err != nil {
-		progressChan <- progressEvent{Type: 3, TransferID: transferID, Error: err.Error()}
+		s.emit(progressEvent{Type: 3, Error: err.Error()})
 		return
 	}
 
@@ -716,7 +748,7 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 	var textContent string
 
 	// Detect text receive: `c.Options.SendingText` is reliably set by the
-	// receiver from the sender's info (croc.go `processSenderInfo`:
+	// receiver from the sender's info (processSenderInfo:
 	// `c.Options.SendingText = senderInfo.SendingText`, right after the
 	// validateSendingTextOffer() gate), which also flips `c.Options.Stdout` on
 	// so the payload is echoed to stdout.
@@ -740,15 +772,14 @@ func doReceive(code string, opts receiveOptions, transferID string) {
 		}
 	}
 
-	progressChan <- progressEvent{
+	s.emit(progressEvent{
 		Type:        2,
-		TransferID:  transferID,
 		TotalFiles:  len(fileNames),
 		TotalSize:   totalSize,
 		CurrentFile: strings.Join(fileNames, "\n"),
 		IsText:      isText,
 		TextContent: textContent,
-	}
+	})
 }
 
 // ── Option types (mirror Dart models) ────────────────────────
