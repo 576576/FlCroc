@@ -13,10 +13,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:open_filex/open_filex.dart' hide ResultType;
 import 'package:url_launcher/url_launcher.dart';
 
-class GlobalState {
+class GlobalState._internal() {
   static final GlobalState _instance = GlobalState._internal();
   factory GlobalState() => _instance;
-  GlobalState._internal();
 
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   late PackageInfo packageInfo;

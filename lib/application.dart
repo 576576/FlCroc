@@ -10,14 +10,12 @@ import 'package:fl_croc/state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-class Application extends ConsumerStatefulWidget {
-  const Application({super.key});
-
+class const Application({super.key}) extends ConsumerStatefulWidget {
   @override
   ConsumerState<Application> createState() => _ApplicationState();
 }
 
-class _ApplicationState extends ConsumerState<Application> {
+class _ApplicationState() extends ConsumerState<Application> {
   @override
   void initState() {
     super.initState();
@@ -263,9 +261,7 @@ class _ApplicationState extends ConsumerState<Application> {
 }
 
 /// No-op page transition — skips all animations.
-class _NoTransitionBuilder extends PageTransitionsBuilder {
-  const _NoTransitionBuilder();
-
+class const _NoTransitionBuilder() extends PageTransitionsBuilder {
   @override
   Widget buildTransitions<T>(
     PageRoute<T> route,
@@ -279,9 +275,7 @@ class _NoTransitionBuilder extends PageTransitionsBuilder {
 }
 
 /// Smoother, more natural scroll physics on all platforms.
-class _NaturalScrollBehavior extends MaterialScrollBehavior {
-  const _NaturalScrollBehavior();
-
+class const _NaturalScrollBehavior() extends MaterialScrollBehavior {
   @override
   ScrollPhysics getScrollPhysics(BuildContext context) =>
       const BouncingScrollPhysics(

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:fl_croc/enum/enum.dart';
 
-class Debouncer {
+class Debouncer() {
   final Map<FunctionTag, Timer?> _operations = {};
 
   void call(FunctionTag tag, VoidCallback callback, {Duration? duration}) {

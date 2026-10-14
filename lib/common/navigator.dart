@@ -1,9 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
-class CommonDesktopRoute<T> extends PageRoute<T> {
+class CommonDesktopRoute<T>({required this.builder}) extends PageRoute<T> {
   final Widget Function(BuildContext context) builder;
-
-  CommonDesktopRoute({required this.builder});
 
   @override
   Color? get barrierColor => null;
@@ -31,10 +29,8 @@ class CommonDesktopRoute<T> extends PageRoute<T> {
   Duration get reverseTransitionDuration => const Duration(milliseconds: 200);
 }
 
-class CommonRoute<T> extends PageRoute<T> {
+class CommonRoute<T>({required this.builder}) extends PageRoute<T> {
   final Widget Function(BuildContext context) builder;
-
-  CommonRoute({required this.builder});
 
   @override
   Color? get barrierColor => Colors.black38;
@@ -61,7 +57,7 @@ class CommonRoute<T> extends PageRoute<T> {
   Duration get reverseTransitionDuration => const Duration(milliseconds: 200);
 }
 
-class BaseNavigator {
+class BaseNavigator() {
   static Future<T?> push<T>(BuildContext context, Widget page) {
     return Navigator.of(context)
         .push<T>(MaterialPageRoute(builder: (_) => page));

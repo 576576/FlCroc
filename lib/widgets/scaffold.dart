@@ -2,7 +2,17 @@ import 'package:fl_croc/common/common.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 
-class CommonScaffold extends StatefulWidget {
+class const CommonScaffold({
+  super.key,
+  this.title,
+  this.actions,
+  required this.body,
+  this.floatingActionButton,
+  this.bottomNavigationBar,
+  this.resizeToAvoidBottomInset = true,
+  this.backgroundColor,
+  this.appBar,
+}) extends StatefulWidget {
   final String? title;
   final List<Widget>? actions;
   final Widget body;
@@ -12,23 +22,11 @@ class CommonScaffold extends StatefulWidget {
   final Color? backgroundColor;
   final PreferredSizeWidget? appBar;
 
-  const CommonScaffold({
-    super.key,
-    this.title,
-    this.actions,
-    required this.body,
-    this.floatingActionButton,
-    this.bottomNavigationBar,
-    this.resizeToAvoidBottomInset = true,
-    this.backgroundColor,
-    this.appBar,
-  });
-
   @override
   State<CommonScaffold> createState() => CommonScaffoldState();
 }
 
-class CommonScaffoldState extends State<CommonScaffold> {
+class CommonScaffoldState() extends State<CommonScaffold> {
   final _isFabExtendedNotifier = ValueNotifier<bool>(true);
 
   PreferredSizeWidget _buildDefaultAppBar() {
@@ -79,17 +77,15 @@ class CommonScaffoldState extends State<CommonScaffold> {
   }
 }
 
-class BaseScaffold extends StatelessWidget {
+class const BaseScaffold({
+  super.key,
+  required this.title,
+  this.actions = const [],
+  required this.body,
+}) extends StatelessWidget {
   final String title;
   final List<Widget> actions;
   final Widget body;
-
-  const BaseScaffold({
-    super.key,
-    required this.title,
-    this.actions = const [],
-    required this.body,
-  });
 
   @override
   Widget build(BuildContext context) {
@@ -97,14 +93,12 @@ class BaseScaffold extends StatelessWidget {
   }
 }
 
-class CommonScaffoldFabExtendedProvider extends InheritedWidget {
+class const CommonScaffoldFabExtendedProvider({
+  super.key,
+  required this.isExtended,
+  required super.child,
+}) extends InheritedWidget {
   final bool isExtended;
-
-  const CommonScaffoldFabExtendedProvider({
-    super.key,
-    required this.isExtended,
-    required super.child,
-  });
 
   @override
   bool updateShouldNotify(CommonScaffoldFabExtendedProvider oldWidget) {

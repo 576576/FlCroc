@@ -8,13 +8,11 @@ import 'package:fl_croc/state.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class AppController {
+class AppController._internal() {
   late final WidgetRef _ref;
   bool isAttach = false;
 
   static AppController? _instance;
-
-  AppController._internal();
 
   factory AppController() {
     _instance ??= AppController._internal();

@@ -1,16 +1,14 @@
 import 'package:material_ui/material_ui.dart';
 
-class FilledButtonWidget extends StatelessWidget {
+class const FilledButtonWidget({
+  super.key,
+  required this.onPressed,
+  required this.text,
+  this.icon,
+}) extends StatelessWidget {
   final VoidCallback? onPressed;
   final String text;
   final IconData? icon;
-
-  const FilledButtonWidget({
-    super.key,
-    required this.onPressed,
-    required this.text,
-    this.icon,
-  });
 
   @override
   Widget build(BuildContext context) {

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:fl_croc/core/qr_matrix.dart';
 import 'package:fl_croc/models/models.dart';
 
-abstract class CoreInterface {
+abstract class CoreInterface() {
   Future<bool> init();
 
   Future<String> getVersion();

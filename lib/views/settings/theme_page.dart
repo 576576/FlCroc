@@ -5,9 +5,7 @@ import 'package:fl_croc/widgets/widgets.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ThemePage extends ConsumerWidget {
-  const ThemePage({super.key});
-
+class const ThemePage({super.key}) extends ConsumerWidget {
   static const _palettes = <List<Color>>[
     [Color(0xFF6750A4), Color(0xFF625B71)], // M3 default
     [Color(0xFF1B6EF3), Color(0xFF004AAD)], // Blue
@@ -128,16 +126,14 @@ class ThemePage extends ConsumerWidget {
   }
 }
 
-class _ColorPaletteChip extends StatelessWidget {
+class const _ColorPaletteChip({
+  required this.colors,
+  required this.isSelected,
+  required this.onTap,
+}) extends StatelessWidget {
   final List<Color> colors;
   final bool isSelected;
   final VoidCallback onTap;
-
-  const _ColorPaletteChip({
-    required this.colors,
-    required this.isSelected,
-    required this.onTap,
-  });
 
   @override
   Widget build(BuildContext context) {

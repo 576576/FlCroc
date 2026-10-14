@@ -1,7 +1,7 @@
 import 'dart:developer' as dev;
 
 /// Simple in-memory log buffer for the debug log viewer.
-class LogBuffer {
+class LogBuffer() {
   static final List<String> _logs = [];
   static const _maxLines = 500;
 

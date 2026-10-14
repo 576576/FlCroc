@@ -12,14 +12,13 @@ import 'widgets/widgets.dart';
 /// Shared notifier so that only one card at a time can be dragged.
 final _dragIndexNotifier = ValueNotifier<int?>(null);
 
-class DashboardView extends ConsumerStatefulWidget {
-  const DashboardView({super.key});
-
+class const DashboardView({super.key}) extends ConsumerStatefulWidget {
   @override
   ConsumerState<DashboardView> createState() => _DashboardViewState();
 }
 
-class _DashboardViewState extends ConsumerState<DashboardView>
+class _DashboardViewState()
+    extends ConsumerState<DashboardView>
     with TickerProviderStateMixin {
   final _isEditNotifier = ValueNotifier<bool>(false);
   final _currentWidgetsNotifier = ValueNotifier<List<DashboardWidget>>([]);
@@ -245,7 +244,16 @@ class _DashboardViewState extends ConsumerState<DashboardView>
 // _DashboardCard — drag-reorder + delete (shake from parent)
 // ────────────────────────────────────────────────────────────
 
-class _DashboardCard extends StatefulWidget {
+class const _DashboardCard({
+  super.key,
+  required this.widgetType,
+  required this.isEdit,
+  required this.index,
+  required this.shakeAnim,
+  required this.onDelete,
+  required this.onMove,
+  required this.child,
+}) extends StatefulWidget {
   final DashboardWidget widgetType;
   final bool isEdit;
   final int index;
@@ -254,22 +262,12 @@ class _DashboardCard extends StatefulWidget {
   final void Function(int oldIndex, int newIndex) onMove;
   final Widget child;
 
-  const _DashboardCard({
-    super.key,
-    required this.widgetType,
-    required this.isEdit,
-    required this.index,
-    required this.shakeAnim,
-    required this.onDelete,
-    required this.onMove,
-    required this.child,
-  });
-
   @override
   State<_DashboardCard> createState() => _DashboardCardState();
 }
 
-class _DashboardCardState extends State<_DashboardCard>
+class _DashboardCardState()
+    extends State<_DashboardCard>
     with SingleTickerProviderStateMixin {
   // ── Only ONE controller: delete animation ──
   late AnimationController _deleteCtrl;

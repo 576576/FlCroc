@@ -1,16 +1,14 @@
 import 'package:material_ui/material_ui.dart';
 
 /// A status chip with a capsule-shaped progress border.
-class CapsuleProgressChip extends StatelessWidget {
-  const CapsuleProgressChip({
-    super.key,
-    required this.label,
-    required this.color,
-    this.progress = -1,
-    this.detail = '',
-    this.animate = true,
-  });
-
+class const CapsuleProgressChip({
+  super.key,
+  required this.label,
+  required this.color,
+  this.progress = -1,
+  this.detail = '',
+  this.animate = true,
+}) extends StatelessWidget {
   final String label;
   final Color color;
   final double progress; // 0.0–1.0, or -1 for indeterminate
@@ -87,9 +85,8 @@ class CapsuleProgressChip extends StatelessWidget {
   }
 }
 
-class _CapsuleProgressPainter extends CustomPainter {
-  _CapsuleProgressPainter({this.progress, required this.color});
-
+class _CapsuleProgressPainter({this.progress, required this.color})
+    extends CustomPainter {
   final double? progress;
   final Color color;
 

@@ -3,9 +3,7 @@
 /// [modules] holds one character per module in row-major order (`'1'` is a dark
 /// module) and already includes go-qrcode's quiet zone, so callers draw it as-is
 /// without adding a margin of their own.
-class QrMatrix {
-  const QrMatrix(this.size, this.modules);
-
+class const QrMatrix(this.size, this.modules) {
   final int size;
   final String modules;
 

@@ -2,7 +2,17 @@ import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/models/models.dart';
 import 'package:material_ui/material_ui.dart';
 
-class CommonCard extends StatelessWidget {
+class const CommonCard({
+  super.key,
+  this.info,
+  required this.child,
+  this.leading,
+  this.trailing,
+  this.onPressed,
+  this.type = CommonCardType.outlined,
+  this.radius = 16,
+  this.padding,
+}) extends StatelessWidget {
   final Info? info;
   final Widget child;
   final Widget? leading;
@@ -11,18 +21,6 @@ class CommonCard extends StatelessWidget {
   final CommonCardType type;
   final double radius;
   final EdgeInsetsGeometry? padding;
-
-  const CommonCard({
-    super.key,
-    this.info,
-    required this.child,
-    this.leading,
-    this.trailing,
-    this.onPressed,
-    this.type = CommonCardType.outlined,
-    this.radius = 16,
-    this.padding,
-  });
 
   @override
   Widget build(BuildContext context) {
@@ -78,4 +76,7 @@ class CommonCard extends StatelessWidget {
   }
 }
 
-enum CommonCardType { filled, outlined }
+enum CommonCardType() {
+  filled,
+  outlined,
+}

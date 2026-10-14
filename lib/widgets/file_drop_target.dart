@@ -12,25 +12,23 @@ import 'package:material_ui/material_ui.dart';
 /// The native target is registered on the whole Flutter view, so every instance
 /// on screen receives every drag event and each one decides for itself whether
 /// the cursor is over it.
-class FileDropTarget extends StatefulWidget {
+class const FileDropTarget({
+  super.key,
+  required this.child,
+  this.enabled = true,
+  required this.onFilesDropped,
+  this.onHoverChanged,
+}) extends StatefulWidget {
   final Widget child;
   final bool enabled;
   final ValueChanged<List<File>> onFilesDropped;
   final ValueChanged<bool>? onHoverChanged;
 
-  const FileDropTarget({
-    super.key,
-    required this.child,
-    this.enabled = true,
-    required this.onFilesDropped,
-    this.onHoverChanged,
-  });
-
   @override
   State<FileDropTarget> createState() => _FileDropTargetState();
 }
 
-class _FileDropTargetState extends State<FileDropTarget> {
+class _FileDropTargetState() extends State<FileDropTarget> {
   bool _isOver = false;
   bool _listening = false;
 
@@ -139,12 +137,15 @@ class _FileDropTargetState extends State<FileDropTarget> {
   }
 }
 
-enum _DropKind { enter, update, exit, drop }
+enum _DropKind() {
+  enter,
+  update,
+  exit,
+  drop,
+}
 
 /// One notification from the runner's drop target.
-class _DropEvent {
-  const _DropEvent(this.kind, {this.position, this.paths = const []});
-
+class const _DropEvent(this.kind, {this.position, this.paths = const []}) {
   final _DropKind kind;
 
   /// Cursor position in physical client pixels; null for [exit].
@@ -158,8 +159,8 @@ class _DropEvent {
 ///
 /// Channel name and method names are duplicated in `drop_target.cpp`; changing
 /// one without the other silences drops with no error anywhere.
-class _DropChannel {
-  _DropChannel._() {
+class _DropChannel._() {
+  this {
     _channel.setMethodCallHandler(_handle);
   }
 

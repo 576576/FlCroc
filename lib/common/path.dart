@@ -10,7 +10,7 @@ import 'package:path_provider/path_provider.dart';
 ///   （Go 桥接需要真实文件系统路径）。
 /// - **导出到公共 Downloads**：通过 [copyFileIntoDownloadFolder] 实现，
 ///   Android 10+ 自动走 MediaStore 兼容分区存储。
-class AppPaths {
+class AppPaths() {
   static String? _cachedPath;
 
   // ── 默认保存路径（Go 桥接可直接写入） ──

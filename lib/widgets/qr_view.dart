@@ -10,14 +10,12 @@ import 'package:material_ui/material_ui.dart';
 ///
 /// Renders nothing when the backend cannot encode (see
 /// [CoreInterface.qrCodeMatrix]) or when [data] does not fit in a QR code.
-class QrCodeView extends StatefulWidget {
-  const QrCodeView({
-    super.key,
-    required this.data,
-    required this.size,
-    required this.color,
-  });
-
+class const QrCodeView({
+  super.key,
+  required this.data,
+  required this.size,
+  required this.color,
+}) extends StatefulWidget {
   /// Text to encode. Use [CoreController.webReceiveUrl] for a share code.
   final String data;
 
@@ -31,7 +29,7 @@ class QrCodeView extends StatefulWidget {
   State<QrCodeView> createState() => _QrCodeViewState();
 }
 
-class _QrCodeViewState extends State<QrCodeView> {
+class _QrCodeViewState() extends State<QrCodeView> {
   // Held in state because the encode crosses into Go and decodes JSON; rebuilding
   // the send page during a transfer must not repeat that.
   QrMatrix? _matrix;
@@ -62,9 +60,7 @@ class _QrCodeViewState extends State<QrCodeView> {
   }
 }
 
-class _QrPainter extends CustomPainter {
-  _QrPainter(this.matrix, this.color);
-
+class _QrPainter(this.matrix, this.color) extends CustomPainter {
   final QrMatrix matrix;
   final Color color;
 

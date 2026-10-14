@@ -1,10 +1,8 @@
 import 'package:fl_croc/common/context.dart';
 import 'package:material_ui/material_ui.dart';
 
-class CommonTheme {
+class CommonTheme(this.context) {
   final BuildContext context;
-
-  CommonTheme(this.context);
 
   Color get surface => context.colorScheme.surface;
   Color get primary => context.colorScheme.primary;

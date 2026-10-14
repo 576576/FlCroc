@@ -2,10 +2,9 @@ import 'package:fl_croc/providers/providers.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ThemeManager extends ConsumerWidget {
+class const ThemeManager({super.key, required this.child})
+    extends ConsumerWidget {
   final Widget child;
-
-  const ThemeManager({super.key, required this.child});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -21,7 +20,7 @@ class ThemeManager extends ConsumerWidget {
   }
 }
 
-class ThemeNotification extends Notification {
+class const ThemeNotification({required this.primaryColor})
+    extends Notification {
   final int primaryColor;
-  const ThemeNotification({required this.primaryColor});
 }

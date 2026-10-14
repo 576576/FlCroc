@@ -2,27 +2,25 @@ import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/models/models.dart';
 import 'package:material_ui/material_ui.dart';
 
-class SuperGrid extends StatefulWidget {
+class const SuperGrid({
+  super.key,
+  required this.children,
+  this.crossAxisCount = 4,
+  this.mainAxisSpacing = 8,
+  this.crossAxisSpacing = 8,
+  this.onUpdate,
+}) extends StatefulWidget {
   final List<GridItem> children;
   final double mainAxisSpacing;
   final double crossAxisSpacing;
   final int crossAxisCount;
   final VoidCallback? onUpdate;
 
-  const SuperGrid({
-    super.key,
-    required this.children,
-    this.crossAxisCount = 4,
-    this.mainAxisSpacing = 8,
-    this.crossAxisSpacing = 8,
-    this.onUpdate,
-  });
-
   @override
   State<SuperGrid> createState() => SuperGridState();
 }
 
-class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+class SuperGridState() extends State<SuperGrid> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;

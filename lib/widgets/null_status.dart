@@ -1,17 +1,15 @@
 import 'package:fl_croc/common/context.dart';
 import 'package:material_ui/material_ui.dart';
 
-class NullStatusWidget extends StatelessWidget {
+class const NullStatusWidget({
+  super.key,
+  required this.message,
+  this.icon = Icons.inbox_outlined,
+  this.onRetry,
+}) extends StatelessWidget {
   final String message;
   final IconData icon;
   final VoidCallback? onRetry;
-
-  const NullStatusWidget({
-    super.key,
-    required this.message,
-    this.icon = Icons.inbox_outlined,
-    this.onRetry,
-  });
 
   @override
   Widget build(BuildContext context) {

@@ -3,15 +3,13 @@ import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/views/views.dart';
 import 'package:material_ui/material_ui.dart';
 
-class Navigation {
+class Navigation._internal() {
   static Navigation? _instance;
 
   factory Navigation() {
     _instance ??= Navigation._internal();
     return _instance!;
   }
-
-  Navigation._internal();
 
   List<NavigationItem> getItems() {
     return [

@@ -6,32 +6,26 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'common.freezed.dart';
 part 'common.g.dart';
 
-class NavigationItem {
+class const NavigationItem({
+  required this.icon,
+  required this.label,
+  required this.builder,
+  this.keep = false,
+}) {
   final Icon icon;
   final PageLabel label;
   final Widget Function(BuildContext) builder;
   final bool keep;
-
-  const NavigationItem({
-    required this.icon,
-    required this.label,
-    required this.builder,
-    this.keep = false,
-  });
 }
 
-class Info {
+class const Info({required this.iconData, required this.label}) {
   final IconData iconData;
   final String label;
-
-  const Info({required this.iconData, required this.label});
 }
 
-class GridItem {
+class const GridItem({required this.crossAxisCellCount, required this.child}) {
   final int crossAxisCellCount;
   final Widget child;
-
-  const GridItem({required this.crossAxisCellCount, required this.child});
 }
 
 @freezed
@@ -54,7 +48,10 @@ extension ResultExt on Result {
   bool get isSuccess => type == ResultType.success;
 }
 
-enum ResultType { success, error }
+enum ResultType() {
+  success,
+  error,
+}
 
 @freezed
 abstract class TransferRecord with _$TransferRecord {

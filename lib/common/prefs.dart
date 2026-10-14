@@ -3,9 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Simple typed key-value store backed by SharedPreferences.
-class AppPrefs {
-  AppPrefs._();
-
+class AppPrefs._() {
   static SharedPreferences? _p;
   static SharedPreferences? get _prefs => _p;
 

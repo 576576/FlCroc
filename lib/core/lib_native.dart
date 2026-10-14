@@ -13,7 +13,7 @@ import 'package:fl_croc/models/models.dart';
 ///
 /// Uses the croc fork in `submodules/croc/`, compiled into a shared library by
 /// the Go bridge in `go_bridge/`.
-class CoreLib extends CoreInterface {
+class CoreLib._internal() extends CoreInterface {
   static CoreLib? _instance;
   DynamicLibrary? _lib;
   bool _isAvailable = false;
@@ -25,8 +25,6 @@ class CoreLib extends CoreInterface {
   Pointer<Utf8> Function(Pointer<Utf8>)? _webReceiveUrlFn;
   Pointer<Utf8> Function(Pointer<Utf8>)? _qrCodeFn;
   bool _qrExportsBound = false;
-
-  CoreLib._internal();
 
   factory CoreLib() {
     _instance ??= CoreLib._internal();

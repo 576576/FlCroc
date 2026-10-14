@@ -6,9 +6,8 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'app.freezed.dart';
 part 'app.g.dart';
 
-class SizeConverter implements JsonConverter<Size, Map<String, dynamic>> {
-  const SizeConverter();
-
+class const SizeConverter()
+    implements JsonConverter<Size, Map<String, dynamic>> {
   @override
   Size fromJson(Map<String, dynamic> json) {
     return Size(
@@ -23,9 +22,7 @@ class SizeConverter implements JsonConverter<Size, Map<String, dynamic>> {
   }
 }
 
-class BrightnessConverter implements JsonConverter<Brightness, String> {
-  const BrightnessConverter();
-
+class const BrightnessConverter() implements JsonConverter<Brightness, String> {
   @override
   Brightness fromJson(String json) {
     return json == 'dark' ? Brightness.dark : Brightness.light;

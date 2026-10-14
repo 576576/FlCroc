@@ -16,14 +16,12 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ReceiveView extends ConsumerStatefulWidget {
-  const ReceiveView({super.key});
-
+class const ReceiveView({super.key}) extends ConsumerStatefulWidget {
   @override
   ConsumerState<ReceiveView> createState() => _ReceiveViewState();
 }
 
-class _ReceiveViewState extends ConsumerState<ReceiveView> {
+class _ReceiveViewState() extends ConsumerState<ReceiveView> {
   final _codeController = TextEditingController();
   final _scrollCtrl = ScrollController();
   bool _isReceiving = false;
@@ -947,8 +945,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
 /// Transparent route with vertical slide transition.
 /// Scanner slides up from bottom on enter, slides up out of view on exit.
 /// The receive page beneath slides up from below when scanner is dismissed.
-class _QrScannerRoute<T> extends PageRoute<T> {
-  _QrScannerRoute({required this.builder});
+class _QrScannerRoute<T>({required this.builder}) extends PageRoute<T> {
   final WidgetBuilder builder;
 
   @override
@@ -1001,14 +998,12 @@ class _QrScannerRoute<T> extends PageRoute<T> {
 }
 
 /// QR scanner dialog — full-screen Scaffold with camera filling the body.
-class _QRScannerDialog extends StatefulWidget {
-  const _QRScannerDialog();
-
+class const _QRScannerDialog() extends StatefulWidget {
   @override
   State<_QRScannerDialog> createState() => _QRScannerDialogState();
 }
 
-class _QRScannerDialogState extends State<_QRScannerDialog> {
+class _QRScannerDialogState() extends State<_QRScannerDialog> {
   bool _hasScanned = false;
   bool _isDisposed = false;
 
@@ -1105,14 +1100,13 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
 }
 
 /// Subtle scanning indicator overlay — animated corner brackets.
-class _ScanOverlay extends StatefulWidget {
-  const _ScanOverlay();
-
+class const _ScanOverlay() extends StatefulWidget {
   @override
   State<_ScanOverlay> createState() => _ScanOverlayState();
 }
 
-class _ScanOverlayState extends State<_ScanOverlay>
+class _ScanOverlayState()
+    extends State<_ScanOverlay>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animCtrl;
   late final Animation<double> _anim;
@@ -1152,8 +1146,7 @@ class _ScanOverlayState extends State<_ScanOverlay>
 }
 
 /// Paints animated corner brackets for the scanning frame.
-class _ScanFramePainter extends CustomPainter {
-  _ScanFramePainter(this.color);
+class _ScanFramePainter(this.color) extends CustomPainter {
   final Color color;
 
   @override
@@ -1187,14 +1180,12 @@ class _ScanFramePainter extends CustomPainter {
 }
 
 /// Animated clipboard button with press animation and long-press paste/copy toggle.
-class _ClipboardToggleButton extends StatefulWidget {
-  const _ClipboardToggleButton({
-    required this.isPasteMode,
-    required this.isActive,
-    required this.onTap,
-    required this.onLongPress,
-  });
-
+class const _ClipboardToggleButton({
+  required this.isPasteMode,
+  required this.isActive,
+  required this.onTap,
+  required this.onLongPress,
+}) extends StatefulWidget {
   final bool isPasteMode;
   final bool isActive;
   final VoidCallback onTap;
@@ -1204,7 +1195,7 @@ class _ClipboardToggleButton extends StatefulWidget {
   State<_ClipboardToggleButton> createState() => _ClipboardToggleButtonState();
 }
 
-class _ClipboardToggleButtonState extends State<_ClipboardToggleButton> {
+class _ClipboardToggleButtonState() extends State<_ClipboardToggleButton> {
   bool _pressed = false;
 
   @override
@@ -1241,4 +1232,11 @@ class _ClipboardToggleButtonState extends State<_ClipboardToggleButton> {
   }
 }
 
-enum ReceivePhase { idle, pending, receiving, completed, failed, cancelled }
+enum ReceivePhase() {
+  idle,
+  pending,
+  receiving,
+  completed,
+  failed,
+  cancelled,
+}

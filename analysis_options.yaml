@@ -36,5 +36,8 @@ linter:
     avoid_final_parameters: true
     var_with_no_type_annotation: true
 
+    # 构造函数只做字段赋值时，改用主构造函数的 declared parameter。
+    use_primary_constructors: true
+
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

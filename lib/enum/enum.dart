@@ -1,20 +1,57 @@
-enum CoreStatus { disconnected, connecting, connected, error }
+enum CoreStatus() {
+  disconnected,
+  connecting,
+  connected,
+  error,
+}
 
-enum TransferStatus { pending, transferring, completed, failed, cancelled }
+enum TransferStatus() {
+  pending,
+  transferring,
+  completed,
+  failed,
+  cancelled,
+}
 
-enum TransferDirection { sent, received }
+enum TransferDirection() {
+  sent,
+  received,
+}
 
-enum PageLabel { dashboard, send, receive, history, settings }
+enum PageLabel() {
+  dashboard,
+  send,
+  receive,
+  history,
+  settings,
+}
 
-enum ThemeModeOption { system, light, dark }
+enum ThemeModeOption() {
+  system,
+  light,
+  dark,
+}
 
-enum UpdateChannel { release, nightly }
+enum UpdateChannel() {
+  release,
+  nightly,
+}
 
-enum ColorSchemeType { fidelity, expressive, rainbow, fruitSalad, monochrome }
+enum ColorSchemeType() {
+  fidelity,
+  expressive,
+  rainbow,
+  fruitSalad,
+  monochrome,
+}
 
-enum FontFamily { system, notoSans, roboto }
+enum FontFamily() {
+  system,
+  notoSans,
+  roboto,
+}
 
-enum FunctionTag {
+enum FunctionTag() {
   updateStatus,
   savePreferences,
   sendFile,
@@ -22,6 +59,14 @@ enum FunctionTag {
   pageChange,
 }
 
-enum DashboardWidget { transferStats, quickTransfer, recentTransfers }
+enum DashboardWidget() {
+  transferStats,
+  quickTransfer,
+  recentTransfers,
+}
 
-enum RelayType { defaultRelay, customRelay, noRelay }
+enum RelayType() {
+  defaultRelay,
+  customRelay,
+  noRelay,
+}

@@ -3,9 +3,7 @@ import 'package:fl_croc/state.dart';
 import 'package:fl_croc/widgets/widgets.dart';
 import 'package:material_ui/material_ui.dart';
 
-class AcknowledgmentsPage extends StatelessWidget {
-  const AcknowledgmentsPage({super.key});
-
+class const AcknowledgmentsPage({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.appLocalizations;
@@ -57,13 +55,12 @@ class AcknowledgmentsPage extends StatelessWidget {
   }
 }
 
-class _Project {
+class const _Project({
+  required this.name,
+  required this.description,
+  required this.url,
+}) {
   final String name;
   final String description;
   final String url;
-  const _Project({
-    required this.name,
-    required this.description,
-    required this.url,
-  });
 }

@@ -17,16 +17,19 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
-enum PhraseMode { defaultMode, on, never }
+enum PhraseMode() {
+  defaultMode,
+  on,
+  never,
+}
 
-class SendView extends ConsumerStatefulWidget {
-  const SendView({super.key});
-
+class const SendView({super.key}) extends ConsumerStatefulWidget {
   @override
   ConsumerState<SendView> createState() => _SendViewState();
 }
 
-class _SendViewState extends ConsumerState<SendView>
+class _SendViewState()
+    extends ConsumerState<SendView>
     with TickerProviderStateMixin {
   final List<FileItem> _selectedFiles = [];
   bool _isTextMode = false;
@@ -1619,14 +1622,12 @@ class _SendViewState extends ConsumerState<SendView>
 }
 
 /// Animated clipboard button with press animation and long-press paste/copy toggle.
-class _ClipboardToggleButton extends StatefulWidget {
-  const _ClipboardToggleButton({
-    required this.isPasteMode,
-    required this.isActive,
-    required this.onTap,
-    required this.onLongPress,
-  });
-
+class const _ClipboardToggleButton({
+  required this.isPasteMode,
+  required this.isActive,
+  required this.onTap,
+  required this.onLongPress,
+}) extends StatefulWidget {
   final bool isPasteMode;
   final bool isActive;
   final VoidCallback onTap;
@@ -1636,7 +1637,7 @@ class _ClipboardToggleButton extends StatefulWidget {
   State<_ClipboardToggleButton> createState() => _ClipboardToggleButtonState();
 }
 
-class _ClipboardToggleButtonState extends State<_ClipboardToggleButton> {
+class _ClipboardToggleButtonState() extends State<_ClipboardToggleButton> {
   bool _pressed = false;
 
   @override
@@ -1673,4 +1674,11 @@ class _ClipboardToggleButtonState extends State<_ClipboardToggleButton> {
   }
 }
 
-enum SendPhase { idle, pending, sending, success, fail, cancelled }
+enum SendPhase() {
+  idle,
+  pending,
+  sending,
+  success,
+  fail,
+  cancelled,
+}

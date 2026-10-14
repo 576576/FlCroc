@@ -1,10 +1,9 @@
 import 'package:material_ui/material_ui.dart';
 
-class ErrorPage extends StatelessWidget {
+class const ErrorPage({super.key, required this.error, this.stack})
+    extends StatelessWidget {
   final Object error;
   final StackTrace? stack;
-
-  const ErrorPage({super.key, required this.error, this.stack});
 
   @override
   Widget build(BuildContext context) {

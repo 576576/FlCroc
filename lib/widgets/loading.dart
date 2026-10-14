@@ -1,10 +1,8 @@
 import 'package:fl_croc/common/context.dart';
 import 'package:material_ui/material_ui.dart';
 
-class LoadingWidget extends StatelessWidget {
+class const LoadingWidget({super.key, this.message}) extends StatelessWidget {
   final String? message;
-
-  const LoadingWidget({super.key, this.message});
 
   @override
   Widget build(BuildContext context) {

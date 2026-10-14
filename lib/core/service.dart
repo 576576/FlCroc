@@ -15,7 +15,7 @@ import 'package:path/path.dart' as p;
 ///   2. `{appDir}/lib/croc{exe}`    — bundled lib dir (legacy)
 ///   3. `{dataDir}/croc{exe}`       — extracted from assets (Android)
 ///   4. `croc` in system PATH       — development convenience
-class CoreService extends CoreInterface {
+class CoreService() extends CoreInterface {
   Process? _process;
   bool _isAvailable = false;
   String? _crocPath;

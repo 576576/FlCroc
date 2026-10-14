@@ -9,7 +9,7 @@ final appSettingProvider =
       AppSettingNotifier.new,
     );
 
-class AppSettingNotifier extends Notifier<AppSettingProps> {
+class AppSettingNotifier() extends Notifier<AppSettingProps> {
   @override
   AppSettingProps build() => const AppSettingProps();
 
@@ -62,7 +62,7 @@ final themeSettingProvider = NotifierProvider<ThemeSettingNotifier, ThemeProps>(
   ThemeSettingNotifier.new,
 );
 
-class ThemeSettingNotifier extends Notifier<ThemeProps> {
+class ThemeSettingNotifier() extends Notifier<ThemeProps> {
   @override
   ThemeProps build() => ThemeProps();
 

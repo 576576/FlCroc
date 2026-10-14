@@ -7,15 +7,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Combined transfer statistics card.
 /// Tap to cycle: current speed → total transferred → transfer count + total time.
-class TransferStatsWidget extends ConsumerStatefulWidget {
-  const TransferStatsWidget({super.key});
-
+class const TransferStatsWidget({super.key}) extends ConsumerStatefulWidget {
   @override
   ConsumerState<TransferStatsWidget> createState() =>
       _TransferStatsWidgetState();
 }
 
-class _TransferStatsWidgetState extends ConsumerState<TransferStatsWidget>
+class _TransferStatsWidgetState()
+    extends ConsumerState<TransferStatsWidget>
     with SingleTickerProviderStateMixin {
   int _cycleIndex = 0; // 0=speed, 1=total size, 2=count+time
   late final _pressCtrl = AnimationController(

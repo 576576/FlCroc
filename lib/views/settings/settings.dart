@@ -15,14 +15,12 @@ import 'package:intl/intl.dart';
 
 import 'acknowledgments.dart';
 
-class SettingsView extends ConsumerStatefulWidget {
-  const SettingsView({super.key});
-
+class const SettingsView({super.key}) extends ConsumerStatefulWidget {
   @override
   ConsumerState<SettingsView> createState() => _SettingsViewState();
 }
 
-class _SettingsViewState extends ConsumerState<SettingsView> {
+class _SettingsViewState() extends ConsumerState<SettingsView> {
   String _crocVersion = '...';
   bool _debugMode = false;
   int _versionTaps = 0;
@@ -1017,14 +1015,12 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
 /// Hue slider bar — replaces the 6-preset + custom chip palette.
 /// Dragging the hue updates the seed color in real time.
-class _HueSlider extends ConsumerStatefulWidget {
-  const _HueSlider();
-
+class const _HueSlider() extends ConsumerStatefulWidget {
   @override
   ConsumerState<_HueSlider> createState() => _HueSliderState();
 }
 
-class _HueSliderState extends ConsumerState<_HueSlider> {
+class _HueSliderState() extends ConsumerState<_HueSlider> {
   double _dragHue = 0;
   bool _isDragging = false;
   final _hexCtrl = TextEditingController();
@@ -1162,14 +1158,12 @@ class _HueSliderState extends ConsumerState<_HueSlider> {
 }
 
 /// Simple log viewer — displays LogBuffer contents.
-class _LogViewerPage extends StatefulWidget {
-  const _LogViewerPage();
-
+class const _LogViewerPage() extends StatefulWidget {
   @override
   State<_LogViewerPage> createState() => _LogViewerPageState();
 }
 
-class _LogViewerPageState extends State<_LogViewerPage> {
+class _LogViewerPageState() extends State<_LogViewerPage> {
   Timer? _refreshTimer;
 
   @override

@@ -3,19 +3,17 @@ import 'dart:math';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class CommonDialog extends ConsumerWidget {
+class const CommonDialog({
+  super.key,
+  required this.title,
+  this.actions,
+  this.child,
+  this.padding,
+}) extends ConsumerWidget {
   final String title;
   final Widget? child;
   final List<Widget>? actions;
   final EdgeInsets? padding;
-
-  const CommonDialog({
-    super.key,
-    required this.title,
-    this.actions,
-    this.child,
-    this.padding,
-  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

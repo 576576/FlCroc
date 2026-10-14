@@ -1,16 +1,14 @@
 import 'package:material_ui/material_ui.dart';
 
-class CustomTabBar extends StatelessWidget {
+class const CustomTabBar({
+  super.key,
+  required this.tabs,
+  required this.selectedIndex,
+  required this.onChanged,
+}) extends StatelessWidget {
   final List<String> tabs;
   final int selectedIndex;
   final ValueChanged<int> onChanged;
-
-  const CustomTabBar({
-    super.key,
-    required this.tabs,
-    required this.selectedIndex,
-    required this.onChanged,
-  });
 
   @override
   Widget build(BuildContext context) {

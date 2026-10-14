@@ -1,21 +1,19 @@
 import 'package:fl_croc/widgets/dialog.dart';
 import 'package:material_ui/material_ui.dart';
 
-class OptionsDialog<T> extends StatelessWidget {
+class const OptionsDialog<T>({
+  super.key,
+  required this.title,
+  required this.options,
+  required this.textBuilder,
+  required this.value,
+  required this.onChanged,
+}) extends StatelessWidget {
   final String title;
   final List<T> options;
   final T value;
   final String Function(T value) textBuilder;
   final ValueChanged<T> onChanged;
-
-  const OptionsDialog({
-    super.key,
-    required this.title,
-    required this.options,
-    required this.textBuilder,
-    required this.value,
-    required this.onChanged,
-  });
 
   @override
   Widget build(BuildContext context) {
@@ -44,10 +42,12 @@ class OptionsDialog<T> extends StatelessWidget {
   }
 }
 
-class OptionItem<T> {
+class const OptionItem<T>({
+  required this.value,
+  required this.label,
+  this.icon,
+}) {
   final T value;
   final String label;
   final IconData? icon;
-
-  const OptionItem({required this.value, required this.label, this.icon});
 }

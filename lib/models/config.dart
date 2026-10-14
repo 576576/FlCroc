@@ -66,10 +66,8 @@ List<DashboardWidget> _dashboardWidgetsFromJson(List<dynamic>? list) {
   return widgets;
 }
 
-class DashboardWidgetListConverter
+class const DashboardWidgetListConverter()
     implements JsonConverter<List<DashboardWidget>, List<dynamic>> {
-  const DashboardWidgetListConverter();
-
   @override
   List<DashboardWidget> fromJson(List<dynamic> json) =>
       _dashboardWidgetsFromJson(json);

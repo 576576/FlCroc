@@ -5,9 +5,7 @@ import 'package:fl_croc/widgets/widgets.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class TotalTransferredWidget extends ConsumerWidget {
-  const TotalTransferredWidget({super.key});
-
+class const TotalTransferredWidget({super.key}) extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.appLocalizations;

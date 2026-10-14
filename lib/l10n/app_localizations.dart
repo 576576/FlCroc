@@ -15,11 +15,9 @@ import 'package:flutter/services.dart';
 // AppLocalizations
 // ────────────────────────────────────────────────────────────
 
-class AppLocalizations {
+class AppLocalizations._(this.locale, this._messages) {
   final Locale locale;
   final Map<String, String> _messages;
-
-  AppLocalizations._(this.locale, this._messages);
 
   static AppLocalizations of(BuildContext context) {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
@@ -431,10 +429,8 @@ class AppLocalizations {
 // Delegate
 // ────────────────────────────────────────────────────────────
 
-class _AppLocalizationsDelegate
+class const _AppLocalizationsDelegate()
     extends LocalizationsDelegate<AppLocalizations> {
-  const _AppLocalizationsDelegate();
-
   static final Map<String, Map<String, String>> _cache = {};
 
   @override

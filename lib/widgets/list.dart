@@ -2,7 +2,17 @@ import 'package:fl_croc/common/navigator.dart';
 import 'package:fl_croc/widgets/switch_delegate.dart';
 import 'package:material_ui/material_ui.dart';
 
-class ListItem extends StatelessWidget {
+class const ListItem({
+  super.key,
+  this.leading,
+  required this.title,
+  this.subtitle,
+  this.trailing,
+  this.onTap,
+  this.onLongPress,
+  this.padding,
+  this.minVerticalPadding,
+}) extends StatelessWidget {
   final Widget? leading;
   final Widget title;
   final Widget? subtitle;
@@ -11,18 +21,6 @@ class ListItem extends StatelessWidget {
   final VoidCallback? onLongPress;
   final EdgeInsetsGeometry? padding;
   final double? minVerticalPadding;
-
-  const ListItem({
-    super.key,
-    this.leading,
-    required this.title,
-    this.subtitle,
-    this.trailing,
-    this.onTap,
-    this.onLongPress,
-    this.padding,
-    this.minVerticalPadding,
-  });
 
   static Widget switchItem({
     Key? key,
@@ -115,7 +113,15 @@ class ListItem extends StatelessWidget {
   }
 }
 
-class _SwitchListItem extends StatefulWidget {
+class const _SwitchListItem({
+  super.key,
+  this.leading,
+  required this.title,
+  this.subtitle,
+  required this.delegate,
+  this.padding,
+  this.minVerticalPadding,
+}) extends StatefulWidget {
   final Widget? leading;
   final Widget title;
   final Widget? subtitle;
@@ -123,21 +129,11 @@ class _SwitchListItem extends StatefulWidget {
   final EdgeInsetsGeometry? padding;
   final double? minVerticalPadding;
 
-  const _SwitchListItem({
-    super.key,
-    this.leading,
-    required this.title,
-    this.subtitle,
-    required this.delegate,
-    this.padding,
-    this.minVerticalPadding,
-  });
-
   @override
   State<_SwitchListItem> createState() => _SwitchListItemState();
 }
 
-class _SwitchListItemState extends State<_SwitchListItem> {
+class _SwitchListItemState() extends State<_SwitchListItem> {
   @override
   Widget build(BuildContext context) {
     return ListItem(
@@ -157,23 +153,21 @@ class _SwitchListItemState extends State<_SwitchListItem> {
   }
 }
 
-class _OpenListItem extends StatelessWidget {
+class const _OpenListItem({
+  super.key,
+  this.leading,
+  required this.title,
+  this.subtitle,
+  required this.delegate,
+  this.padding,
+  this.minVerticalPadding,
+}) extends StatelessWidget {
   final Widget? leading;
   final Widget title;
   final Widget? subtitle;
   final OpenDelegate delegate;
   final EdgeInsetsGeometry? padding;
   final double? minVerticalPadding;
-
-  const _OpenListItem({
-    super.key,
-    this.leading,
-    required this.title,
-    this.subtitle,
-    required this.delegate,
-    this.padding,
-    this.minVerticalPadding,
-  });
 
   @override
   Widget build(BuildContext context) {
@@ -191,7 +185,6 @@ class _OpenListItem extends StatelessWidget {
   }
 }
 
-class OpenDelegate {
+class const OpenDelegate({required this.widget}) {
   final Widget widget;
-  const OpenDelegate({required this.widget});
 }

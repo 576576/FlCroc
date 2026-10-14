@@ -16,20 +16,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Data emitted by [QuickTransferWidget.statusNotifier] for the AppBar chip.
-class QuickStatus {
+class const QuickStatus({
+  required this.label,
+  required this.color,
+  this.progress = -1,
+  this.detail = '',
+}) {
   final String label;
   final Color color;
   final double progress; // 0.0–1.0, or -1 for indeterminate
 
   /// Optional secondary text, e.g. `2/5 · 12.3 MB/s`.
   final String detail;
-
-  const QuickStatus({
-    required this.label,
-    required this.color,
-    this.progress = -1,
-    this.detail = '',
-  });
 }
 
 /// Unified quick send + receive card for the dashboard.
@@ -38,9 +36,7 @@ class QuickStatus {
 ///
 /// The static [statusNotifier] emits the current transfer phase so the parent
 /// dashboard can show a status chip in its AppBar.
-class QuickTransferWidget extends ConsumerStatefulWidget {
-  const QuickTransferWidget({super.key});
-
+class const QuickTransferWidget({super.key}) extends ConsumerStatefulWidget {
   /// Emits a [QuickStatus] when a transfer is active; null when idle.
   static final statusNotifier = ValueNotifier<QuickStatus?>(null);
 
@@ -49,9 +45,16 @@ class QuickTransferWidget extends ConsumerStatefulWidget {
       _QuickTransferWidgetState();
 }
 
-enum _QuickPhase { idle, sending, receiving, completed, failed, cancelled }
+enum _QuickPhase() {
+  idle,
+  sending,
+  receiving,
+  completed,
+  failed,
+  cancelled,
+}
 
-class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
+class _QuickTransferWidgetState() extends ConsumerState<QuickTransferWidget> {
   final _textCtrl = TextEditingController();
   bool _isTextMode = false;
   final List<FileItem> _selectedFiles = [];
@@ -1301,14 +1304,12 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
 }
 
 /// Animated clipboard button with press animation and long-press paste/copy toggle.
-class _ClipboardToggleButton extends StatefulWidget {
-  const _ClipboardToggleButton({
-    required this.isPasteMode,
-    required this.isActive,
-    required this.onTap,
-    required this.onLongPress,
-  });
-
+class const _ClipboardToggleButton({
+  required this.isPasteMode,
+  required this.isActive,
+  required this.onTap,
+  required this.onLongPress,
+}) extends StatefulWidget {
   final bool isPasteMode;
   final bool isActive;
   final VoidCallback onTap;
@@ -1318,7 +1319,7 @@ class _ClipboardToggleButton extends StatefulWidget {
   State<_ClipboardToggleButton> createState() => _ClipboardToggleButtonState();
 }
 
-class _ClipboardToggleButtonState extends State<_ClipboardToggleButton> {
+class _ClipboardToggleButtonState() extends State<_ClipboardToggleButton> {
   bool _pressed = false;
 
   @override
@@ -1357,19 +1358,17 @@ class _ClipboardToggleButtonState extends State<_ClipboardToggleButton> {
 }
 
 /// Animated file/folder picker button — long-press toggles mode.
-class _PickerToggleButton extends StatefulWidget {
-  const _PickerToggleButton({
-    required this.isFolderPicker,
-    required this.isActive,
-    required this.narrow,
-    required this.dropHover,
-    required this.dropLabel,
-    required this.onTap,
-    required this.onLongPress,
-    required this.filesLabel,
-    required this.folderLabel,
-  });
-
+class const _PickerToggleButton({
+  required this.isFolderPicker,
+  required this.isActive,
+  required this.narrow,
+  required this.dropHover,
+  required this.dropLabel,
+  required this.onTap,
+  required this.onLongPress,
+  required this.filesLabel,
+  required this.folderLabel,
+}) extends StatefulWidget {
   final bool isFolderPicker;
   final bool isActive;
   final bool narrow;
@@ -1384,7 +1383,7 @@ class _PickerToggleButton extends StatefulWidget {
   State<_PickerToggleButton> createState() => _PickerToggleButtonState();
 }
 
-class _PickerToggleButtonState extends State<_PickerToggleButton> {
+class _PickerToggleButtonState() extends State<_PickerToggleButton> {
   bool _pressed = false;
 
   @override

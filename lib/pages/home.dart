@@ -5,14 +5,12 @@ import 'package:fl_croc/providers/providers.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class HomePage extends ConsumerStatefulWidget {
-  const HomePage({super.key});
-
+class const HomePage({super.key}) extends ConsumerStatefulWidget {
   @override
   ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends ConsumerState<HomePage> {
+class _HomePageState() extends ConsumerState<HomePage> {
   late final PageController _pageController = PageController();
   bool _isSyncing = false;
 

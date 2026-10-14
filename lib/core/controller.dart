@@ -12,15 +12,13 @@ import 'package:fl_croc/models/models.dart';
 /// **Backend priority:**
 ///   1. FFI  (`CoreLib`)   — Go shared library, best for Android
 ///   2. Process (`CoreService`) — bundled croc binary, desktop fallback
-class CoreController {
+class CoreController._internal() {
   static CoreController? _instance;
   CoreInterface? _interface;
 
   /// Hardcoded error sentinel used when no backend is loaded.
   /// UI code matches against this to show the proper localized message.
   static const noBackendError = 'No croc backend available';
-
-  CoreController._internal();
 
   factory CoreController() {
     _instance ??= CoreController._internal();

@@ -1,11 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 
-class StyledText extends StatelessWidget {
+class const StyledText(this.text, {super.key, this.style, this.textAlign})
+    extends StatelessWidget {
   final String text;
   final TextStyle? style;
   final TextAlign? textAlign;
-
-  const StyledText(this.text, {super.key, this.style, this.textAlign});
 
   @override
   Widget build(BuildContext context) {
@@ -13,21 +12,20 @@ class StyledText extends StatelessWidget {
   }
 }
 
-class FadeScaleBox extends StatefulWidget {
+class const FadeScaleBox({
+  super.key,
+  required this.child,
+  this.alignment = Alignment.center,
+}) extends StatefulWidget {
   final Widget child;
   final Alignment alignment;
-
-  const FadeScaleBox({
-    super.key,
-    required this.child,
-    this.alignment = Alignment.center,
-  });
 
   @override
   State<FadeScaleBox> createState() => _FadeScaleBoxState();
 }
 
-class _FadeScaleBoxState extends State<FadeScaleBox>
+class _FadeScaleBoxState()
+    extends State<FadeScaleBox>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;

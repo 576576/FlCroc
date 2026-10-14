@@ -10,7 +10,7 @@ final appStateProvider = NotifierProvider<AppStateNotifier, AppState>(
   AppStateNotifier.new,
 );
 
-class AppStateNotifier extends Notifier<AppState> {
+class AppStateNotifier() extends Notifier<AppState> {
   static const _transfersKey = 'transfer_records';
   static const _maxTransfers = 100;
 
@@ -135,7 +135,7 @@ final transfersProvider = Provider<List<TransferRecord>>((ref) {
 
 /// Holds file paths received via Android/iOS share intent.
 /// The send page picks these up on init and clears the list.
-class PendingSharedFilesNotifier extends Notifier<List<String>> {
+class PendingSharedFilesNotifier() extends Notifier<List<String>> {
   @override
   List<String> build() => [];
 

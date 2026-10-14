@@ -90,7 +90,7 @@ abstract class TransferProgress with _$TransferProgress {
       _$TransferProgressFromJson(json);
 }
 
-enum TransferProgressStatus {
+enum TransferProgressStatus() {
   initializing,
   connecting,
   transferring,

@@ -1,10 +1,9 @@
 import 'package:material_ui/material_ui.dart';
 
-class PopScopeWidget extends StatelessWidget {
+class const PopScopeWidget({super.key, required this.child, this.canPop = true})
+    extends StatelessWidget {
   final Widget child;
   final bool canPop;
-
-  const PopScopeWidget({super.key, required this.child, this.canPop = true});
 
   @override
   Widget build(BuildContext context) {
