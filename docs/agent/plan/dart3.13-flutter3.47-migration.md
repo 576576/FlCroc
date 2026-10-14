@@ -213,23 +213,23 @@ class MyCard(super.key, final String title) extends StatelessWidget;
   `const _X({...})` 加私有字段；公共 API（`X(...)` / `copyWith` / `fromJson`）不变。
 - **`dart format` 重排的 5 个文件与之前 CI fmt job 报的完全一致** —— 反向印证那次失败是
   语言版本差异（3.12 vs 3.13），不是 SDK 版本差异。
-- **material_ui 仍需要兼容桥**：当时 `super_sliver_list`、`qr_flutter`、`fluttertoast`、
-  `desktop_drop`、`defer_pointer` 还在 import 旧的核心 material。桥放在
-  `lib/application.dart` 的 `MaterialApp.builder`，它自身已被标记废弃。前四个已在本轮
-  清掉，剩下两个见 §9。
+- **material_ui 当时还需要兼容桥**：`super_sliver_list`、`qr_flutter`、`fluttertoast`、
+  `desktop_drop`、`defer_pointer` 都还在 import 旧的核心 material。桥放在
+  `lib/application.dart` 的 `MaterialApp.builder`，它自身已被标记废弃。前四个在 §9 清掉，
+  最后两个在 §10 清掉，桥随之删除。
 - **`CupertinoPageTransitionsBuilder` 在 3.47 从 material 移进了 cupertino_ui**，
   所以两个包都要依赖。
 - `lib/l10n/app_localizations.dart` 被迁移 fix 改了一行 import（生成物已入库、CI 不重新
   生成）；将来手动跑 `flutter gen-l10n` 时注意这一行可能被写回旧 import。
-- 本地跑 Windows 构建需要 `CL=-utf-8`：`connectivity_plus` 的源码在本机 CP936 代码页下
-  触发 C4819，被 `/WX` 转成错误；CI 的英文 locale 不受影响。
+- ~~本地跑 Windows 构建需要 `CL=-utf-8`~~：`connectivity_plus` 已删，做全量重编验证过，
+  不再需要。
 
 ### 遗留（本轮未做）
 
 | 项 | 说明 |
 |---|---|
 | `StateProvider` / `StateNotifierProvider` → `Notifier` | 22 + 3 处仍在 legacy API 上（官方支持的过渡路径） |
-| 移除 `MaterialUiCompatibilityBridge` | 等 §9 剩下的两个依赖迁完 |
+| ~~移除 `MaterialUiCompatibilityBridge`~~ | 已完成，见 §10 |
 | ~~移除 drift 三件套~~ | 已完成，见 §9 |
 | Primary constructors | 192 个类声明，纯书写形式变化 |
 
@@ -267,7 +267,38 @@ class MyCard(super.key, final String title) extends StatelessWidget;
 
 | 项 | 说明 |
 |---|---|
-| 移除 `MaterialUiCompatibilityBridge` | 只剩 `fluttertoast` 与 `flutter_riverpod` 在 import 旧的核心 material |
 | Android 侧无拖放 | 本轮只做了 Windows；移动端本来就是选文件 |
 | 拖放与 QR 的真机验证 | 只有编译级保证与结构断言，需要人工拖一次、扫一次 |
+
+## 10. fluttertoast 换 fork、兼容桥删除
+
+| 动作 | commit | 验证 |
+|---|---|---|
+| fluttertoast fork `v10.0.2-flcroc.1`（import 换 material_ui）+ pubspec 改 git 依赖 | `f23f464` | analyze 0 / test 41 / build windows 通过 |
+| 删除 `MaterialUiCompatibilityBridge` | `2d4a60e` | analyze 0 / test 41 / build windows 通过 |
+
+fork 侧的分支模型、补丁内容与 FlCroc 侧的接入方式见
+[fluttertoast fork 的分支模型与同步流程](fluttertoast-fork-sync.md)。
+
+**兼容桥为什么现在能删。** 桥做的事是"把 material_ui 的 ThemeData 映射成 legacy ThemeData，
+让树里还在用旧 material 的 widget 取得到"。所以判据不是"谁 import 了旧 material"，而是
+"谁会真的往 widget 树里放旧 material 的 widget"。逐包扫过锁文件里全部 138 个包：
+
+| 包 | 旧 material / cupertino 的实际用法 | 需要桥吗 |
+|---|---|---|
+| `fluttertoast` | `Colors.black` / `Colors.white` 常量 + `FToast` overlay 里的 `Material(...)` | 补丁后不需要。而且那个 `Material` 只在 `FToast` 路径上，App 用的是 `Fluttertoast.showToast`（原生 toast），根本没走到 |
+| `flutter_riverpod` 3.4.3 | `lib/src/core.dart` 只 import，**非注释代码里一个 material API 都没用**（`MaterialApp` / `Scaffold` 只出现在 doc 注释里） | 不需要。已实测：把该 import 换成 `flutter/widgets.dart` 后 analyze + test 全过 |
+| `url_launcher_web` 2.4.3 | 同上，且是 web 平台实现 —— 仓库没有 `web/` 目标 | 不需要 |
+| `leak_tracker_flutter_testing` 3.0.10 | `flutter_test` 的测试基建 | 不需要，不进 App 树 |
+| `material_ui` / `cupertino_ui` | 各自的 `migration_utility.dart` —— 就是桥本身 | —— |
+
+`material_ui` 只再导出 `flutter/widgets.dart`，不存在"某个包再导出旧 material"的间接路径。
+删桥的失败模式本身也是良性的：没有 legacy Theme 祖先时 `legacy.Theme.of` 回落默认主题而不是
+抛异常，真正需要桥的是"树里有 legacy widget 且要求主题一致"这种情形。
+
+**还没动的两处**（都还没结论）：
+
+- `flutter_localizations` 在 `pubspec.yaml` 里是直接依赖，但 `lib/` 与 `test/` 里没有任何地方
+  import 它 —— 本地化委托来自 `material_ui`（它自己依赖 flutter_localizations）。
+- `fluttertoast` 只为移动端的原生 toast 存在（桌面端走 `ScaffoldMessenger`），`FToast` 没用过。
 
