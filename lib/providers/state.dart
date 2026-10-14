@@ -1,6 +1,6 @@
 import 'package:fl_croc/common/navigation.dart';
 import 'package:fl_croc/models/models.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 final navigationStateProvider = StateProvider<NavigationState>((ref) {
   return NavigationState(
