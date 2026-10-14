@@ -28,7 +28,14 @@ dependencies:
   ffi: ^2.1.3
   downloadsfolder: ^1.2.0
   open_filex: ^4.7.0
-  fluttertoast: ^10.0.2
+  # fork 576576/flutter_toast 的 flcroc 分支：lib/fluttertoast.dart 的
+  # package:flutter/material.dart 换成了 package:material_ui/material_ui.dart。
+  # ref 必须是不可变的 tag —— pubspec.lock 被 .gitignore 忽略，仓库里没有别处记录
+  # 上次 pub get 解到哪个 commit。
+  fluttertoast:
+    git:
+      url: https://github.com/576576/flutter_toast.git
+      ref: v10.0.2-flcroc.1
   share_receiver: ^1.0.2
 
 dev_dependencies:
