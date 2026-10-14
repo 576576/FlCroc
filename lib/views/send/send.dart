@@ -16,7 +16,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 enum PhraseMode { defaultMode, on, never }
 
@@ -29,7 +28,7 @@ class SendView extends ConsumerStatefulWidget {
 
 class _SendViewState extends ConsumerState<SendView>
     with TickerProviderStateMixin {
-  final List<PlatformFile> _selectedFiles = [];
+  final List<FileItem> _selectedFiles = [];
   bool _isTextMode = false;
   bool _dragOverFile = false;
   bool _isPhrasePasteMode = true; // phrase field: default paste
@@ -131,18 +130,11 @@ class _SendViewState extends ConsumerState<SendView>
   void _pickUpSharedFiles() {
     final paths = ref.read(pendingSharedFilesProvider);
     if (paths.isEmpty) return;
-    final newFiles = <PlatformFile>[];
+    final newFiles = <FileItem>[];
     for (final p in paths) {
-      final f = File(p);
-      if (!f.existsSync()) continue;
       if (_selectedFiles.any((s) => s.path == p)) continue;
-      newFiles.add(
-        PlatformFile(
-          name: p.split(Platform.pathSeparator).last,
-          path: p,
-          size: f.lengthSync(),
-        ),
-      );
+      final item = fileItemForPath(p);
+      if (item != null) newFiles.add(item);
     }
     if (newFiles.isNotEmpty) {
       setState(() {
@@ -210,14 +202,14 @@ class _SendViewState extends ConsumerState<SendView>
   String? _selectedFolder;
 
   Future<void> _pickFiles() async {
-    final result = await FilePicker.platform.pickFiles(allowMultiple: true);
-    if (result != null && result.files.isNotEmpty) {
-      setState(() => _selectedFiles.addAll(result.files));
+    final files = await toFileItems(await FilePicker.pickFiles());
+    if (files.isNotEmpty) {
+      setState(() => _selectedFiles.addAll(files));
     }
   }
 
   Future<void> _pickFolder() async {
-    final path = await FilePicker.platform.getDirectoryPath();
+    final path = await FilePicker.getDirectoryPath();
     if (path != null) {
       setState(() {
         _selectedFolder = path;
@@ -256,7 +248,7 @@ class _SendViewState extends ConsumerState<SendView>
   }
 
   Future<void> _pickTextFile() async {
-    final result = await FilePicker.platform.pickFiles(
+    final files = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: [
         'txt',
@@ -269,8 +261,8 @@ class _SendViewState extends ConsumerState<SendView>
         'yml',
       ],
     );
-    if (result != null && result.files.isNotEmpty) {
-      final file = result.files.first;
+    if (files.isNotEmpty) {
+      final file = files.first;
       if (file.path != null) {
         final content = await File(file.path!).readAsString();
         final limited = _applyTextLimit(content);
@@ -347,7 +339,7 @@ class _SendViewState extends ConsumerState<SendView>
   void _pastePhrase() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     if (data?.text != null && data!.text!.isNotEmpty) {
-      _codeController.text = data.text!;
+      _codeController.text = normalizeShareCode(data.text!);
       if (mounted) context.showSnackBar(context.appLocalizations.codePasted);
     }
   }
@@ -358,6 +350,7 @@ class _SendViewState extends ConsumerState<SendView>
       if (mounted) context.showSnackBar(context.appLocalizations.phraseEmpty);
       return;
     }
+    final payload = _qrPayload;
     showDialog(
       context: context,
       builder: (ctx) {
@@ -367,7 +360,7 @@ class _SendViewState extends ConsumerState<SendView>
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(width: 200, height: 200, child: _buildQR(code, 200)),
+              SizedBox(width: 200, height: 200, child: _buildQR(payload, 200)),
               const SizedBox(height: 12),
               Text(
                 code,
@@ -399,7 +392,9 @@ class _SendViewState extends ConsumerState<SendView>
     );
   }
 
-  String get _currentPhrase => _codeController.text.trim();
+  /// The share code as croc should see it: a URL in the field — pasted, typed or
+  /// left over from a previous session — is reduced to its `code` parameter.
+  String get _currentPhrase => normalizeShareCode(_codeController.text);
   bool get _allowEmptyPhrase => _phraseMode == PhraseMode.defaultMode;
 
   // ── Persistence ──
@@ -512,11 +507,7 @@ class _SendViewState extends ConsumerState<SendView>
               size: 0,
             ),
           ]
-        : _selectedFiles
-              .map(
-                (f) => FileItem(name: f.name, path: f.path ?? '', size: f.size),
-              )
-              .toList();
+        : _selectedFiles;
     final totalSize = isText
         ? textContent.length
         : files.fold<int>(0, (a, f) => a + f.size);
@@ -553,7 +544,7 @@ class _SendViewState extends ConsumerState<SendView>
       } else {
         for (final f in _selectedFiles) {
           final p = f.path;
-          if (p == null || p.isEmpty) continue;
+          if (p.isEmpty) continue;
           if (isAndroid && p.startsWith('content://')) {
             try {
               final bytes = await File(p).readAsBytes();
@@ -768,13 +759,7 @@ class _SendViewState extends ConsumerState<SendView>
         : (Theme.of(context).brightness == Brightness.dark
               ? Colors.white
               : Colors.black);
-    final qr = QrImageView(
-      data: data,
-      version: QrVersions.auto,
-      size: size,
-      eyeStyle: QrEyeStyle(color: fg),
-      dataModuleStyle: QrDataModuleStyle(color: fg),
-    );
+    final qr = QrCodeView(data: data, size: size, color: fg);
     if (!_whiteBgQR) return qr;
     return Container(
       padding: const EdgeInsets.all(8),
@@ -784,6 +769,17 @@ class _SendViewState extends ConsumerState<SendView>
       ),
       child: qr,
     );
+  }
+
+  /// What the share QR encodes: croc's web receive URL, the same one `croc --qr`
+  /// prints, so a phone that scans it lands on the web receiver. Falls back to
+  /// the bare code when the backend cannot supply a URL — the receiving side
+  /// accepts either.
+  String get _qrPayload {
+    final code = _currentPhrase;
+    if (code.isEmpty) return '';
+    final url = coreController.webReceiveUrl(code);
+    return url.isEmpty ? code : url;
   }
 
   @override
@@ -1335,10 +1331,10 @@ class _SendViewState extends ConsumerState<SendView>
           ),
 
           // QR code — below transfer options
-          if (_currentPhrase.isNotEmpty)
+          if (_qrPayload.isNotEmpty)
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Center(child: _buildQR(_currentPhrase, 160)),
+              child: Center(child: _buildQR(_qrPayload, 160)),
             ),
 
           const SizedBox(height: 32),
@@ -1381,17 +1377,12 @@ class _SendViewState extends ConsumerState<SendView>
       }
     }
     // Add files
-    final newFiles = <PlatformFile>[];
+    final newFiles = <FileItem>[];
     for (final f in files) {
       if (!FileSystemEntity.isDirectorySync(f.path) &&
           !_selectedFiles.any((s) => s.path == f.path)) {
-        newFiles.add(
-          PlatformFile(
-            name: f.path.split(Platform.pathSeparator).last,
-            path: f.path,
-            size: f.lengthSync(),
-          ),
-        );
+        final item = fileItemForPath(f.path);
+        if (item != null) newFiles.add(item);
       }
     }
     if (newFiles.isNotEmpty) setState(() => _selectedFiles.addAll(newFiles));

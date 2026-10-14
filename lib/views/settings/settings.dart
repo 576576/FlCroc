@@ -226,7 +226,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   String _defaultDownloadPath() => AppPaths.savePathSync;
 
   Future<void> _pickSavePath(WidgetRef ref) async {
-    final result = await FilePicker.platform.getDirectoryPath();
+    final result = await FilePicker.getDirectoryPath();
     if (result == null) return;
 
     if (!AppPaths.isWritablePath(result)) {

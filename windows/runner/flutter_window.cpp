@@ -27,6 +27,10 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
+  drop_target_ = std::make_unique<DropTarget>(
+      flutter_controller_->view()->GetNativeWindow(),
+      flutter_controller_->engine()->messenger());
+
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
   });
@@ -40,6 +44,10 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  // Revoke drag-and-drop first: the view's HWND must still exist when OLE is
+  // told to stop calling into the target.
+  drop_target_.reset();
+
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }

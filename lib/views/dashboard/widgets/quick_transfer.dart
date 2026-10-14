@@ -54,7 +54,7 @@ enum _QuickPhase { idle, sending, receiving, completed, failed, cancelled }
 class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   final _textCtrl = TextEditingController();
   bool _isTextMode = false;
-  final List<PlatformFile> _selectedFiles = [];
+  final List<FileItem> _selectedFiles = [];
   _QuickPhase _phase = _QuickPhase.idle;
   String? _activeTransferId;
   TransferRecord? _activeRecord;
@@ -179,24 +179,19 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
       }
     }
     // Add files
-    final newFiles = <PlatformFile>[];
+    final newFiles = <FileItem>[];
     for (final f in files) {
       if (!FileSystemEntity.isDirectorySync(f.path) &&
           !_selectedFiles.any((s) => s.path == f.path)) {
-        newFiles.add(
-          PlatformFile(
-            name: f.path.split(Platform.pathSeparator).last,
-            path: f.path,
-            size: f.lengthSync(),
-          ),
-        );
+        final item = fileItemForPath(f.path);
+        if (item != null) newFiles.add(item);
       }
     }
     if (newFiles.isNotEmpty) setState(() => _selectedFiles.addAll(newFiles));
   }
 
   Future<void> _pickFolder() async {
-    final path = await FilePicker.platform.getDirectoryPath();
+    final path = await FilePicker.getDirectoryPath();
     if (path != null) {
       setState(() {
         _selectedFolder = path;
@@ -217,7 +212,7 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   }
 
   Future<void> _pickTextFile() async {
-    final result = await FilePicker.platform.pickFiles(
+    final files = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: [
         'txt',
@@ -233,8 +228,8 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
         'cfg',
       ],
     );
-    if (result == null || result.files.isEmpty) return;
-    final file = result.files.first;
+    if (files.isEmpty) return;
+    final file = files.first;
     if (file.path == null) return;
     try {
       final content = await File(file.path!).readAsString();
@@ -308,8 +303,12 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
               ),
               FilledButton(
                 onPressed: () {
-                  final sendVal = sendCtrl.text.trim();
-                  final recvVal = same ? sendVal : recvCtrl.text.trim();
+                  // The share code may have arrived as a getcroc.com URL (that is
+                  // what the sender's QR carries); the receive side wants the code.
+                  final sendVal = normalizeShareCode(sendCtrl.text);
+                  final recvVal = same
+                      ? sendVal
+                      : normalizeShareCode(recvCtrl.text);
                   AppPrefs.setString(_prefQuickSendCode, sendVal);
                   AppPrefs.setString(_prefQuickReceiveCode, recvVal);
                   AppPrefs.setBool(_prefUseSameCode, same);
@@ -332,9 +331,9 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   // ── File picking ──
 
   Future<void> _pickFiles() async {
-    final result = await FilePicker.platform.pickFiles(allowMultiple: true);
-    if (result != null && result.files.isNotEmpty) {
-      setState(() => _selectedFiles.addAll(result.files));
+    final files = await toFileItems(await FilePicker.pickFiles());
+    if (files.isNotEmpty) {
+      setState(() => _selectedFiles.addAll(files));
     }
   }
 
@@ -467,10 +466,10 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
         resolvedPaths.add(_selectedFolder!);
       } else {
         for (final f in _selectedFiles) {
-          if (f.path == null) continue;
-          if (isAndroid && f.path!.startsWith('content://')) {
+          if (f.path.isEmpty) continue;
+          if (isAndroid && f.path.startsWith('content://')) {
             try {
-              final bytes = await File(f.path!).readAsBytes();
+              final bytes = await File(f.path).readAsBytes();
               tempDirPath ??= (await getTemporaryDirectory()).path;
               final tmp = File(
                 '$tempDirPath${Platform.pathSeparator}${f.name}',
@@ -479,7 +478,7 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
               resolvedPaths.add(tmp.path);
             } catch (_) {}
           } else {
-            resolvedPaths.add(f.path!);
+            resolvedPaths.add(f.path);
           }
         }
       }
@@ -488,7 +487,8 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
       tempDirPath = (await getTemporaryDirectory()).path;
     }
 
-    final code = _quickSendCode.isNotEmpty ? _quickSendCode : null;
+    final quickSendCode = normalizeShareCode(_quickSendCode);
+    final code = quickSendCode.isNotEmpty ? quickSendCode : null;
     final relayConfig = ref.read(appSettingProvider).relayConfig;
     // Mirror the Send page: a transfer started from the dashboard must honour
     // the same persisted options instead of silently falling back to defaults.
@@ -510,11 +510,7 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
               size: 0,
             ),
           ]
-        : _selectedFiles
-              .map(
-                (f) => FileItem(name: f.name, path: f.path ?? '', size: f.size),
-              )
-              .toList();
+        : _selectedFiles;
     final totalSize = _isTextMode
         ? _textCtrl.text.trim().length
         : files.fold<int>(0, (a, f) => a + f.size);
@@ -658,7 +654,9 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
 
   Future<void> _quickReceive() async {
     final l10n = context.appLocalizations;
-    final code = _useSameCode ? _quickSendCode : _quickReceiveCode;
+    final code = normalizeShareCode(
+      _useSameCode ? _quickSendCode : _quickReceiveCode,
+    );
     if (code.isEmpty) {
       if (mounted) context.showSnackBar(l10n.quickEmptyRecvCode);
       return;

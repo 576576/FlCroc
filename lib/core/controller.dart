@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/core/interface.dart';
 import 'package:fl_croc/core/lib.dart';
+import 'package:fl_croc/core/qr_matrix.dart';
 import 'package:fl_croc/core/service.dart';
 import 'package:fl_croc/models/models.dart';
 
@@ -105,6 +106,14 @@ class CoreController {
     _interface = null;
     return ok;
   }
+
+  /// The web receive URL for [code], or an empty string when no backend can
+  /// supply one. See [CoreInterface.webReceiveUrl].
+  String webReceiveUrl(String code) => _interface?.webReceiveUrl(code) ?? '';
+
+  /// The QR module matrix for [text], or null when no backend can encode. See
+  /// [CoreInterface.qrCodeMatrix].
+  QrMatrix? qrCodeMatrix(String text) => _interface?.qrCodeMatrix(text);
 }
 
 final coreController = CoreController();

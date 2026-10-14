@@ -8,6 +8,7 @@ export 'list.dart';
 export 'loading.dart';
 export 'null_status.dart';
 export 'pop_scope.dart';
+export 'qr_view.dart';
 export 'scaffold.dart';
 export 'setting.dart';
 export 'super_grid.dart';

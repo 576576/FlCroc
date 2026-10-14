@@ -17,6 +17,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   // plugins.
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
+  // RegisterDragDrop needs OLE, not just COM; without it the file drop target
+  // silently fails to register.
+  ::OleInitialize(nullptr);
+
   // Enable DirectWrite for improved font rendering on Windows.
   SetEnvironmentVariableW(L"ENABLE_FLUTTER_DIRECTWRITE", L"1");
 
@@ -41,6 +45,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     ::DispatchMessage(&msg);
   }
 
+  ::OleUninitialize();
   ::CoUninitialize();
   return EXIT_SUCCESS;
 }

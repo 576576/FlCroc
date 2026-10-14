@@ -87,8 +87,9 @@ dependencies {
 }
 
 // Auto-patch plugin registrant after flutter pub get regenerates it.
-// Desktop-only plugins (desktop_drop, jni, etc.) register on Android
-// and throw NoClassDefFoundError which is NOT caught by catch(Exception).
+// The generated catch(Exception) does not contain the NoClassDefFoundError that a
+// desktop-only plugin throws on Android — an Error is not an Exception — so the
+// app would die at startup instead of skipping that plugin.
 tasks.register("patchPluginRegistrant") {
     doLast {
         val file = file("src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java")

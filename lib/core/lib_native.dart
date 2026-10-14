@@ -6,11 +6,13 @@ import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/core/interface.dart';
+import 'package:fl_croc/core/qr_matrix.dart';
 import 'package:fl_croc/models/models.dart';
 
 /// FFI binding for the Go croc bridge shared library.
 ///
-/// Uses the vendored croc at `submodules/croc/` via the Go bridge in `go_bridge/`.
+/// Uses the croc fork in `submodules/croc/`, compiled into a shared library by
+/// the Go bridge in `go_bridge/`.
 class CoreLib extends CoreInterface {
   static CoreLib? _instance;
   DynamicLibrary? _lib;
@@ -18,6 +20,12 @@ class CoreLib extends CoreInterface {
 
   // Cached FFI function for freeing Go-allocated strings
   void Function(Pointer<Utf8>)? _freeGoString;
+
+  // Share-code QR helpers. An older bridge library simply will not export them,
+  // which leaves the callers to fall back instead of failing.
+  Pointer<Utf8> Function(Pointer<Utf8>)? _webReceiveUrlFn;
+  Pointer<Utf8> Function(Pointer<Utf8>)? _qrCodeFn;
+  bool _qrExportsBound = false;
 
   CoreLib._internal();
 
@@ -40,6 +48,7 @@ class CoreLib extends CoreInterface {
             Void Function(Pointer<Utf8>),
             void Function(Pointer<Utf8>)
           >('CrocFreeString');
+      _bindQrExports();
       _isAvailable = true;
       return true;
     } catch (e) {
@@ -520,4 +529,74 @@ class CoreLib extends CoreInterface {
     _isAvailable = false;
     return true;
   }
+
+  // ── Share-code QR ──
+
+  /// Binds the share-code exports, tolerating a bridge library built without
+  /// them rather than failing the whole backend.
+  void _bindQrExports() {
+    final lib = _lib;
+    if (lib == null || _qrExportsBound) return;
+    _qrExportsBound = true;
+    try {
+      _webReceiveUrlFn = lib
+          .lookupFunction<Pointer<Utf8> Function(Pointer<Utf8>), _StringFn>(
+            'CrocWebReceiveURL',
+          );
+      _qrCodeFn = lib
+          .lookupFunction<Pointer<Utf8> Function(Pointer<Utf8>), _StringFn>(
+            'CrocQRCode',
+          );
+    } catch (e) {
+      commonPrint('croc bridge has no QR exports: $e');
+    }
+  }
+
+  @override
+  String webReceiveUrl(String code) {
+    if (code.isEmpty) return '';
+    return _callString(_webReceiveUrlFn, code) ?? '';
+  }
+
+  @override
+  QrMatrix? qrCodeMatrix(String text) {
+    if (text.isEmpty) return null;
+    final raw = _callString(_qrCodeFn, text);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) return null;
+      final error = decoded['error'];
+      if (error != null) {
+        commonPrint('CrocQRCode: $error');
+        return null;
+      }
+      return QrMatrix.tryParse(decoded);
+    } catch (e) {
+      commonPrint('CrocQRCode returned unreadable JSON: $e');
+      return null;
+    }
+  }
+
+  /// Calls a bridge export that takes and returns a C string, freeing both. The
+  /// input is copied by toNativeUtf8, so the Go side never keeps the pointer.
+  String? _callString(_StringFn? fn, String arg) {
+    if (fn == null) return null;
+    final input = arg.toNativeUtf8();
+    try {
+      final out = fn(input);
+      try {
+        return out.toDartString();
+      } finally {
+        _freeGoString?.call(out);
+      }
+    } catch (e) {
+      commonPrint('croc bridge call failed: $e');
+      return null;
+    } finally {
+      malloc.free(input);
+    }
+  }
 }
+
+typedef _StringFn = Pointer<Utf8> Function(Pointer<Utf8>);

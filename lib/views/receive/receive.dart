@@ -199,7 +199,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
         context,
       ).push<String>(_QrScannerRoute(builder: (_) => const _QRScannerDialog()));
       if (result != null && mounted) {
-        _codeController.text = result;
+        _codeController.text = normalizeShareCode(result);
       }
     } catch (e, st) {
       commonPrint('Scanner dialog error: $e\n$st');
@@ -214,7 +214,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   void _pastePhrase() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     if (data?.text != null && data!.text!.isNotEmpty) {
-      _codeController.text = data.text!;
+      _codeController.text = normalizeShareCode(data.text!);
       if (mounted) context.showSnackBar(context.appLocalizations.codePasted);
     }
   }
@@ -229,7 +229,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   String _defaultDownloadDir() => AppPaths.savePathSync;
 
   Future<void> _pickReceivePath() async {
-    final result = await FilePicker.platform.getDirectoryPath();
+    final result = await FilePicker.getDirectoryPath();
     if (result != null && mounted) {
       setState(() {
         _receiveConfig = _receiveConfig.copyWith(outputPath: result);
@@ -239,7 +239,7 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
   }
 
   void _startReceive() {
-    final code = _codeController.text.trim();
+    final code = normalizeShareCode(_codeController.text);
     final l10n = context.appLocalizations;
     if (code.isEmpty) {
       context.showSnackBar(l10n.phraseEmpty);

@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/core/interface.dart';
+import 'package:fl_croc/core/qr_matrix.dart';
 import 'package:fl_croc/models/models.dart';
 import 'package:path/path.dart' as p;
 
@@ -400,4 +401,16 @@ class CoreService extends CoreInterface {
     _isAvailable = false;
     return true;
   }
+
+  // ── Share-code QR ──
+  //
+  // The CLI backend has no encoder, and croc's web receive URL format belongs to
+  // croc rather than to this file. Returning nothing makes the UI fall back to
+  // showing the bare code, which the receiving side still accepts.
+
+  @override
+  String webReceiveUrl(String code) => '';
+
+  @override
+  QrMatrix? qrCodeMatrix(String text) => null;
 }

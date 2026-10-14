@@ -1,6 +1,8 @@
+export 'code.dart';
 export 'color.dart';
 export 'constant.dart';
 export 'context.dart';
+export 'file.dart';
 export 'function.dart';
 export 'future.dart';
 export 'github.dart';
