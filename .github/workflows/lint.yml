@@ -26,6 +26,12 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      # 必须先装依赖：dart format 从 .dart_tool/package_config.json 取本包的语言版本
+      # （pubspec 的 sdk 约束），没有它就只能按 SDK 默认版本排版，结果和本地不是同一
+      # 套 —— 部分文件会被排出不同的换行，版本更低的语言特性（如 freezed 生成的
+      # redirecting factory 参数 final）还会直接解析失败。
+      - name: Install dependencies
+        run: flutter pub get
       - name: 检查格式
         # --set-exit-if-changed：有文件需要重排就非零退出。
         run: dart format --output=none --set-exit-if-changed .
