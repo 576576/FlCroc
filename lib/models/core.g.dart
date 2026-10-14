@@ -6,40 +6,37 @@ part of 'core.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$SendOptionsImpl _$$SendOptionsImplFromJson(Map<String, dynamic> json) =>
-    _$SendOptionsImpl(
-      filePaths: (json['filePaths'] as List<dynamic>)
-          .map((e) => e as String)
-          .toList(),
-      codePhrase: json['codePhrase'] as String?,
-      curve: json['curve'] as String? ?? 'p256',
-      hashAlgorithm: json['hashAlgorithm'] as String? ?? 'xxhash',
-      noCompress: json['noCompress'] as bool? ?? false,
-      overwrite: json['overwrite'] as bool? ?? false,
-      zipFolder: json['zipFolder'] as bool? ?? false,
-      gitIgnore: json['gitIgnore'] as bool? ?? false,
-      onlyLocal: json['onlyLocal'] as bool? ?? false,
-      disableLocal: json['disableLocal'] as bool? ?? false,
-      sendingText: json['sendingText'] as bool? ?? false,
-      textContent: json['textContent'] as String? ?? '',
-      tempDir: json['tempDir'] as String? ?? '',
-      socks5Proxy: json['socks5Proxy'] as String? ?? '',
-      httpProxy: json['httpProxy'] as String? ?? '',
-      throttleUpload: json['throttleUpload'] as String? ?? '',
-      exclude:
-          (json['exclude'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          const <String>[],
-      disableClipboard: json['disableClipboard'] as bool? ?? true,
-      transport: json['transport'] as String? ?? 'auto',
-      relayAddress: json['relayAddress'] as String?,
-      relayAddress6: json['relayAddress6'] as String?,
-      relayPassword: json['relayPassword'] as String?,
-      relayPorts: json['relayPorts'] as String?,
-    );
+_SendOptions _$SendOptionsFromJson(Map<String, dynamic> json) => _SendOptions(
+  filePaths: (json['filePaths'] as List<dynamic>)
+      .map((e) => e as String)
+      .toList(),
+  codePhrase: json['codePhrase'] as String?,
+  curve: json['curve'] as String? ?? 'p256',
+  hashAlgorithm: json['hashAlgorithm'] as String? ?? 'xxhash',
+  noCompress: json['noCompress'] as bool? ?? false,
+  overwrite: json['overwrite'] as bool? ?? false,
+  zipFolder: json['zipFolder'] as bool? ?? false,
+  gitIgnore: json['gitIgnore'] as bool? ?? false,
+  onlyLocal: json['onlyLocal'] as bool? ?? false,
+  disableLocal: json['disableLocal'] as bool? ?? false,
+  sendingText: json['sendingText'] as bool? ?? false,
+  textContent: json['textContent'] as String? ?? '',
+  tempDir: json['tempDir'] as String? ?? '',
+  socks5Proxy: json['socks5Proxy'] as String? ?? '',
+  httpProxy: json['httpProxy'] as String? ?? '',
+  throttleUpload: json['throttleUpload'] as String? ?? '',
+  exclude:
+      (json['exclude'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+      const <String>[],
+  disableClipboard: json['disableClipboard'] as bool? ?? true,
+  transport: json['transport'] as String? ?? 'auto',
+  relayAddress: json['relayAddress'] as String?,
+  relayAddress6: json['relayAddress6'] as String?,
+  relayPassword: json['relayPassword'] as String?,
+  relayPorts: json['relayPorts'] as String?,
+);
 
-Map<String, dynamic> _$$SendOptionsImplToJson(_$SendOptionsImpl instance) =>
+Map<String, dynamic> _$SendOptionsToJson(_SendOptions instance) =>
     <String, dynamic>{
       'filePaths': instance.filePaths,
       'codePhrase': instance.codePhrase,
@@ -66,8 +63,8 @@ Map<String, dynamic> _$$SendOptionsImplToJson(_$SendOptionsImpl instance) =>
       'relayPorts': instance.relayPorts,
     };
 
-_$ReceiveOptionsImpl _$$ReceiveOptionsImplFromJson(Map<String, dynamic> json) =>
-    _$ReceiveOptionsImpl(
+_ReceiveOptions _$ReceiveOptionsFromJson(Map<String, dynamic> json) =>
+    _ReceiveOptions(
       codePhrase: json['codePhrase'] as String,
       overwrite: json['overwrite'] as bool? ?? false,
       onlyLocal: json['onlyLocal'] as bool? ?? false,
@@ -82,58 +79,58 @@ _$ReceiveOptionsImpl _$$ReceiveOptionsImplFromJson(Map<String, dynamic> json) =>
       relayPorts: json['relayPorts'] as String?,
     );
 
-Map<String, dynamic> _$$ReceiveOptionsImplToJson(
-  _$ReceiveOptionsImpl instance,
-) => <String, dynamic>{
-  'codePhrase': instance.codePhrase,
-  'overwrite': instance.overwrite,
-  'onlyLocal': instance.onlyLocal,
-  'outputPath': instance.outputPath,
-  'curve': instance.curve,
-  'rename': instance.rename,
-  'socks5Proxy': instance.socks5Proxy,
-  'httpProxy': instance.httpProxy,
-  'relayAddress': instance.relayAddress,
-  'relayAddress6': instance.relayAddress6,
-  'relayPassword': instance.relayPassword,
-  'relayPorts': instance.relayPorts,
-};
+Map<String, dynamic> _$ReceiveOptionsToJson(_ReceiveOptions instance) =>
+    <String, dynamic>{
+      'codePhrase': instance.codePhrase,
+      'overwrite': instance.overwrite,
+      'onlyLocal': instance.onlyLocal,
+      'outputPath': instance.outputPath,
+      'curve': instance.curve,
+      'rename': instance.rename,
+      'socks5Proxy': instance.socks5Proxy,
+      'httpProxy': instance.httpProxy,
+      'relayAddress': instance.relayAddress,
+      'relayAddress6': instance.relayAddress6,
+      'relayPassword': instance.relayPassword,
+      'relayPorts': instance.relayPorts,
+    };
 
-_$TransferProgressImpl _$$TransferProgressImplFromJson(
-  Map<String, dynamic> json,
-) => _$TransferProgressImpl(
-  transferId: json['transferId'] as String? ?? '',
-  status:
-      $enumDecodeNullable(_$TransferProgressStatusEnumMap, json['status']) ??
-      TransferProgressStatus.initializing,
-  totalFiles: (json['totalFiles'] as num?)?.toInt() ?? 0,
-  completedFiles: (json['completedFiles'] as num?)?.toInt() ?? 0,
-  totalSize: (json['totalSize'] as num?)?.toInt() ?? 0,
-  transferredSize: (json['transferredSize'] as num?)?.toInt() ?? 0,
-  currentFile: json['currentFile'] as String? ?? '',
-  speed: (json['speed'] as num?)?.toDouble() ?? 0.0,
-  codePhrase: json['codePhrase'] as String?,
-  error: json['error'] as String?,
-  isText: json['isText'] as bool? ?? false,
-  textContent: json['textContent'] as String? ?? '',
-);
+_TransferProgress _$TransferProgressFromJson(Map<String, dynamic> json) =>
+    _TransferProgress(
+      transferId: json['transferId'] as String? ?? '',
+      status:
+          $enumDecodeNullable(
+            _$TransferProgressStatusEnumMap,
+            json['status'],
+          ) ??
+          TransferProgressStatus.initializing,
+      totalFiles: (json['totalFiles'] as num?)?.toInt() ?? 0,
+      completedFiles: (json['completedFiles'] as num?)?.toInt() ?? 0,
+      totalSize: (json['totalSize'] as num?)?.toInt() ?? 0,
+      transferredSize: (json['transferredSize'] as num?)?.toInt() ?? 0,
+      currentFile: json['currentFile'] as String? ?? '',
+      speed: (json['speed'] as num?)?.toDouble() ?? 0.0,
+      codePhrase: json['codePhrase'] as String?,
+      error: json['error'] as String?,
+      isText: json['isText'] as bool? ?? false,
+      textContent: json['textContent'] as String? ?? '',
+    );
 
-Map<String, dynamic> _$$TransferProgressImplToJson(
-  _$TransferProgressImpl instance,
-) => <String, dynamic>{
-  'transferId': instance.transferId,
-  'status': _$TransferProgressStatusEnumMap[instance.status]!,
-  'totalFiles': instance.totalFiles,
-  'completedFiles': instance.completedFiles,
-  'totalSize': instance.totalSize,
-  'transferredSize': instance.transferredSize,
-  'currentFile': instance.currentFile,
-  'speed': instance.speed,
-  'codePhrase': instance.codePhrase,
-  'error': instance.error,
-  'isText': instance.isText,
-  'textContent': instance.textContent,
-};
+Map<String, dynamic> _$TransferProgressToJson(_TransferProgress instance) =>
+    <String, dynamic>{
+      'transferId': instance.transferId,
+      'status': _$TransferProgressStatusEnumMap[instance.status]!,
+      'totalFiles': instance.totalFiles,
+      'completedFiles': instance.completedFiles,
+      'totalSize': instance.totalSize,
+      'transferredSize': instance.transferredSize,
+      'currentFile': instance.currentFile,
+      'speed': instance.speed,
+      'codePhrase': instance.codePhrase,
+      'error': instance.error,
+      'isText': instance.isText,
+      'textContent': instance.textContent,
+    };
 
 const _$TransferProgressStatusEnumMap = {
   TransferProgressStatus.initializing: 'initializing',

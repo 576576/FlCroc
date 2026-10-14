@@ -63,8 +63,7 @@ class CommonRoute<T> extends PageRoute<T> {
 
 class BaseNavigator {
   static Future<T?> push<T>(BuildContext context, Widget page) {
-    return Navigator.of(
-      context,
-    ).push<T>(MaterialPageRoute(builder: (_) => page));
+    return Navigator.of(context)
+        .push<T>(MaterialPageRoute(builder: (_) => page));
   }
 }

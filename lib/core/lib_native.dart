@@ -263,7 +263,7 @@ class CoreLib extends CoreInterface {
           );
 
       while (true) {
-        await Future.delayed(const Duration(milliseconds: 200));
+        await Future.pause(const Duration(milliseconds: 200));
         try {
           final pollPtr = pollFunc();
           final pollJson = pollPtr.toDartString();
@@ -429,7 +429,7 @@ class CoreLib extends CoreInterface {
           );
 
       while (true) {
-        await Future.delayed(const Duration(milliseconds: 200));
+        await Future.pause(const Duration(milliseconds: 200));
         try {
           final pollPtr = pollFunc();
           final pollJson = pollPtr.toDartString();

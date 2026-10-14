@@ -8,7 +8,7 @@ class LogBuffer {
   /// Whether debug mode is active (set by settings page).
   static bool debugMode = false;
 
-  static List<String> get logs => List.unmodifiable(_logs);
+  static List<String> get logs => List.unmodifiableOf(_logs);
 
   static void add(String message) {
     _logs.add(message);

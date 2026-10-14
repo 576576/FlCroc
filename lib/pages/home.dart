@@ -199,9 +199,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     // ── Narrow: bottom NavigationBar ──
     final navBar = Theme(
       data: Theme.of(context).copyWith(
-        navigationBarTheme: NavigationBarTheme.of(
-          context,
-        ).copyWith(height: noTextMode ? 56 : 64),
+        navigationBarTheme: NavigationBarTheme.of(context)
+            .copyWith(height: noTextMode ? 56 : 64),
       ),
       child: NavigationBar(
         destinations: navigationItems

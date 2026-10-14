@@ -172,9 +172,8 @@ void main() {
 
     test('an explicitly empty layout is respected, not resurrected', () {
       expect(
-        AppSettingProps.fromJson(const {
-          'dashboardWidgets': <Object>[],
-        }).dashboardWidgets,
+        AppSettingProps.fromJson(const {'dashboardWidgets': <Object>[]})
+            .dashboardWidgets,
         isEmpty,
       );
     });

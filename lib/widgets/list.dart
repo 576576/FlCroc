@@ -96,9 +96,9 @@ class ListItem extends StatelessWidget {
                     DefaultTextStyle(
                       style:
                           Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
                           ) ??
                           const TextStyle(),
                       child: subtitle!,
