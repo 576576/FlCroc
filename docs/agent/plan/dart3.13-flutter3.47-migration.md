@@ -213,9 +213,10 @@ class MyCard(super.key, final String title) extends StatelessWidget;
   `const _X({...})` 加私有字段；公共 API（`X(...)` / `copyWith` / `fromJson`）不变。
 - **`dart format` 重排的 5 个文件与之前 CI fmt job 报的完全一致** —— 反向印证那次失败是
   语言版本差异（3.12 vs 3.13），不是 SDK 版本差异。
-- **material_ui 仍需要兼容桥**：`super_sliver_list`、`qr_flutter`、`fluttertoast`、
+- **material_ui 仍需要兼容桥**：当时 `super_sliver_list`、`qr_flutter`、`fluttertoast`、
   `desktop_drop`、`defer_pointer` 还在 import 旧的核心 material。桥放在
-  `lib/application.dart` 的 `MaterialApp.builder`，它自身已被标记废弃。
+  `lib/application.dart` 的 `MaterialApp.builder`，它自身已被标记废弃。前四个已在本轮
+  清掉，剩下两个见 §9。
 - **`CupertinoPageTransitionsBuilder` 在 3.47 从 material 移进了 cupertino_ui**，
   所以两个包都要依赖。
 - `lib/l10n/app_localizations.dart` 被迁移 fix 改了一行 import（生成物已入库、CI 不重新
@@ -228,6 +229,45 @@ class MyCard(super.key, final String title) extends StatelessWidget;
 | 项 | 说明 |
 |---|---|
 | `StateProvider` / `StateNotifierProvider` → `Notifier` | 22 + 3 处仍在 legacy API 上（官方支持的过渡路径） |
-| 移除 `MaterialUiCompatibilityBridge` | 等依赖迁完 |
-| 移除 drift 三件套 | 仓库里完全没用到（连 `sqlite3_flutter_libs` 一起），留着只拖慢 build_runner |
+| 移除 `MaterialUiCompatibilityBridge` | 等 §9 剩下的两个依赖迁完 |
+| ~~移除 drift 三件套~~ | 已完成，见 §9 |
 | Primary constructors | 192 个类声明，纯书写形式变化 |
+
+## 9. 依赖清理与两个第三方依赖的自研替换
+
+这一轮把依赖面收干净：删掉声明了却没用的包，去掉两个第三方依赖并自己实现（QR、桌面拖放），
+其余升到当前可用的最高版本。
+
+| 动作 | commit | 验证 |
+|---|---|---|
+| croc fork `v11.5.4-flcroc.2` + bridge 的 `CrocQRCode` / `CrocWebReceiveURL` | `d1574ba` | `go test -race`（含矩阵结构断言） |
+| QR 渲染、收码归一化、Windows 自研拖放、删依赖与升级 | `d6062e8` | analyze 0 / test 41 / `flutter build windows` 通过（`/W4 /WX`） |
+
+落地要点：
+
+- **`qr_flutter` → Go 侧出矩阵**：`CrocQRCode` 用 croc 已有的 `skip2/go-qrcode`，回一个
+  `{"size","modules"}`，Dart 只负责 `CustomPaint`。矩阵**含 4 模块静区**（`go-qrcode` 的
+  `quietZoneSize`），所以 Dart 不再自己加边距。QR 内容改成 `croc --qr` 编码的网页接收 URL。
+- **网页 URL 由 croc 提供**：`WebReceiveURL()` 是 fork 上的新补丁（新文件，零 rebase 风险），
+  bridge 与 Dart 都不再自己拼 `https://getcroc.com/?code=…`。
+- **收码入口都过 `normalizeShareCode`**：发送页/接收页的粘贴与扫码、仪表盘快捷卡片。扫码得到
+  的是 URL，直接交给 croc 会去找一个"码就是这串 URL"的对端。
+- **`desktop_drop` → 自研 Windows 拖放**：`IDropTarget` + `RegisterDragDrop` 注册在 Flutter
+  视图的 HWND 上，坐标按物理像素上报（Dart 除 `devicePixelRatio`），命中判定留在 Dart ——
+  原生目标覆盖整个视图，而一屏上可能有多个投放区。Linux/macOS 没有原生投放区，回退到选文件
+  按钮。`main.cpp` 需要 `OleInitialize`（只有 `CoInitializeEx` 时 `RegisterDragDrop` 会失败）。
+- **file_picker 13 的两个破坏性变更**：`FilePicker.platform.*` → 静态方法；`PlatformFile`
+  变成不可构造、不可外部实现的 `abstract base class`，`size` 换成 `lengthSync()`。所以选中
+  文件的状态从 `List<PlatformFile>` 换成已有的 `FileItem`（name/path/size），转换集中在
+  `lib/common/file.dart` 的 `toFileItems` / `fileItemForPath`。
+- **`build_runner` 停在 2.16.x 是解析上限**：2.17 要求 `build >=5`，而 `json_serializable
+  6.14.1`（6.x 最新）要 `build ^4.0.4`。
+
+### 遗留（§9 之后）
+
+| 项 | 说明 |
+|---|---|
+| 移除 `MaterialUiCompatibilityBridge` | 只剩 `fluttertoast` 与 `flutter_riverpod` 在 import 旧的核心 material |
+| Android 侧无拖放 | 本轮只做了 Windows；移动端本来就是选文件 |
+| 拖放与 QR 的真机验证 | 只有编译级保证与结构断言，需要人工拖一次、扫一次 |
+

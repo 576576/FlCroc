@@ -39,3 +39,4 @@
 | tag | 补丁 |
 |---|---|
 | `v11.5.4-flcroc.1` | 进度计数器加锁 + `ProgressSnapshot()`（`src/croc/progress.go`） |
+| `v11.5.4-flcroc.2` | 导出 `WebReceiveURL()`（`src/croc/web_receive_url.go`）：bridge 与 App 都不再自己拼 getcroc.com 的 URL |
