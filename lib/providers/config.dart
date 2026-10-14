@@ -1,16 +1,17 @@
 import 'dart:convert';
 
 import 'package:fl_croc/models/models.dart';
-import 'package:flutter_riverpod/legacy.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final appSettingProvider =
-    StateNotifierProvider<AppSettingNotifier, AppSettingProps>((ref) {
-      return AppSettingNotifier();
-    });
+    NotifierProvider<AppSettingNotifier, AppSettingProps>(
+      AppSettingNotifier.new,
+    );
 
-class AppSettingNotifier extends StateNotifier<AppSettingProps> {
-  AppSettingNotifier() : super(const AppSettingProps());
+class AppSettingNotifier extends Notifier<AppSettingProps> {
+  @override
+  AppSettingProps build() => const AppSettingProps();
 
   Future<SharedPreferences?> _getPrefs() async {
     try {
@@ -57,13 +58,13 @@ class AppSettingNotifier extends StateNotifier<AppSettingProps> {
   }
 }
 
-final themeSettingProvider =
-    StateNotifierProvider<ThemeSettingNotifier, ThemeProps>((ref) {
-      return ThemeSettingNotifier();
-    });
+final themeSettingProvider = NotifierProvider<ThemeSettingNotifier, ThemeProps>(
+  ThemeSettingNotifier.new,
+);
 
-class ThemeSettingNotifier extends StateNotifier<ThemeProps> {
-  ThemeSettingNotifier() : super(ThemeProps());
+class ThemeSettingNotifier extends Notifier<ThemeProps> {
+  @override
+  ThemeProps build() => ThemeProps();
 
   Future<SharedPreferences?> _getPrefs() async {
     try {

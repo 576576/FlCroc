@@ -140,7 +140,7 @@ class _SendViewState extends ConsumerState<SendView>
         _isTextMode = false;
       });
     }
-    ref.read(pendingSharedFilesProvider.notifier).state = [];
+    ref.read(pendingSharedFilesProvider.notifier).clearPaths();
   }
 
   bool _limiting = false;

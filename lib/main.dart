@@ -60,6 +60,6 @@ void _initShareReceiver(ProviderContainer container) async {
 }
 
 void _handleSharedFiles(ProviderContainer container, List<String> paths) {
-  container.read(pendingSharedFilesProvider.notifier).state = paths;
+  container.read(pendingSharedFilesProvider.notifier).setPaths(paths);
   container.read(appStateProvider.notifier).updatePageLabel(PageLabel.send);
 }

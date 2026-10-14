@@ -4,22 +4,20 @@ import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/models/models.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-final appStateProvider = StateNotifierProvider<AppStateNotifier, AppState>((
-  ref,
-) {
-  return AppStateNotifier();
-});
+final appStateProvider = NotifierProvider<AppStateNotifier, AppState>(
+  AppStateNotifier.new,
+);
 
-class AppStateNotifier extends StateNotifier<AppState> {
+class AppStateNotifier extends Notifier<AppState> {
   static const _transfersKey = 'transfer_records';
   static const _maxTransfers = 100;
 
-  AppStateNotifier()
-    : super(AppState(viewSize: Size.zero, brightness: Brightness.light)) {
+  @override
+  AppState build() {
     _loadTransfers();
+    return AppState(viewSize: Size.zero, brightness: Brightness.light);
   }
 
   Future<void> _loadTransfers() async {
@@ -135,10 +133,18 @@ final transfersProvider = Provider<List<TransferRecord>>((ref) {
   return ref.watch(appStateProvider).transfers;
 });
 
-final systemUiOverlayStyleStateProvider = StateProvider<SystemUiOverlayStyle>(
-  (ref) => SystemUiOverlayStyle.light,
-);
-
 /// Holds file paths received via Android/iOS share intent.
 /// The send page picks these up on init and clears the list.
-final pendingSharedFilesProvider = StateProvider<List<String>>((ref) => []);
+class PendingSharedFilesNotifier extends Notifier<List<String>> {
+  @override
+  List<String> build() => [];
+
+  void setPaths(List<String> paths) => state = paths;
+
+  void clearPaths() => state = [];
+}
+
+final pendingSharedFilesProvider =
+    NotifierProvider<PendingSharedFilesNotifier, List<String>>(
+      PendingSharedFilesNotifier.new,
+    );
