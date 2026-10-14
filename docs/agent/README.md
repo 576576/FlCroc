@@ -15,6 +15,7 @@
 - [Weblate 迁移操作手册](weblate-migration.md) —— 待执行
 - [go_bridge 失效模式与改造方案](plan/go-bridge-stability.md) —— 进行中
 - [croc fork 的分支模型与同步流程](plan/croc-fork-sync.md) —— 进行中
+- [Dart 3.13 / Flutter 3.47 迁移方案](plan/dart3.13-flutter3.47-migration.md) —— 已执行（Phase 0–2 + material_ui）
 
 回到给人看的文档：[BUILD.md](../BUILD.md) · [i18n.md](../i18n.md)
 
@@ -27,6 +28,7 @@
 | [`weblate-migration.md`](weblate-migration.md) | 翻译流程迁到 Weblate 的操作手册 | 待执行 |
 | [`plan/go-bridge-stability.md`](plan/go-bridge-stability.md) | go_bridge 失效模式与改造方案 | 进行中 |
 | [`plan/croc-fork-sync.md`](plan/croc-fork-sync.md) | croc fork 的分支模型、补丁边界与同步流程 | 进行中 |
+| [`plan/dart3.13-flutter3.47-migration.md`](plan/dart3.13-flutter3.47-migration.md) | 语言版本与 Flutter 版本迁移的分阶段方案 | 已执行（Phase 0–2 + material_ui） |
 
 ## croc 依赖的当前状态
 
