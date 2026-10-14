@@ -27,7 +27,7 @@ android {
     defaultConfig {
         applicationId = "cn.sumitm.flcroc"
         minSdk = flutter.minSdkVersion
-        targetSdk = 34
+        targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

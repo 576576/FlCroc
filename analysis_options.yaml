@@ -29,6 +29,11 @@ linter:
   # `// ignore_for_file: name_of_lint` syntax on the line or in the file
   # producing the lint.
   rules:
+    # 语言版本 ≥3.13 起，final / var 只能用于主构造函数的声明参数，写在其他参数上
+    # 是 extraneous_modifier 编译错误。这两条在 3.12 就能开，用来提前扫出来。
+    avoid_final_parameters: true
+    var_with_no_type_annotation: true
+
     # avoid_print: false  # Uncomment to disable the `avoid_print` rule
     # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
 
