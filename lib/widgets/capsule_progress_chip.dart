@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A status chip with a capsule-shaped progress border.
 class CapsuleProgressChip extends StatelessWidget {

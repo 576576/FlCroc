@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:fl_croc/common/common.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Cross-platform file drop target using the [desktop_drop] plugin.
 ///

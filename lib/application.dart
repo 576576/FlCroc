@@ -1,3 +1,4 @@
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
@@ -6,10 +7,8 @@ import 'package:fl_croc/manager/theme_manager.dart';
 import 'package:fl_croc/pages/pages.dart';
 import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/state.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
 
 class Application extends ConsumerStatefulWidget {
   const Application({super.key});
@@ -115,14 +114,21 @@ class _ApplicationState extends ConsumerState<Application> {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           navigatorKey: globalState.navigatorKey,
-          localizationsDelegates: const [
+          // GlobalMaterialLocalizations.delegates 已包含 Cupertino 与 Widgets 委托。
+          localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
             AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
+            ...GlobalMaterialLocalizations.delegates,
           ],
           builder: (_, child) {
-            return ThemeManager(child: child!);
+            // 依赖里仍有包在用旧的核心 material（super_sliver_list、qr_flutter、
+            // fluttertoast、desktop_drop、defer_pointer 等），桥负责把新包的 ThemeData
+            // 映射回去，让那些 widget 还能取到 legacy 的 Theme 与 Localizations。
+            // 桥自身已标记废弃（它是过渡工具，依赖迁完就该删），但我们的依赖还没迁完，
+            // 现在必须留着它。
+            // ignore: deprecated_member_use
+            return MaterialUiCompatibilityBridge(
+              child: ThemeManager(child: child!),
+            );
           },
           scrollBehavior: const _NaturalScrollBehavior(),
           title: appName,

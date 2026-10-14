@@ -2,7 +2,7 @@ import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/widgets/widgets.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ThemePage extends ConsumerWidget {

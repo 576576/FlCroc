@@ -1,5 +1,5 @@
 import 'package:fl_croc/common/context.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class LoadingWidget extends StatelessWidget {
   final String? message;

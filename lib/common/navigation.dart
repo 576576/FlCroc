@@ -1,7 +1,7 @@
 import 'package:fl_croc/enum/enum.dart';
 import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/views/views.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class Navigation {
   static Navigation? _instance;

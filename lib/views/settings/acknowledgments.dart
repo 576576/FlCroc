@@ -1,7 +1,7 @@
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/state.dart';
 import 'package:fl_croc/widgets/widgets.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class AcknowledgmentsPage extends StatelessWidget {
   const AcknowledgmentsPage({super.key});

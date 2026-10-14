@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class CommonDesktopRoute<T> extends PageRoute<T> {
   final Widget Function(BuildContext context) builder;
