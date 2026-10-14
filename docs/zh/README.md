@@ -12,8 +12,8 @@
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS%20%7C%20Android-blue" alt="Platform">
   <img src="https://img.shields.io/badge/license-GPL v3-green" alt="License">
   <img alt="version" src="https://img.shields.io/badge/version-1.2.4-informational" />
-  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.47.5-02569B?logo=flutter" />
-  <img alt="croc" src="https://img.shields.io/badge/croc-11.5.2-blue" />
+  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.47.7-02569B?logo=flutter" />
+  <img alt="croc" src="https://img.shields.io/badge/croc-11.5.4-flcroc.3-blue" />
 </p>
 
 <em>Croc的Flutter图形界面 — 轻松安全地在计算机之间传输文件</em>
@@ -45,7 +45,7 @@ FlCroc/
 ├── go_bridge/         Go CGO 共享库 (FFI 桥接)
 ├── submodules/croc/   内置 croc 源码
 ├── assets/            应用图标、国际化 JSON 语言包
-├── .github/workflows/ CI/CD (release.yml + build.yml)
+├── .github/workflows/ CI/CD (release.yml + build / lint / update_i18n)
 └── (platform)/
 ```
 
@@ -55,7 +55,7 @@ FlCroc/
 
 | 层级 | 技术 |
 |-------|------------|
-| UI | Flutter 3.47.5 · Material 3 |
+| UI | Flutter 3.47.7 · Material 3 |
 | 状态管理 | Riverpod · Freezed |
 | 后端 | Go CGO FFI · croc 子模块 |
 | 国际化 | JSON 语言包 |

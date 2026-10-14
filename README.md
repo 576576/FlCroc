@@ -12,8 +12,8 @@
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS%20%7C%20Android-blue" alt="Platform">
   <img src="https://img.shields.io/badge/license-GPL v3-green" alt="License">
   <img alt="version" src="https://img.shields.io/badge/version-1.2.4-informational" />
-  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.47.5-02569B?logo=flutter" />
-  <img alt="croc" src="https://img.shields.io/badge/croc-11.5.2-blue" />
+  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.47.7-02569B?logo=flutter" />
+  <img alt="croc" src="https://img.shields.io/badge/croc-11.5.4-flcroc.3-blue" />
 </p>
 
 <em>A Flutter GUI for croc — easily and securely transfer files between computers</em>
@@ -45,7 +45,7 @@ FlCroc/
 ├── go_bridge/         Go CGO shared library (FFI bridge)
 ├── submodules/croc/   Vendored croc source
 ├── assets/            App icon, I18n JSON bundles
-├── .github/workflows/ CI/CD (release.yml + build.yml)
+├── .github/workflows/ CI/CD (release.yml + build / lint / update_i18n)
 └── (platform)/
 ```
 
@@ -55,7 +55,7 @@ FlCroc/
 
 | Layer | Technology |
 |-------|------------|
-| UI | Flutter 3.47.5 · Material 3 |
+| UI | Flutter 3.47.7 · Material 3 |
 | State | Riverpod · Freezed |
 | Backend | Go CGO FFI · croc submodule |
 | I18n | JSON bundles |
