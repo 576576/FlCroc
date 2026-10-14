@@ -39,7 +39,9 @@ class ThemePage extends ConsumerWidget {
               title: Text(l10n.pureBlackMode),
               delegate: SwitchDelegate(
                 value: appSettings.pureBlackMode,
-                onChanged: (v) => ref.read(appSettingProvider.notifier).update((s) => s.copyWith(pureBlackMode: v)),
+                onChanged: (v) => ref
+                    .read(appSettingProvider.notifier)
+                    .update((s) => s.copyWith(pureBlackMode: v)),
               ),
             ),
           ]),
@@ -47,14 +49,23 @@ class ThemePage extends ConsumerWidget {
           ..._section(cs, tt, 'Color Palette', Icons.palette, [
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Wrap(spacing: 12, runSpacing: 12, children: [
-                for (final palette in _palettes)
-                  _ColorPaletteChip(
-                    colors: palette,
-                    isSelected: Color(themeProps.primaryColor) == palette[0],
-                    onTap: () => ref.read(themeSettingProvider.notifier).update((s) => s.copyWith(primaryColor: palette[0].toARGB32())),
-                  ),
-              ]),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (final palette in _palettes)
+                    _ColorPaletteChip(
+                      colors: palette,
+                      isSelected: Color(themeProps.primaryColor) == palette[0],
+                      onTap: () => ref
+                          .read(themeSettingProvider.notifier)
+                          .update(
+                            (s) =>
+                                s.copyWith(primaryColor: palette[0].toARGB32()),
+                          ),
+                    ),
+                ],
+              ),
             ),
           ]),
           const SizedBox(height: 32),
@@ -63,31 +74,56 @@ class ThemePage extends ConsumerWidget {
     );
   }
 
-  static List<Widget> _section(ColorScheme cs, TextTheme tt, String title, IconData icon, List<Widget> children) => [
+  static List<Widget> _section(
+    ColorScheme cs,
+    TextTheme tt,
+    String title,
+    IconData icon,
+    List<Widget> children,
+  ) => [
     Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Row(children: [
-        Icon(icon, size: 18, color: cs.primary),
-        const SizedBox(width: 8),
-        Text(title, style: tt.titleSmall?.copyWith(color: cs.primary)),
-      ]),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: cs.primary),
+          const SizedBox(width: 8),
+          Text(title, style: tt.titleSmall?.copyWith(color: cs.primary)),
+        ],
+      ),
     ),
     ...children,
   ];
 
-  Widget _themeModeChips(BuildContext context, ThemeModeOption current, WidgetRef ref) {
+  Widget _themeModeChips(
+    BuildContext context,
+    ThemeModeOption current,
+    WidgetRef ref,
+  ) {
     final l10n = context.appLocalizations;
     return Padding(
       padding: const EdgeInsets.only(top: 8, left: 16),
-      child: Wrap(spacing: 8, children: ThemeModeOption.values.map((mode) {
-        return ChoiceChip(
-          label: Text(mode == ThemeModeOption.light ? l10n.light : mode == ThemeModeOption.dark ? l10n.dark : l10n.system),
-          selected: mode == current,
-          onSelected: (v) {
-            if (v) ref.read(appSettingProvider.notifier).update((s) => s.copyWith(themeMode: mode));
-          },
-        );
-      }).toList()),
+      child: Wrap(
+        spacing: 8,
+        children: ThemeModeOption.values.map((mode) {
+          return ChoiceChip(
+            label: Text(
+              mode == ThemeModeOption.light
+                  ? l10n.light
+                  : mode == ThemeModeOption.dark
+                  ? l10n.dark
+                  : l10n.system,
+            ),
+            selected: mode == current,
+            onSelected: (v) {
+              if (v) {
+                ref
+                    .read(appSettingProvider.notifier)
+                    .update((s) => s.copyWith(themeMode: mode));
+              }
+            },
+          );
+        }).toList(),
+      ),
     );
   }
 }
@@ -97,7 +133,11 @@ class _ColorPaletteChip extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _ColorPaletteChip({required this.colors, required this.isSelected, required this.onTap});
+  const _ColorPaletteChip({
+    required this.colors,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +149,9 @@ class _ColorPaletteChip extends StatelessWidget {
         height: 56,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: isSelected ? Border.all(color: context.colorScheme.primary, width: 3) : null,
+          border: isSelected
+              ? Border.all(color: context.colorScheme.primary, width: 3)
+              : null,
           gradient: LinearGradient(colors: colors),
         ),
       ),

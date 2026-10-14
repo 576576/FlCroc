@@ -25,7 +25,11 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   // ── Helper: animate to page & sync provider ──
 
-  void _goToPage(int index, List<NavigationItem> items, bool disableAnimations) {
+  void _goToPage(
+    int index,
+    List<NavigationItem> items,
+    bool disableAnimations,
+  ) {
     if (_isSyncing) return;
     final currentPage = _pageController.page?.round() ?? 0;
     if (currentPage == index) return;
@@ -34,7 +38,11 @@ class _HomePageState extends ConsumerState<HomePage> {
       _pageController.jumpToPage(index);
       _isSyncing = false;
     } else {
-      _pageController.animateToPage(index, duration: commonDuration, curve: Curves.easeInOut);
+      _pageController.animateToPage(
+        index,
+        duration: commonDuration,
+        curve: Curves.easeInOut,
+      );
       Future.delayed(commonDuration + const Duration(milliseconds: 50), () {
         if (mounted) _isSyncing = false;
       });
@@ -57,12 +65,17 @@ class _HomePageState extends ConsumerState<HomePage> {
     final navigationItems = Navigation().getItems();
 
     final currentLabel = ref.watch(currentPageProvider);
-    final currentIndex =
-        navigationItems.indexWhere((item) => item.label == currentLabel);
+    final currentIndex = navigationItems.indexWhere(
+      (item) => item.label == currentLabel,
+    );
     final safeIndex = currentIndex >= 0 ? currentIndex : 0;
     final isNarrow = MediaQuery.of(context).size.width < maxMobileWidth;
-    final noTextMode = ref.watch(appSettingProvider.select((s) => s.noTextMode));
-    final disableAnimations = ref.watch(appSettingProvider.select((s) => s.disableAnimations));
+    final noTextMode = ref.watch(
+      appSettingProvider.select((s) => s.noTextMode),
+    );
+    final disableAnimations = ref.watch(
+      appSettingProvider.select((s) => s.disableAnimations),
+    );
 
     // Sync PageView when provider changes externally (e.g. share intent)
     if (!_isSyncing && _pageController.hasClients) {
@@ -73,7 +86,11 @@ class _HomePageState extends ConsumerState<HomePage> {
           _pageController.jumpToPage(safeIndex);
           _isSyncing = false;
         } else {
-          _pageController.animateToPage(safeIndex, duration: commonDuration, curve: Curves.easeInOut);
+          _pageController.animateToPage(
+            safeIndex,
+            duration: commonDuration,
+            curve: Curves.easeInOut,
+          );
           Future.delayed(commonDuration + const Duration(milliseconds: 50), () {
             if (mounted) _isSyncing = false;
           });
@@ -100,7 +117,12 @@ class _HomePageState extends ConsumerState<HomePage> {
       final showLogo = screenHeight >= 500;
       Widget label(String text) => noTextMode
           ? const Text('')
-          : Text(text, maxLines: 2, overflow: TextOverflow.visible, textAlign: TextAlign.center);
+          : Text(
+              text,
+              maxLines: 2,
+              overflow: TextOverflow.visible,
+              textAlign: TextAlign.center,
+            );
 
       final rail = Material(
         color: context.colorScheme.surfaceContainer,
@@ -117,8 +139,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                       borderRadius: BorderRadius.circular(12),
                       child: Image.asset(
                         'assets/images/icon.png',
-                        width: 40, height: 40,
-                        errorBuilder: (_, _, _) => Icon(Icons.upload_file, size: 40, color: context.colorScheme.primary),
+                        width: 40,
+                        height: 40,
+                        errorBuilder: (_, _, _) => Icon(
+                          Icons.upload_file,
+                          size: 40,
+                          color: context.colorScheme.primary,
+                        ),
                       ),
                     ),
                   ),
@@ -135,14 +162,21 @@ class _HomePageState extends ConsumerState<HomePage> {
                       color: context.colorScheme.onSurface,
                     ),
                     destinations: navigationItems
-                        .map((e) => NavigationRailDestination(
-                              icon: e.icon,
-                              label: label(context.appLocalizations.pageLabel(e.label)),
-                            ))
+                        .map(
+                          (e) => NavigationRailDestination(
+                            icon: e.icon,
+                            label: label(
+                              context.appLocalizations.pageLabel(e.label),
+                            ),
+                          ),
+                        )
                         .toList(),
-                    onDestinationSelected: (index) => _goToPage(index, navigationItems, disableAnimations),
+                    onDestinationSelected: (index) =>
+                        _goToPage(index, navigationItems, disableAnimations),
                     selectedIndex: safeIndex,
-                    labelType: noTextMode ? NavigationRailLabelType.none : NavigationRailLabelType.all,
+                    labelType: noTextMode
+                        ? NavigationRailLabelType.none
+                        : NavigationRailLabelType.all,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -151,14 +185,21 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
         ),
       );
-      final wideBody = Row(children: [rail, Expanded(child: pageBody)]);
+      final wideBody = Row(
+        children: [
+          rail,
+          Expanded(child: pageBody),
+        ],
+      );
       if (isDesktop) {
         return Container(
           color: context.colorScheme.surface,
-          child: Column(children: [
-            const WindowTitleBar(),
-            Expanded(child: wideBody),
-          ]),
+          child: Column(
+            children: [
+              const WindowTitleBar(),
+              Expanded(child: wideBody),
+            ],
+          ),
         );
       }
       return wideBody;
@@ -167,36 +208,42 @@ class _HomePageState extends ConsumerState<HomePage> {
     // ── Narrow: bottom NavigationBar ──
     final navBar = Theme(
       data: Theme.of(context).copyWith(
-        navigationBarTheme: NavigationBarTheme.of(context).copyWith(
-          height: noTextMode ? 56 : 64,
-        ),
+        navigationBarTheme: NavigationBarTheme.of(
+          context,
+        ).copyWith(height: noTextMode ? 56 : 64),
       ),
       child: NavigationBar(
-      destinations: navigationItems
-          .map((e) => NavigationDestination(
+        destinations: navigationItems
+            .map(
+              (e) => NavigationDestination(
                 icon: e.icon,
-                label: noTextMode ? '' : context.appLocalizations.pageLabel(e.label),
-              ))
-          .toList(),
-      onDestinationSelected: (index) => _goToPage(index, navigationItems, disableAnimations),
-      selectedIndex: safeIndex,
-      labelBehavior: noTextMode ? NavigationDestinationLabelBehavior.alwaysHide : NavigationDestinationLabelBehavior.alwaysShow,
+                label: noTextMode
+                    ? ''
+                    : context.appLocalizations.pageLabel(e.label),
+              ),
+            )
+            .toList(),
+        onDestinationSelected: (index) =>
+            _goToPage(index, navigationItems, disableAnimations),
+        selectedIndex: safeIndex,
+        labelBehavior: noTextMode
+            ? NavigationDestinationLabelBehavior.alwaysHide
+            : NavigationDestinationLabelBehavior.alwaysShow,
       ),
     );
     if (isDesktop) {
       return Container(
         color: context.colorScheme.surface,
-        child: Column(children: [
-          const WindowTitleBar(),
-          Expanded(child: pageBody),
-          SafeArea(child: navBar),
-        ]),
+        child: Column(
+          children: [
+            const WindowTitleBar(),
+            Expanded(child: pageBody),
+            SafeArea(child: navBar),
+          ],
+        ),
       );
     }
     // Mobile: use Scaffold so keyboard / system bars are handled correctly
-    return Scaffold(
-      body: pageBody,
-      bottomNavigationBar: navBar,
-    );
+    return Scaffold(body: pageBody, bottomNavigationBar: navBar);
   }
 }

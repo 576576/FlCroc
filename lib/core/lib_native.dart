@@ -35,9 +35,11 @@ class CoreLib extends CoreInterface {
       _lib = _loadLibrary();
       if (_lib == null) return false;
       // Cache the free function
-      _freeGoString = _lib!.lookupFunction<
-          Void Function(Pointer<Utf8>),
-          void Function(Pointer<Utf8>)>('CrocFreeString');
+      _freeGoString = _lib!
+          .lookupFunction<
+            Void Function(Pointer<Utf8>),
+            void Function(Pointer<Utf8>)
+          >('CrocFreeString');
       _isAvailable = true;
       return true;
     } catch (e) {
@@ -92,9 +94,10 @@ class CoreLib extends CoreInterface {
     try {
       final lib = _lib;
       if (lib != null) {
-        final func = lib.lookupFunction<
-            Pointer<Utf8> Function(),
-            Pointer<Utf8> Function()>('CrocGetVersion');
+        final func = lib
+            .lookupFunction<Pointer<Utf8> Function(), Pointer<Utf8> Function()>(
+              'CrocGetVersion',
+            );
         final ptr = func();
         final ver = ptr.toDartString();
         _freeGoString?.call(ptr);
@@ -113,7 +116,10 @@ class CoreLib extends CoreInterface {
   /// The Go bridge samples croc's exported transfer counters every 200ms
   /// (`TotalSent` is per-file, so the bridge accumulates the finished files on
   /// top of it) and reports cumulative bytes plus a smoothed speed.
-  TransferProgress _liveProgress(String transferId, Map<String, dynamic> event) {
+  TransferProgress _liveProgress(
+    String transferId,
+    Map<String, dynamic> event,
+  ) {
     // current_file_index is 1-based; 0 means the bridge has not resolved the
     // manifest yet.
     final fileIndex = (event['current_file_index'] as int?) ?? 0;
@@ -158,9 +164,11 @@ class CoreLib extends CoreInterface {
 
     try {
       // Call CrocSendFiles
-      final sendFunc = lib.lookupFunction<
-          Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>),
-          Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>)>('CrocSendFiles');
+      final sendFunc = lib
+          .lookupFunction<
+            Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>),
+            Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>)
+          >('CrocSendFiles');
 
       final pathsJson = jsonEncode(options.filePaths);
       final opts = <String, dynamic>{};
@@ -172,7 +180,9 @@ class CoreLib extends CoreInterface {
         opts['text_content'] = options.textContent;
       }
       if (options.curve != 'p256') opts['curve'] = options.curve;
-      if (options.hashAlgorithm != 'xxhash') opts['hash_algorithm'] = options.hashAlgorithm;
+      if (options.hashAlgorithm != 'xxhash') {
+        opts['hash_algorithm'] = options.hashAlgorithm;
+      }
       if (options.noCompress) opts['no_compress'] = true;
       if (options.overwrite) opts['overwrite'] = true;
       if (options.zipFolder) opts['zip_folder'] = true;
@@ -213,9 +223,9 @@ class CoreLib extends CoreInterface {
       final resultPtr = sendFunc(pathsPtr, optsPtr);
       final resultJson = resultPtr.toDartString();
 
-      malloc.free(pathsPtr);  // Dart-allocated
-      malloc.free(optsPtr);   // Dart-allocated
-      _freeGoString?.call(resultPtr);  // Go-allocated
+      malloc.free(pathsPtr); // Dart-allocated
+      malloc.free(optsPtr); // Dart-allocated
+      _freeGoString?.call(resultPtr); // Go-allocated
 
       final result = jsonDecode(resultJson) as Map<String, dynamic>;
       commonPrint('CrocSendFiles result: $result');
@@ -247,9 +257,10 @@ class CoreLib extends CoreInterface {
       );
 
       // Poll progress until complete
-      final pollFunc = lib.lookupFunction<
-          Pointer<Utf8> Function(),
-          Pointer<Utf8> Function()>('CrocPollProgress');
+      final pollFunc = lib
+          .lookupFunction<Pointer<Utf8> Function(), Pointer<Utf8> Function()>(
+            'CrocPollProgress',
+          );
 
       while (true) {
         await Future.delayed(const Duration(milliseconds: 200));
@@ -336,9 +347,11 @@ class CoreLib extends CoreInterface {
     var transferId = '';
 
     try {
-      final recvFunc = lib.lookupFunction<
-          Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>),
-          Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>)>('CrocReceiveFiles');
+      final recvFunc = lib
+          .lookupFunction<
+            Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>),
+            Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>)
+          >('CrocReceiveFiles');
 
       final opts = <String, dynamic>{};
       if (options.curve != 'p256') opts['curve'] = options.curve;
@@ -353,7 +366,9 @@ class CoreLib extends CoreInterface {
       if (options.httpProxy.isNotEmpty) {
         opts['http_proxy'] = options.httpProxy;
       }
-      if (options.outputPath.isNotEmpty) opts['output_path'] = options.outputPath;
+      if (options.outputPath.isNotEmpty) {
+        opts['output_path'] = options.outputPath;
+      }
       if (options.relayAddress != null && options.relayAddress!.isNotEmpty) {
         opts['relay_address'] = options.relayAddress;
       }
@@ -375,9 +390,9 @@ class CoreLib extends CoreInterface {
       final resultPtr = recvFunc(codePtr, optsPtr);
       final resultJson = resultPtr.toDartString();
 
-      malloc.free(codePtr);  // Dart-allocated
-      malloc.free(optsPtr);   // Dart-allocated
-      _freeGoString?.call(resultPtr);  // Go-allocated
+      malloc.free(codePtr); // Dart-allocated
+      malloc.free(optsPtr); // Dart-allocated
+      _freeGoString?.call(resultPtr); // Go-allocated
 
       final result = jsonDecode(resultJson) as Map<String, dynamic>;
       commonPrint('CrocReceiveFiles result: $result');
@@ -408,9 +423,10 @@ class CoreLib extends CoreInterface {
       );
 
       // Poll progress
-      final pollFunc = lib.lookupFunction<
-          Pointer<Utf8> Function(),
-          Pointer<Utf8> Function()>('CrocPollProgress');
+      final pollFunc = lib
+          .lookupFunction<Pointer<Utf8> Function(), Pointer<Utf8> Function()>(
+            'CrocPollProgress',
+          );
 
       while (true) {
         await Future.delayed(const Duration(milliseconds: 200));
@@ -484,9 +500,11 @@ class CoreLib extends CoreInterface {
     final lib = _lib;
     if (!_isAvailable || lib == null) return false;
     try {
-      final func = lib.lookupFunction<
-          Int32 Function(Pointer<Utf8>),
-          int Function(Pointer<Utf8>)>('CrocCancelTransfer');
+      final func = lib
+          .lookupFunction<
+            Int32 Function(Pointer<Utf8>),
+            int Function(Pointer<Utf8>)
+          >('CrocCancelTransfer');
       final ptr = transferId.toNativeUtf8();
       final result = func(ptr);
       malloc.free(ptr);
@@ -503,4 +521,3 @@ class CoreLib extends CoreInterface {
     return true;
   }
 }
-

@@ -66,7 +66,8 @@ class ListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectivePadding = padding ??
+    final effectivePadding =
+        padding ??
         EdgeInsets.symmetric(
           horizontal: 16,
           vertical: minVerticalPadding ?? 12,
@@ -85,15 +86,21 @@ class ListItem extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DefaultTextStyle(
-                    style: Theme.of(context).textTheme.bodyLarge ?? const TextStyle(),
+                    style:
+                        Theme.of(context).textTheme.bodyLarge ??
+                        const TextStyle(),
                     child: title,
                   ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
                     DefaultTextStyle(
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ) ?? const TextStyle(),
+                      style:
+                          Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ) ??
+                          const TextStyle(),
                       child: subtitle!,
                     ),
                   ],

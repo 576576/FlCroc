@@ -77,7 +77,9 @@ class _WindowTitleBarState extends State<WindowTitleBar> with WindowListener {
               behavior: HitTestBehavior.translucent,
               onPanStart: (_) => windowManager.startDragging(),
               onDoubleTap: _toggleMaximize,
-              child: Container(color: context.colorScheme.primary.withAlpha(15)),
+              child: Container(
+                color: context.colorScheme.primary.withAlpha(15),
+              ),
             ),
           ),
           // Window control buttons (right)
@@ -144,6 +146,3 @@ class _WindowTitleBarState extends State<WindowTitleBar> with WindowListener {
     );
   }
 }
-
-
-

@@ -12,7 +12,9 @@ extension NumExt on num {
 
   String get transferSpeed {
     final bytesPerSecond = this;
-    if (bytesPerSecond < 1024) return '${bytesPerSecond.toStringAsFixed(0)} B/s';
+    if (bytesPerSecond < 1024) {
+      return '${bytesPerSecond.toStringAsFixed(0)} B/s';
+    }
     if (bytesPerSecond < 1024 * 1024) {
       return '${(bytesPerSecond / 1024).toStringAsFixed(1)} KB/s';
     }

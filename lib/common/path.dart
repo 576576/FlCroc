@@ -33,8 +33,12 @@ class AppPaths {
       try {
         final dir = await getApplicationDocumentsDirectory();
         final sub = Platform.isAndroid ? 'FlCroc' : '';
-        _cachedPath = sub.isEmpty ? dir.path : '${dir.path}${Platform.pathSeparator}$sub';
-        if (sub.isNotEmpty) await Directory(_cachedPath!).create(recursive: true);
+        _cachedPath = sub.isEmpty
+            ? dir.path
+            : '${dir.path}${Platform.pathSeparator}$sub';
+        if (sub.isNotEmpty) {
+          await Directory(_cachedPath!).create(recursive: true);
+        }
         return _cachedPath!;
       } catch (_) {}
     }
@@ -109,7 +113,9 @@ class AppPaths {
       return dir.path;
     } catch (_) {
       if (Platform.isWindows) return 'C:\\';
-      if (Platform.isAndroid) return '/storage/emulated/0/Android/data/cn.sumitm.flcroc/files/FlCroc';
+      if (Platform.isAndroid) {
+        return '/storage/emulated/0/Android/data/cn.sumitm.flcroc/files/FlCroc';
+      }
       return '/';
     }
   }
@@ -131,4 +137,3 @@ String formatPathForDisplay(String path, {String? storageLabel}) {
   }
   return path;
 }
-

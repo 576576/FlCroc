@@ -68,7 +68,9 @@ class AppController {
 
   Future<bool> showDisclaimer() async {
     final result = await globalState.showMessage(
-      text: const TextSpan(text: 'This software is for non-commercial use only.'),
+      text: const TextSpan(
+        text: 'This software is for non-commercial use only.',
+      ),
     );
     return result ?? false;
   }

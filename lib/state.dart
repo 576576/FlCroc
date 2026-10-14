@@ -40,7 +40,9 @@ class GlobalState {
       if (isDesktop) {
         try {
           final supportDir = await getApplicationSupportDirectory();
-          final prefsFile = File('${supportDir.path}${Platform.pathSeparator}shared_preferences.json');
+          final prefsFile = File(
+            '${supportDir.path}${Platform.pathSeparator}shared_preferences.json',
+          );
           if (await prefsFile.exists()) {
             await prefsFile.delete();
           }

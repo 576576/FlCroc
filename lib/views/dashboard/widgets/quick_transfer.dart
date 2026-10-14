@@ -6,7 +6,6 @@ import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/core/controller.dart';
 import 'package:fl_croc/enum/enum.dart';
-import 'package:fl_croc/l10n/l10n.dart';
 import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/providers/providers.dart';
 import 'package:fl_croc/state.dart';
@@ -46,7 +45,8 @@ class QuickTransferWidget extends ConsumerStatefulWidget {
   static final statusNotifier = ValueNotifier<QuickStatus?>(null);
 
   @override
-  ConsumerState<QuickTransferWidget> createState() => _QuickTransferWidgetState();
+  ConsumerState<QuickTransferWidget> createState() =>
+      _QuickTransferWidgetState();
 }
 
 enum _QuickPhase { idle, sending, receiving, completed, failed, cancelled }
@@ -54,7 +54,7 @@ enum _QuickPhase { idle, sending, receiving, completed, failed, cancelled }
 class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   final _textCtrl = TextEditingController();
   bool _isTextMode = false;
-  List<PlatformFile> _selectedFiles = [];
+  final List<PlatformFile> _selectedFiles = [];
   _QuickPhase _phase = _QuickPhase.idle;
   String? _activeTransferId;
   TransferRecord? _activeRecord;
@@ -111,7 +111,11 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
 
   // ── Helpers ──
 
-  bool get _isActive => _phase != _QuickPhase.idle && _phase != _QuickPhase.completed && _phase != _QuickPhase.failed && _phase != _QuickPhase.cancelled;
+  bool get _isActive =>
+      _phase != _QuickPhase.idle &&
+      _phase != _QuickPhase.completed &&
+      _phase != _QuickPhase.failed &&
+      _phase != _QuickPhase.cancelled;
 
   void _cancelTransfer() {
     _activeSub?.cancel();
@@ -121,18 +125,28 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
     }
     if (_activeRecord != null) {
       appController.updateTransferRecord(
-        _activeRecord!.copyWith(status: TransferStatus.cancelled, endTime: DateTime.now()),
+        _activeRecord!.copyWith(
+          status: TransferStatus.cancelled,
+          endTime: DateTime.now(),
+        ),
       );
     }
     _setPhase(_QuickPhase.cancelled);
-    Future.delayed(const Duration(seconds: 1), () => _setPhase(_QuickPhase.idle));
+    Future.delayed(
+      const Duration(seconds: 1),
+      () => _setPhase(_QuickPhase.idle),
+    );
   }
 
-  void _clearFiles() => setState(() { _selectedFiles.clear(); _selectedFolder = null; });
+  void _clearFiles() => setState(() {
+    _selectedFiles.clear();
+    _selectedFolder = null;
+  });
   void _clearText() {
     _textCtrl.clear();
     if (mounted) context.showSnackBar(context.appLocalizations.cleared);
   }
+
   void _removeFile(int index) => setState(() => _selectedFiles.removeAt(index));
 
   void _onTextDrop(List<File> files) {
@@ -140,7 +154,9 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
       if (!FileSystemEntity.isDirectorySync(f.path)) {
         try {
           _textCtrl.text = f.readAsStringSync();
-          _textCtrl.selection = TextSelection.collapsed(offset: _textCtrl.text.length);
+          _textCtrl.selection = TextSelection.collapsed(
+            offset: _textCtrl.text.length,
+          );
           return;
         } catch (_) {}
       }
@@ -153,7 +169,8 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
       final path = f.path.endsWith(Platform.pathSeparator)
           ? f.path.substring(0, f.path.length - 1)
           : f.path;
-      if (FileSystemEntity.isDirectorySync(path) || Directory(path).existsSync()) {
+      if (FileSystemEntity.isDirectorySync(path) ||
+          Directory(path).existsSync()) {
         setState(() {
           _selectedFolder = path;
           _selectedFiles.clear();
@@ -166,7 +183,13 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
     for (final f in files) {
       if (!FileSystemEntity.isDirectorySync(f.path) &&
           !_selectedFiles.any((s) => s.path == f.path)) {
-        newFiles.add(PlatformFile(name: f.path.split(Platform.pathSeparator).last, path: f.path, size: f.lengthSync()));
+        newFiles.add(
+          PlatformFile(
+            name: f.path.split(Platform.pathSeparator).last,
+            path: f.path,
+            size: f.lengthSync(),
+          ),
+        );
       }
     }
     if (newFiles.isNotEmpty) setState(() => _selectedFiles.addAll(newFiles));
@@ -186,7 +209,9 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     if (data?.text != null && data!.text!.isNotEmpty) {
       _textCtrl.text = data.text!;
-      _textCtrl.selection = TextSelection.collapsed(offset: _textCtrl.text.length);
+      _textCtrl.selection = TextSelection.collapsed(
+        offset: _textCtrl.text.length,
+      );
       if (mounted) context.showSnackBar(context.appLocalizations.pasted);
     }
   }
@@ -194,7 +219,19 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   Future<void> _pickTextFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['txt', 'md', 'json', 'xml', 'csv', 'log', 'yaml', 'yml', 'toml', 'ini', 'cfg'],
+      allowedExtensions: [
+        'txt',
+        'md',
+        'json',
+        'xml',
+        'csv',
+        'log',
+        'yaml',
+        'yml',
+        'toml',
+        'ini',
+        'cfg',
+      ],
     );
     if (result == null || result.files.isEmpty) return;
     final file = result.files.first;
@@ -202,7 +239,9 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
     try {
       final content = await File(file.path!).readAsString();
       _textCtrl.text = content;
-      _textCtrl.selection = TextSelection.collapsed(offset: _textCtrl.text.length);
+      _textCtrl.selection = TextSelection.collapsed(
+        offset: _textCtrl.text.length,
+      );
     } catch (_) {
       if (mounted) context.showSnackBar(context.appLocalizations.sendFailed);
     }
@@ -335,7 +374,10 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   /// Applies a bridge progress event and refreshes the chip.
   void _applyProgress(TransferProgress progress) {
     if (progress.totalSize > 0) {
-      _progress = (progress.transferredSize / progress.totalSize).clamp(0.0, 1.0);
+      _progress = (progress.transferredSize / progress.totalSize).clamp(
+        0.0,
+        1.0,
+      );
     }
     if (progress.totalFiles > 0) _totalFiles = progress.totalFiles;
     _completedFiles = progress.completedFiles;
@@ -347,11 +389,23 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
     if (!mounted) return;
     final l10n = context.appLocalizations;
     final (String? label, Color? color) = switch (phase) {
-      _QuickPhase.sending => (l10n.sending, Theme.of(context).colorScheme.primary),
-      _QuickPhase.receiving => (l10n.receiving, Theme.of(context).colorScheme.primary),
-      _QuickPhase.completed => (l10n.completed, const Color(0xFF4CAF50)),   // green
-      _QuickPhase.failed => (l10n.failed, const Color(0xFFF44336)),         // red
-      _QuickPhase.cancelled => (l10n.cancelled, const Color(0xFF9E9E9E)),   // grey
+      _QuickPhase.sending => (
+        l10n.sending,
+        Theme.of(context).colorScheme.primary,
+      ),
+      _QuickPhase.receiving => (
+        l10n.receiving,
+        Theme.of(context).colorScheme.primary,
+      ),
+      _QuickPhase.completed => (
+        l10n.completed,
+        const Color(0xFF4CAF50),
+      ), // green
+      _QuickPhase.failed => (l10n.failed, const Color(0xFFF44336)), // red
+      _QuickPhase.cancelled => (
+        l10n.cancelled,
+        const Color(0xFF9E9E9E),
+      ), // grey
       _QuickPhase.idle => (null, null),
     };
     setState(() => _phase = phase);
@@ -365,8 +419,13 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
       QuickTransferWidget.statusNotifier.value = QuickStatus(
         label: label,
         color: color,
-        progress: (phase == _QuickPhase.sending || phase == _QuickPhase.receiving) ? _progress : -1,
-        detail: (phase == _QuickPhase.sending || phase == _QuickPhase.receiving) ? _buildProgressDetail() : '',
+        progress:
+            (phase == _QuickPhase.sending || phase == _QuickPhase.receiving)
+            ? _progress
+            : -1,
+        detail: (phase == _QuickPhase.sending || phase == _QuickPhase.receiving)
+            ? _buildProgressDetail()
+            : '',
       );
     } else {
       QuickTransferWidget.statusNotifier.value = null;
@@ -413,7 +472,9 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
             try {
               final bytes = await File(f.path!).readAsBytes();
               tempDirPath ??= (await getTemporaryDirectory()).path;
-              final tmp = File('$tempDirPath${Platform.pathSeparator}${f.name}');
+              final tmp = File(
+                '$tempDirPath${Platform.pathSeparator}${f.name}',
+              );
               await tmp.writeAsBytes(bytes);
               resolvedPaths.add(tmp.path);
             } catch (_) {}
@@ -434,10 +495,26 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
     final sendConfig = SendConfig.load();
 
     final files = _isTextMode
-        ? [FileItem(name: _textCtrl.text.trim(), path: '', size: _textCtrl.text.trim().length)]
+        ? [
+            FileItem(
+              name: _textCtrl.text.trim(),
+              path: '',
+              size: _textCtrl.text.trim().length,
+            ),
+          ]
         : _selectedFolder != null
-            ? [FileItem(name: _selectedFolder!.split(Platform.pathSeparator).last, path: _selectedFolder!, size: 0)]
-            : _selectedFiles.map((f) => FileItem(name: f.name, path: f.path ?? '', size: f.size)).toList();
+        ? [
+            FileItem(
+              name: _selectedFolder!.split(Platform.pathSeparator).last,
+              path: _selectedFolder!,
+              size: 0,
+            ),
+          ]
+        : _selectedFiles
+              .map(
+                (f) => FileItem(name: f.name, path: f.path ?? '', size: f.size),
+              )
+              .toList();
     final totalSize = _isTextMode
         ? _textCtrl.text.trim().length
         : files.fold<int>(0, (a, f) => a + f.size);
@@ -446,7 +523,8 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
       id: transferId,
       direction: TransferDirection.sent,
       status: TransferStatus.transferring,
-      files: files, totalSize: totalSize,
+      files: files,
+      totalSize: totalSize,
       startTime: DateTime.now(),
       codePhrase: code ?? '',
     );
@@ -469,65 +547,111 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
       exclude: sendConfig.exclude,
       disableClipboard: !sendConfig.copyCodeToClipboard,
       // croc rejects a non-auto transport together with --local.
-      transport: relayConfig.type == RelayType.noRelay ? 'auto' : sendConfig.transport,
+      transport: relayConfig.type == RelayType.noRelay
+          ? 'auto'
+          : sendConfig.transport,
       throttleUpload: sendConfig.throttleUpload,
       socks5Proxy: sendConfig.socks5Proxy,
       httpProxy: sendConfig.httpProxy,
       onlyLocal: relayConfig.type == RelayType.noRelay,
-      relayAddress: relayConfig.type == RelayType.customRelay ? relayConfig.address : null,
-      relayPassword: relayConfig.type == RelayType.customRelay ? relayConfig.password : null,
-      relayPorts: relayConfig.type == RelayType.customRelay ? relayConfig.port : null,
+      relayAddress: relayConfig.type == RelayType.customRelay
+          ? relayConfig.address
+          : null,
+      relayPassword: relayConfig.type == RelayType.customRelay
+          ? relayConfig.password
+          : null,
+      relayPorts: relayConfig.type == RelayType.customRelay
+          ? relayConfig.port
+          : null,
     );
 
-    _activeSub = coreController.sendFiles(options).listen(
-      (progress) {
-        if (!mounted) return;
-        // Ignore late events after user cancelled
-        if (_phase == _QuickPhase.cancelled) return;
-        if (progress.status == TransferProgressStatus.failed && progress.error != null) {
-          context.showSnackBar(l10n.localizeCrocError(progress.error!, isSend: true));
-        }
-        if (progress.codePhrase != null && progress.codePhrase!.isNotEmpty) {
-          appController.updateTransferRecord(record.copyWith(codePhrase: progress.codePhrase));
-        }
-        switch (progress.status) {
-          case TransferProgressStatus.transferring:
-            _applyProgress(progress);
-            appController.setSpeed(record.id, progress.speed);
-            break;
-          case TransferProgressStatus.completed:
-            appController.setSpeed(record.id, 0);
-            _progress = 1;
-            _speed = 0;
-            appController.updateTransferRecord(record.copyWith(status: TransferStatus.completed, totalSize: progress.totalSize, endTime: DateTime.now()));
-            _setPhase(_QuickPhase.completed);
-            break;
-          case TransferProgressStatus.failed:
-            appController.setSpeed(record.id, 0);
-            appController.updateTransferRecord(record.copyWith(status: TransferStatus.failed, endTime: DateTime.now()));
-            _setPhase(_QuickPhase.failed);
-            Future.delayed(const Duration(seconds: 1), () => _setPhase(_QuickPhase.idle));
-            break;
-          case TransferProgressStatus.cancelled:
-            appController.setSpeed(record.id, 0);
-            appController.updateTransferRecord(record.copyWith(status: TransferStatus.cancelled, endTime: DateTime.now()));
-            _setPhase(_QuickPhase.cancelled);
-            Future.delayed(const Duration(seconds: 1), () => _setPhase(_QuickPhase.idle));
-            break;
-          case TransferProgressStatus.initializing:
-          case TransferProgressStatus.connecting:
-            break;
-        }
-      },
-      onError: (_) {
-        if (mounted && _phase != _QuickPhase.cancelled) {
-          appController.setSpeed(record.id, 0);
-          appController.updateTransferRecord(record.copyWith(status: TransferStatus.failed, endTime: DateTime.now()));
-          _setPhase(_QuickPhase.failed);
-          Future.delayed(const Duration(seconds: 1), () => _setPhase(_QuickPhase.idle));
-        }
-      },
-    );
+    _activeSub = coreController
+        .sendFiles(options)
+        .listen(
+          (progress) {
+            if (!mounted) return;
+            // Ignore late events after user cancelled
+            if (_phase == _QuickPhase.cancelled) return;
+            if (progress.status == TransferProgressStatus.failed &&
+                progress.error != null) {
+              context.showSnackBar(
+                l10n.localizeCrocError(progress.error!, isSend: true),
+              );
+            }
+            if (progress.codePhrase != null &&
+                progress.codePhrase!.isNotEmpty) {
+              appController.updateTransferRecord(
+                record.copyWith(codePhrase: progress.codePhrase),
+              );
+            }
+            switch (progress.status) {
+              case TransferProgressStatus.transferring:
+                _applyProgress(progress);
+                appController.setSpeed(record.id, progress.speed);
+                break;
+              case TransferProgressStatus.completed:
+                appController.setSpeed(record.id, 0);
+                _progress = 1;
+                _speed = 0;
+                appController.updateTransferRecord(
+                  record.copyWith(
+                    status: TransferStatus.completed,
+                    totalSize: progress.totalSize,
+                    endTime: DateTime.now(),
+                  ),
+                );
+                _setPhase(_QuickPhase.completed);
+                break;
+              case TransferProgressStatus.failed:
+                appController.setSpeed(record.id, 0);
+                appController.updateTransferRecord(
+                  record.copyWith(
+                    status: TransferStatus.failed,
+                    endTime: DateTime.now(),
+                  ),
+                );
+                _setPhase(_QuickPhase.failed);
+                Future.delayed(
+                  const Duration(seconds: 1),
+                  () => _setPhase(_QuickPhase.idle),
+                );
+                break;
+              case TransferProgressStatus.cancelled:
+                appController.setSpeed(record.id, 0);
+                appController.updateTransferRecord(
+                  record.copyWith(
+                    status: TransferStatus.cancelled,
+                    endTime: DateTime.now(),
+                  ),
+                );
+                _setPhase(_QuickPhase.cancelled);
+                Future.delayed(
+                  const Duration(seconds: 1),
+                  () => _setPhase(_QuickPhase.idle),
+                );
+                break;
+              case TransferProgressStatus.initializing:
+              case TransferProgressStatus.connecting:
+                break;
+            }
+          },
+          onError: (_) {
+            if (mounted && _phase != _QuickPhase.cancelled) {
+              appController.setSpeed(record.id, 0);
+              appController.updateTransferRecord(
+                record.copyWith(
+                  status: TransferStatus.failed,
+                  endTime: DateTime.now(),
+                ),
+              );
+              _setPhase(_QuickPhase.failed);
+              Future.delayed(
+                const Duration(seconds: 1),
+                () => _setPhase(_QuickPhase.idle),
+              );
+            }
+          },
+        );
   }
 
   // ── Receive ──
@@ -584,102 +708,161 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
       httpProxy: receiveConfig.httpProxy,
       onlyLocal: relayConfig.type == RelayType.noRelay,
       outputPath: outputPath,
-      relayAddress: relayConfig.type == RelayType.customRelay ? relayConfig.address : null,
-      relayPassword: relayConfig.type == RelayType.customRelay ? relayConfig.password : null,
-      relayPorts: relayConfig.type == RelayType.customRelay ? relayConfig.port : null,
+      relayAddress: relayConfig.type == RelayType.customRelay
+          ? relayConfig.address
+          : null,
+      relayPassword: relayConfig.type == RelayType.customRelay
+          ? relayConfig.password
+          : null,
+      relayPorts: relayConfig.type == RelayType.customRelay
+          ? relayConfig.port
+          : null,
     );
 
-    _activeSub = coreController.receiveFiles(options).listen(
-      (progress) {
-        if (!mounted) return;
-        // Ignore late events after user cancelled
-        if (_phase == _QuickPhase.cancelled) return;
-        if (progress.status == TransferProgressStatus.failed && progress.error != null) {
-          context.showSnackBar(l10n.localizeCrocError(progress.error!));
-        }
-        switch (progress.status) {
-          case TransferProgressStatus.transferring:
-            _applyProgress(progress);
-            appController.setSpeed(record.id, progress.speed);
-            break;
-          case TransferProgressStatus.completed:
-            appController.setSpeed(record.id, 0);
-            _progress = 1;
-            _speed = 0;
-            if (progress.isText) {
-              setState(() {
-                _receivedText = progress.textContent;
-                _receivedFiles.clear();
-                _isTextMode = true;
-              });
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted) return;
-                _textCtrl
-                  ..text = progress.textContent
-                  ..selection = TextSelection.collapsed(offset: progress.textContent.length);
-              });
-              appController.updateTransferRecord(record.copyWith(
-                status: TransferStatus.completed,
-                totalSize: progress.textContent.length,
-                files: [FileItem(name: progress.textContent, path: '', size: progress.textContent.length)],
-                endTime: DateTime.now(),
-              ));
-            } else {
-              final fileNames = progress.currentFile.isNotEmpty
-                  ? progress.currentFile.split('\n').where((n) => n.isNotEmpty).toList()
-                  : <String>[];
-              setState(() {
-                _receivedText = '';
-                _isTextMode = false;
-                _receivedFiles.clear();
-                _receivedFiles.addAll(fileNames.map((n) => FileItem(
-                  name: n,
-                  path: '${AppPaths.savePathSync}${Platform.pathSeparator}$n',
-                  size: 0,
-                )));
-              });
-              appController.updateTransferRecord(record.copyWith(
-                status: TransferStatus.completed,
-                totalSize: progress.totalSize,
-                files: fileNames.isEmpty
-                    ? [const FileItem(name: 'file', path: '', size: 0)]
-                    : _receivedFiles.map((f) => f).toList(),
-                endTime: DateTime.now(),
-              ));
-              if (_receivedFiles.isNotEmpty && isAndroid) {
-                for (final f in _receivedFiles) {
-                  AppPaths.exportToDownloads(f.path);
-                }
-              }
+    _activeSub = coreController
+        .receiveFiles(options)
+        .listen(
+          (progress) {
+            if (!mounted) return;
+            // Ignore late events after user cancelled
+            if (_phase == _QuickPhase.cancelled) return;
+            if (progress.status == TransferProgressStatus.failed &&
+                progress.error != null) {
+              context.showSnackBar(l10n.localizeCrocError(progress.error!));
             }
-            _setPhase(_QuickPhase.completed);
-            break;
-          case TransferProgressStatus.failed:
-            appController.setSpeed(record.id, 0);
-            appController.updateTransferRecord(record.copyWith(status: TransferStatus.failed, files: [FileItem(name: l10n.receiveFailed, path: '', size: 0)], endTime: DateTime.now()));
-            _setPhase(_QuickPhase.failed);
-            Future.delayed(const Duration(seconds: 1), () => _setPhase(_QuickPhase.idle));
-            break;
-          case TransferProgressStatus.cancelled:
-            appController.setSpeed(record.id, 0);
-            appController.updateTransferRecord(record.copyWith(status: TransferStatus.cancelled, endTime: DateTime.now()));
-            _setPhase(_QuickPhase.cancelled);
-            Future.delayed(const Duration(seconds: 1), () => _setPhase(_QuickPhase.idle));
-            break;
-          case TransferProgressStatus.initializing:
-          case TransferProgressStatus.connecting:
-            break;
-        }
-      },
-      onError: (_) {
-        if (mounted && _phase != _QuickPhase.cancelled) {
-          appController.setSpeed(record.id, 0);
-          appController.updateTransferRecord(record.copyWith(status: TransferStatus.failed, files: [FileItem(name: l10n.receiveFailed, path: '', size: 0)], endTime: DateTime.now()));
-          _setPhase(_QuickPhase.failed);
-          Future.delayed(const Duration(seconds: 1), () => _setPhase(_QuickPhase.idle));
-        }
-      },
-    );
+            switch (progress.status) {
+              case TransferProgressStatus.transferring:
+                _applyProgress(progress);
+                appController.setSpeed(record.id, progress.speed);
+                break;
+              case TransferProgressStatus.completed:
+                appController.setSpeed(record.id, 0);
+                _progress = 1;
+                _speed = 0;
+                if (progress.isText) {
+                  setState(() {
+                    _receivedText = progress.textContent;
+                    _receivedFiles.clear();
+                    _isTextMode = true;
+                  });
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    _textCtrl
+                      ..text = progress.textContent
+                      ..selection = TextSelection.collapsed(
+                        offset: progress.textContent.length,
+                      );
+                  });
+                  appController.updateTransferRecord(
+                    record.copyWith(
+                      status: TransferStatus.completed,
+                      totalSize: progress.textContent.length,
+                      files: [
+                        FileItem(
+                          name: progress.textContent,
+                          path: '',
+                          size: progress.textContent.length,
+                        ),
+                      ],
+                      endTime: DateTime.now(),
+                    ),
+                  );
+                } else {
+                  final fileNames = progress.currentFile.isNotEmpty
+                      ? progress.currentFile
+                            .split('\n')
+                            .where((n) => n.isNotEmpty)
+                            .toList()
+                      : <String>[];
+                  setState(() {
+                    _receivedText = '';
+                    _isTextMode = false;
+                    _receivedFiles.clear();
+                    _receivedFiles.addAll(
+                      fileNames.map(
+                        (n) => FileItem(
+                          name: n,
+                          path:
+                              '${AppPaths.savePathSync}${Platform.pathSeparator}$n',
+                          size: 0,
+                        ),
+                      ),
+                    );
+                  });
+                  appController.updateTransferRecord(
+                    record.copyWith(
+                      status: TransferStatus.completed,
+                      totalSize: progress.totalSize,
+                      files: fileNames.isEmpty
+                          ? [const FileItem(name: 'file', path: '', size: 0)]
+                          : _receivedFiles.map((f) => f).toList(),
+                      endTime: DateTime.now(),
+                    ),
+                  );
+                  if (_receivedFiles.isNotEmpty && isAndroid) {
+                    for (final f in _receivedFiles) {
+                      AppPaths.exportToDownloads(f.path);
+                    }
+                  }
+                }
+                _setPhase(_QuickPhase.completed);
+                break;
+              case TransferProgressStatus.failed:
+                appController.setSpeed(record.id, 0);
+                appController.updateTransferRecord(
+                  record.copyWith(
+                    status: TransferStatus.failed,
+                    files: [
+                      FileItem(name: l10n.receiveFailed, path: '', size: 0),
+                    ],
+                    endTime: DateTime.now(),
+                  ),
+                );
+                _setPhase(_QuickPhase.failed);
+                Future.delayed(
+                  const Duration(seconds: 1),
+                  () => _setPhase(_QuickPhase.idle),
+                );
+                break;
+              case TransferProgressStatus.cancelled:
+                appController.setSpeed(record.id, 0);
+                appController.updateTransferRecord(
+                  record.copyWith(
+                    status: TransferStatus.cancelled,
+                    endTime: DateTime.now(),
+                  ),
+                );
+                _setPhase(_QuickPhase.cancelled);
+                Future.delayed(
+                  const Duration(seconds: 1),
+                  () => _setPhase(_QuickPhase.idle),
+                );
+                break;
+              case TransferProgressStatus.initializing:
+              case TransferProgressStatus.connecting:
+                break;
+            }
+          },
+          onError: (_) {
+            if (mounted && _phase != _QuickPhase.cancelled) {
+              appController.setSpeed(record.id, 0);
+              appController.updateTransferRecord(
+                record.copyWith(
+                  status: TransferStatus.failed,
+                  files: [
+                    FileItem(name: l10n.receiveFailed, path: '', size: 0),
+                  ],
+                  endTime: DateTime.now(),
+                ),
+              );
+              _setPhase(_QuickPhase.failed);
+              Future.delayed(
+                const Duration(seconds: 1),
+                () => _setPhase(_QuickPhase.idle),
+              );
+            }
+          },
+        );
   }
 
   @override
@@ -697,12 +880,29 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
               width: double.infinity,
               child: SegmentedButton<bool>(
                 segments: [
-                  ButtonSegment(value: false, label: Text(l10n.file, style: const TextStyle(fontSize: 12)), icon: const Icon(Icons.insert_drive_file, size: 16)),
-                  ButtonSegment(value: true, label: Text(l10n.text, style: const TextStyle(fontSize: 12)), icon: const Icon(Icons.text_snippet, size: 16)),
+                  ButtonSegment(
+                    value: false,
+                    label: Text(
+                      l10n.file,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    icon: const Icon(Icons.insert_drive_file, size: 16),
+                  ),
+                  ButtonSegment(
+                    value: true,
+                    label: Text(
+                      l10n.text,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    icon: const Icon(Icons.text_snippet, size: 16),
+                  ),
                 ],
                 selected: {_isTextMode},
-                onSelectionChanged: (v) => setState(() => _isTextMode = v.first),
-                style: const ButtonStyle(tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                onSelectionChanged: (v) =>
+                    setState(() => _isTextMode = v.first),
+                style: const ButtonStyle(
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -711,253 +911,383 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
                 enabled: isDesktop,
                 onFilesDropped: _onTextDrop,
                 child: TextField(
-                controller: _textCtrl,
-                maxLines: 2,
-                style: const TextStyle(fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: l10n.textHint,
-                  border: InputBorder.none,
-                  suffixIcon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_receivedText.isNotEmpty)
-                        IconButton(
-                          icon: const Icon(Icons.clear, size: 18),
-                          tooltip: l10n.clear,
-                          onPressed: () => setState(() {
-                            _receivedText = '';
-                            _textCtrl.clear();
-                            _phase = _QuickPhase.idle;
-                            QuickTransferWidget.statusNotifier.value = null;
-                          }),
-                        ),
-                      _ClipboardToggleButton(
-                        isPasteMode: _isPasteMode,
-                        isActive: _isActive,
-                        onTap: _isPasteMode ? _pasteText : _copyText,
-                        onLongPress: () => setState(() => _isPasteMode = !_isPasteMode),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              )
-            else ...[
-              Column(mainAxisSize: MainAxisSize.min, children: [
-              if (_selectedFolder != null)
-                ListTile(
-                  dense: true,
-                  leading: const Icon(Icons.folder, size: 18, color: Colors.amber),
-                  title: Text(_selectedFolder!.split(Platform.pathSeparator).last, style: const TextStyle(fontSize: 13)),
-                  trailing: _isActive ? null : IconButton(
-                    icon: const Icon(Icons.close, size: 16),
-                    onPressed: () => setState(() => _selectedFolder = null),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  contentPadding: EdgeInsets.zero,
-                )
-              else if (_selectedFiles.isNotEmpty)
-                ...List.generate(_selectedFiles.length, (i) {
-                  final f = _selectedFiles[i];
-                  return ListTile(
-                    dense: true,
-                    leading: const Icon(Icons.insert_drive_file, size: 18),
-                    title: Text(f.name, style: const TextStyle(fontSize: 13)),
-                    trailing: _isActive ? null : IconButton(
-                      icon: const Icon(Icons.close, size: 16),
-                      onPressed: () => _removeFile(i),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    contentPadding: EdgeInsets.zero,
-                  );
-                })
-              else if (_receivedFiles.isNotEmpty)
-                ..._receivedFiles.map((f) {
-                  final showAsFolder = _isFolderName(f.name);
-                  return ListTile(
-                    dense: true,
-                    leading: Icon(showAsFolder ? Icons.folder : Icons.insert_drive_file, size: 18, color: showAsFolder ? Colors.amber : null),
-                    title: Text(f.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
-                    subtitle: f.size > 0 ? Text(f.size.fileSize, style: TextStyle(fontSize: 11, color: context.colorScheme.onSurfaceVariant)) : null,
-                    trailing: Row(
+                  controller: _textCtrl,
+                  maxLines: 2,
+                  style: const TextStyle(fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: l10n.textHint,
+                    border: InputBorder.none,
+                    suffixIcon: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.folder_open, size: 16),
-                          tooltip: l10n.openFolder,
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () => globalState.openFolder(f.path),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.open_in_new, size: 16),
-                          tooltip: l10n.open,
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () => showAsFolder ? globalState.openFolder(f.path) : globalState.openFile(f.path),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.clear, size: 16),
-                          tooltip: l10n.clear,
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () => setState(() {
-                            _receivedFiles.clear();
-                            _phase = _QuickPhase.idle;
-                            QuickTransferWidget.statusNotifier.value = null;
-                          }),
+                        if (_receivedText.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            tooltip: l10n.clear,
+                            onPressed: () => setState(() {
+                              _receivedText = '';
+                              _textCtrl.clear();
+                              _phase = _QuickPhase.idle;
+                              QuickTransferWidget.statusNotifier.value = null;
+                            }),
+                          ),
+                        _ClipboardToggleButton(
+                          isPasteMode: _isPasteMode,
+                          isActive: _isActive,
+                          onTap: _isPasteMode ? _pasteText : _copyText,
+                          onLongPress: () =>
+                              setState(() => _isPasteMode = !_isPasteMode),
                         ),
                       ],
                     ),
-                    contentPadding: EdgeInsets.zero,
-                  );
-                }),
-              ]),  // Column
-              LayoutBuilder(builder: (_, constraints) {
-                final w = constraints.maxWidth;
-                // Measure label widths so thresholds adapt to locale.
-                final textStyle = const TextStyle(fontSize: 12);
-                final tp = TextPainter(textDirection: TextDirection.ltr);
-                tp.text = TextSpan(text: _isFolderPicker ? l10n.selectFolder : l10n.selectFiles, style: textStyle); tp.layout();
-                final wPick = tp.width;
-                tp.text = TextSpan(text: l10n.clear, style: textStyle); tp.layout();
-                final wClear = tp.width;
-                double btnW(double tw) => tw + 56; // text + icon(16) + gap(8) + padding(32)
-                const iconW = 44.0;
-                const margin = 32.0;
-                final iconPick = w + margin < btnW(wPick) + btnW(wClear);
-                final iconClear  = w + margin < btnW(wClear) + iconW;
-                return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  FileDropTarget(
-                    enabled: isDesktop && !_isActive,
-                    onFilesDropped: _onFileDrop,
-                    onHoverChanged: (hover) => setState(() => _fileHover = hover),
-                    child: _PickerToggleButton(
-                      isFolderPicker: _isFolderPicker,
-                      isActive: _isActive,
-                      narrow: iconPick,
-                      dropHover: _fileHover,
-                      dropLabel: l10n.dropToAdd,
-                      onTap: _isFolderPicker ? _pickFolder : _pickFiles,
-                      onLongPress: () => setState(() => _isFolderPicker = !_isFolderPicker),
-                      filesLabel: l10n.selectFiles,
-                      folderLabel: l10n.selectFolder,
-                    ),
                   ),
-                  if (iconClear)
-                    IconButton(
-                      icon: const Icon(Icons.clear_all, size: 18),
-                      tooltip: l10n.clear,
-                      visualDensity: VisualDensity.compact,
-                      onPressed: _isActive || (_selectedFiles.isEmpty && _selectedFolder == null) ? null : _clearFiles,
+                ),
+              )
+            else ...[
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_selectedFolder != null)
+                    ListTile(
+                      dense: true,
+                      leading: const Icon(
+                        Icons.folder,
+                        size: 18,
+                        color: Colors.amber,
+                      ),
+                      title: Text(
+                        _selectedFolder!.split(Platform.pathSeparator).last,
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      trailing: _isActive
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.close, size: 16),
+                              onPressed: () =>
+                                  setState(() => _selectedFolder = null),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                      contentPadding: EdgeInsets.zero,
                     )
-                  else
-                    TextButton.icon(
-                      onPressed: _isActive || (_selectedFiles.isEmpty && _selectedFolder == null) ? null : _clearFiles,
-                      icon: const Icon(Icons.clear_all, size: 16),
-                      label: Text(l10n.clear, style: const TextStyle(fontSize: 12)),
-                    ),
-                ]);
-              }),
+                  else if (_selectedFiles.isNotEmpty)
+                    ...List.generate(_selectedFiles.length, (i) {
+                      final f = _selectedFiles[i];
+                      return ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.insert_drive_file, size: 18),
+                        title: Text(
+                          f.name,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        trailing: _isActive
+                            ? null
+                            : IconButton(
+                                icon: const Icon(Icons.close, size: 16),
+                                onPressed: () => _removeFile(i),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                        contentPadding: EdgeInsets.zero,
+                      );
+                    })
+                  else if (_receivedFiles.isNotEmpty)
+                    ..._receivedFiles.map((f) {
+                      final showAsFolder = _isFolderName(f.name);
+                      return ListTile(
+                        dense: true,
+                        leading: Icon(
+                          showAsFolder ? Icons.folder : Icons.insert_drive_file,
+                          size: 18,
+                          color: showAsFolder ? Colors.amber : null,
+                        ),
+                        title: Text(
+                          f.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        subtitle: f.size > 0
+                            ? Text(
+                                f.size.fileSize,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: context.colorScheme.onSurfaceVariant,
+                                ),
+                              )
+                            : null,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.folder_open, size: 16),
+                              tooltip: l10n.openFolder,
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () => globalState.openFolder(f.path),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.open_in_new, size: 16),
+                              tooltip: l10n.open,
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () => showAsFolder
+                                  ? globalState.openFolder(f.path)
+                                  : globalState.openFile(f.path),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.clear, size: 16),
+                              tooltip: l10n.clear,
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () => setState(() {
+                                _receivedFiles.clear();
+                                _phase = _QuickPhase.idle;
+                                QuickTransferWidget.statusNotifier.value = null;
+                              }),
+                            ),
+                          ],
+                        ),
+                        contentPadding: EdgeInsets.zero,
+                      );
+                    }),
+                ],
+              ), // Column
+              LayoutBuilder(
+                builder: (_, constraints) {
+                  final w = constraints.maxWidth;
+                  // Measure label widths so thresholds adapt to locale.
+                  final textStyle = const TextStyle(fontSize: 12);
+                  final tp = TextPainter(textDirection: TextDirection.ltr);
+                  tp.text = TextSpan(
+                    text: _isFolderPicker
+                        ? l10n.selectFolder
+                        : l10n.selectFiles,
+                    style: textStyle,
+                  );
+                  tp.layout();
+                  final wPick = tp.width;
+                  tp.text = TextSpan(text: l10n.clear, style: textStyle);
+                  tp.layout();
+                  final wClear = tp.width;
+                  double btnW(double tw) =>
+                      tw + 56; // text + icon(16) + gap(8) + padding(32)
+                  const iconW = 44.0;
+                  const margin = 32.0;
+                  final iconPick = w + margin < btnW(wPick) + btnW(wClear);
+                  final iconClear = w + margin < btnW(wClear) + iconW;
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      FileDropTarget(
+                        enabled: isDesktop && !_isActive,
+                        onFilesDropped: _onFileDrop,
+                        onHoverChanged: (hover) =>
+                            setState(() => _fileHover = hover),
+                        child: _PickerToggleButton(
+                          isFolderPicker: _isFolderPicker,
+                          isActive: _isActive,
+                          narrow: iconPick,
+                          dropHover: _fileHover,
+                          dropLabel: l10n.dropToAdd,
+                          onTap: _isFolderPicker ? _pickFolder : _pickFiles,
+                          onLongPress: () => setState(
+                            () => _isFolderPicker = !_isFolderPicker,
+                          ),
+                          filesLabel: l10n.selectFiles,
+                          folderLabel: l10n.selectFolder,
+                        ),
+                      ),
+                      if (iconClear)
+                        IconButton(
+                          icon: const Icon(Icons.clear_all, size: 18),
+                          tooltip: l10n.clear,
+                          visualDensity: VisualDensity.compact,
+                          onPressed:
+                              _isActive ||
+                                  (_selectedFiles.isEmpty &&
+                                      _selectedFolder == null)
+                              ? null
+                              : _clearFiles,
+                        )
+                      else
+                        TextButton.icon(
+                          onPressed:
+                              _isActive ||
+                                  (_selectedFiles.isEmpty &&
+                                      _selectedFolder == null)
+                              ? null
+                              : _clearFiles,
+                          icon: const Icon(Icons.clear_all, size: 16),
+                          label: Text(
+                            l10n.clear,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
             ],
             if (_isTextMode) ...[
               const SizedBox(height: 4),
-              LayoutBuilder(builder: (_, constraints) {
-                final w = constraints.maxWidth;
-                final textStyle = const TextStyle(fontSize: 12);
-                final tp = TextPainter(textDirection: TextDirection.ltr);
-                tp.text = TextSpan(text: l10n.selectTextFile, style: textStyle); tp.layout();
-                final wPick = tp.width;
-                tp.text = TextSpan(text: l10n.clear, style: textStyle); tp.layout();
-                final wClear = tp.width;
-                double btnW(double tw) => tw + 56;
-                const iconW = 44.0;
-                const margin = 32.0;
-                final iconPick = w + margin < btnW(wPick) + btnW(wClear);
-                final iconClear  = w + margin < btnW(wClear) + iconW;
-                return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  if (iconPick)
-                    IconButton(
-                      icon: const Icon(Icons.add, size: 18),
-                      tooltip: l10n.selectTextFile,
-                      visualDensity: VisualDensity.compact,
-                      onPressed: _isActive ? null : _pickTextFile,
-                    )
-                  else
-                    TextButton.icon(
-                      onPressed: _isActive ? null : _pickTextFile,
-                      icon: const Icon(Icons.add, size: 16),
-                      label: Text(l10n.selectTextFile, style: const TextStyle(fontSize: 12)),
-                    ),
-                  if (iconClear)
-                    IconButton(
-                      icon: const Icon(Icons.clear_all, size: 18),
-                      tooltip: l10n.clear,
-                      visualDensity: VisualDensity.compact,
-                      onPressed: _clearText,
-                    )
-                  else
-                    TextButton.icon(
-                      onPressed: _clearText,
-                      icon: const Icon(Icons.clear_all, size: 16),
-                      label: Text(l10n.clear, style: const TextStyle(fontSize: 12)),
-                    ),
-                ]);
-              }),
+              LayoutBuilder(
+                builder: (_, constraints) {
+                  final w = constraints.maxWidth;
+                  final textStyle = const TextStyle(fontSize: 12);
+                  final tp = TextPainter(textDirection: TextDirection.ltr);
+                  tp.text = TextSpan(
+                    text: l10n.selectTextFile,
+                    style: textStyle,
+                  );
+                  tp.layout();
+                  final wPick = tp.width;
+                  tp.text = TextSpan(text: l10n.clear, style: textStyle);
+                  tp.layout();
+                  final wClear = tp.width;
+                  double btnW(double tw) => tw + 56;
+                  const iconW = 44.0;
+                  const margin = 32.0;
+                  final iconPick = w + margin < btnW(wPick) + btnW(wClear);
+                  final iconClear = w + margin < btnW(wClear) + iconW;
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      if (iconPick)
+                        IconButton(
+                          icon: const Icon(Icons.add, size: 18),
+                          tooltip: l10n.selectTextFile,
+                          visualDensity: VisualDensity.compact,
+                          onPressed: _isActive ? null : _pickTextFile,
+                        )
+                      else
+                        TextButton.icon(
+                          onPressed: _isActive ? null : _pickTextFile,
+                          icon: const Icon(Icons.add, size: 16),
+                          label: Text(
+                            l10n.selectTextFile,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      if (iconClear)
+                        IconButton(
+                          icon: const Icon(Icons.clear_all, size: 18),
+                          tooltip: l10n.clear,
+                          visualDensity: VisualDensity.compact,
+                          onPressed: _clearText,
+                        )
+                      else
+                        TextButton.icon(
+                          onPressed: _clearText,
+                          icon: const Icon(Icons.clear_all, size: 16),
+                          label: Text(
+                            l10n.clear,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
             ],
             const SizedBox(height: 8),
             // Action row — responsive: labels when wide, icons only when narrow
-            LayoutBuilder(builder: (_, constraints) {
-              final w = constraints.maxWidth;
-              final textStyle = const TextStyle(fontSize: 12);
-              final tp = TextPainter(textDirection: TextDirection.ltr);
-              final sendLabel = _phase == _QuickPhase.sending ? l10n.cancel : l10n.send;
-              final recvLabel = _phase == _QuickPhase.receiving ? l10n.cancel : l10n.receive;
-              tp.text = TextSpan(text: sendLabel, style: textStyle); tp.layout();
-              final wSend = tp.width;
-              tp.text = TextSpan(text: recvLabel, style: textStyle); tp.layout();
-              final wRecv = tp.width;
-              double btnW(double tw) => tw + 56;
-              const iconW = 44.0;
-              const gap = 8.0;
-              const margin = 32.0;
-              // Receive collapses first, then send
-              final iconRecv = w + margin < btnW(wSend) + btnW(wRecv) + iconW + gap;
-              final iconSend = w + margin < btnW(wSend) + iconW + iconW + gap;
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (_phase == _QuickPhase.sending)
-                    _actionBtn(onPressed: _cancelTransfer, icon: Icons.close, label: l10n.cancel, isCancel: true, narrow: iconSend)
-                  else
-                    _actionBtn(onPressed: (!_isActive && _phase != _QuickPhase.cancelled) ? _quickSend : null, icon: Icons.send, label: l10n.send, narrow: iconSend),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    icon: const Icon(Icons.settings, size: 20),
-                    tooltip: l10n.settings,
-                    visualDensity: VisualDensity.compact,
-                    onPressed: _isActive ? null : _showSettings,
-                  ),
-                  const SizedBox(width: 4),
-                  if (_phase == _QuickPhase.receiving)
-                    _actionBtn(onPressed: _cancelTransfer, icon: Icons.close, label: l10n.cancel, isCancel: true, narrow: iconRecv)
-                  else
-                    _actionBtn(onPressed: (!_isActive && _phase != _QuickPhase.cancelled) ? _quickReceive : null, icon: Icons.download, label: l10n.receive, narrow: iconRecv),
-                ],
-              );
-            }),
+            LayoutBuilder(
+              builder: (_, constraints) {
+                final w = constraints.maxWidth;
+                final textStyle = const TextStyle(fontSize: 12);
+                final tp = TextPainter(textDirection: TextDirection.ltr);
+                final sendLabel = _phase == _QuickPhase.sending
+                    ? l10n.cancel
+                    : l10n.send;
+                final recvLabel = _phase == _QuickPhase.receiving
+                    ? l10n.cancel
+                    : l10n.receive;
+                tp.text = TextSpan(text: sendLabel, style: textStyle);
+                tp.layout();
+                final wSend = tp.width;
+                tp.text = TextSpan(text: recvLabel, style: textStyle);
+                tp.layout();
+                final wRecv = tp.width;
+                double btnW(double tw) => tw + 56;
+                const iconW = 44.0;
+                const gap = 8.0;
+                const margin = 32.0;
+                // Receive collapses first, then send
+                final iconRecv =
+                    w + margin < btnW(wSend) + btnW(wRecv) + iconW + gap;
+                final iconSend = w + margin < btnW(wSend) + iconW + iconW + gap;
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (_phase == _QuickPhase.sending)
+                      _actionBtn(
+                        onPressed: _cancelTransfer,
+                        icon: Icons.close,
+                        label: l10n.cancel,
+                        isCancel: true,
+                        narrow: iconSend,
+                      )
+                    else
+                      _actionBtn(
+                        onPressed:
+                            (!_isActive && _phase != _QuickPhase.cancelled)
+                            ? _quickSend
+                            : null,
+                        icon: Icons.send,
+                        label: l10n.send,
+                        narrow: iconSend,
+                      ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(Icons.settings, size: 20),
+                      tooltip: l10n.settings,
+                      visualDensity: VisualDensity.compact,
+                      onPressed: _isActive ? null : _showSettings,
+                    ),
+                    const SizedBox(width: 4),
+                    if (_phase == _QuickPhase.receiving)
+                      _actionBtn(
+                        onPressed: _cancelTransfer,
+                        icon: Icons.close,
+                        label: l10n.cancel,
+                        isCancel: true,
+                        narrow: iconRecv,
+                      )
+                    else
+                      _actionBtn(
+                        onPressed:
+                            (!_isActive && _phase != _QuickPhase.cancelled)
+                            ? _quickReceive
+                            : null,
+                        icon: Icons.download,
+                        label: l10n.receive,
+                        narrow: iconRecv,
+                      ),
+                  ],
+                );
+              },
+            ),
           ], // Column children
         ),
       ),
     );
   }
 
-  Widget _actionBtn({required VoidCallback? onPressed, required IconData icon, required String label, bool isCancel = false, required bool narrow}) {
+  Widget _actionBtn({
+    required VoidCallback? onPressed,
+    required IconData icon,
+    required String label,
+    bool isCancel = false,
+    required bool narrow,
+  }) {
     if (narrow) {
       return IconButton(
         icon: Icon(icon, size: 18),
         tooltip: label,
         visualDensity: VisualDensity.compact,
         style: IconButton.styleFrom(
-          backgroundColor: isCancel ? Colors.red : Theme.of(context).colorScheme.primary,
-          foregroundColor: isCancel ? Colors.white : Theme.of(context).colorScheme.onPrimary,
+          backgroundColor: isCancel
+              ? Colors.red
+              : Theme.of(context).colorScheme.primary,
+          foregroundColor: isCancel
+              ? Colors.white
+              : Theme.of(context).colorScheme.onPrimary,
         ),
         onPressed: onPressed,
       );
@@ -1006,20 +1336,25 @@ class _ClipboardToggleButtonState extends State<_ClipboardToggleButton> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onLongPress: widget.isActive ? null : widget.onLongPress,
-      onTapDown: widget.isActive ? null : (_) => setState(() => _pressed = true),
+      onTapDown: widget.isActive
+          ? null
+          : (_) => setState(() => _pressed = true),
       onTapUp: widget.isActive ? null : (_) => setState(() => _pressed = false),
       onTapCancel: () => setState(() => _pressed = false),
-      onTap: widget.isActive ? null : () {
-        widget.onTap();
-        setState(() => _pressed = false);
-      },
+      onTap: widget.isActive
+          ? null
+          : () {
+              widget.onTap();
+              setState(() => _pressed = false);
+            },
       child: AnimatedScale(
         scale: _pressed ? 0.75 : 1.0,
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeInOut,
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 200),
-          transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+          transitionBuilder: (child, anim) =>
+              ScaleTransition(scale: anim, child: child),
           child: Icon(
             key: ValueKey(widget.isPasteMode),
             widget.isPasteMode ? Icons.content_paste : Icons.content_copy,
@@ -1076,17 +1411,27 @@ class _PickerToggleButtonState extends State<_PickerToggleButton> {
     if (widget.narrow) {
       return GestureDetector(
         onLongPress: onLong,
-        onTapDown: onPress == null ? null : (_) => setState(() => _pressed = true),
-        onTapUp: onPress == null ? null : (_) => setState(() => _pressed = false),
+        onTapDown: onPress == null
+            ? null
+            : (_) => setState(() => _pressed = true),
+        onTapUp: onPress == null
+            ? null
+            : (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
-        onTap: onPress == null ? null : () { onPress(); setState(() => _pressed = false); },
+        onTap: onPress == null
+            ? null
+            : () {
+                onPress();
+                setState(() => _pressed = false);
+              },
         child: AnimatedScale(
           scale: pressed ? 0.75 : 1.0,
           duration: const Duration(milliseconds: 120),
           curve: Curves.easeInOut,
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
-            transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+            transitionBuilder: (child, anim) =>
+                ScaleTransition(scale: anim, child: child),
             child: IconButton(
               key: ValueKey(widget.isFolderPicker),
               icon: Icon(icon, size: 18),
@@ -1109,7 +1454,8 @@ class _PickerToggleButtonState extends State<_PickerToggleButton> {
         curve: Curves.easeInOut,
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 200),
-          transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+          transitionBuilder: (child, anim) =>
+              ScaleTransition(scale: anim, child: child),
           child: TextButton.icon(
             key: ValueKey(widget.isFolderPicker),
             onPressed: onPress,

@@ -4,18 +4,11 @@ class PopScopeWidget extends StatelessWidget {
   final Widget child;
   final bool canPop;
 
-  const PopScopeWidget({
-    super.key,
-    required this.child,
-    this.canPop = true,
-  });
+  const PopScopeWidget({super.key, required this.child, this.canPop = true});
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: canPop,
-      child: child,
-    );
+    return PopScope(canPop: canPop, child: child);
   }
 }
 

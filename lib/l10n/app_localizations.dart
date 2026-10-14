@@ -97,10 +97,17 @@ class AppLocalizations {
     // ── Settings: Transfer Options ──
     'options', 'transferOptions', 'encryptionCurve', 'hashAlgorithm',
     'enableCompression', 'overwrite', 'zipFolder', 'renameOnCollision',
-    'respectGitIgnore', 'disableLocalRelay', 'excludePatterns', 'excludePatternsHint',
+    'respectGitIgnore',
+    'disableLocalRelay',
+    'excludePatterns',
+    'excludePatternsHint',
     'transportMode', 'transportAuto', 'transportDerp', 'transportRelay',
     'transportLocalConflict',
-    'throttleUpload', 'throttleUploadHint', 'socks5Proxy', 'httpProxy', 'proxyHint',
+    'throttleUpload',
+    'throttleUploadHint',
+    'socks5Proxy',
+    'httpProxy',
+    'proxyHint',
 
     // ── Settings: Relay ──
     'relayType', 'relaySettings', 'relayAddress', 'relayPassword',
@@ -212,7 +219,9 @@ class AppLocalizations {
   String localizeCrocError(String error, {bool isSend = false}) {
     if (LogBuffer.debugMode) return error;
     final lower = error.toLowerCase();
-    if (lower.contains('room (secure channel) not ready')) return errorRoomNotReady;
+    if (lower.contains('room (secure channel) not ready')) {
+      return errorRoomNotReady;
+    }
     if (lower.contains('bad password')) return errorRelayPassword;
     if (lower.contains('i/o timeout')) return errorCouldNotConnect;
     return isSend ? sendFailed : receiveFailed;
@@ -358,6 +367,7 @@ class AppLocalizations {
     final key = enable ? 'debugTapEnable' : 'debugTapDisable';
     return _(key).replaceAll('{count}', '$remaining');
   }
+
   String get autoClearLog => _('autoClearLog');
   String get autoClearLogDesc => _('autoClearLogDesc');
   String get noLogs => _('noLogs');
@@ -428,10 +438,11 @@ class _AppLocalizationsDelegate
   static final Map<String, Map<String, String>> _cache = {};
 
   @override
-  bool isSupported(Locale locale) =>
-      AppLocalizations.supportedLocales.any((l) =>
+  bool isSupported(Locale locale) => AppLocalizations.supportedLocales.any(
+    (l) =>
         l.languageCode == locale.languageCode &&
-        (l.scriptCode == null || l.scriptCode == locale.scriptCode));
+        (l.scriptCode == null || l.scriptCode == locale.scriptCode),
+  );
 
   @override
   Future<AppLocalizations> load(Locale locale) async {

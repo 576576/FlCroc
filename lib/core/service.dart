@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/core/interface.dart';
-import 'package:fl_croc/core/lib.dart';
 import 'package:fl_croc/models/models.dart';
 import 'package:path/path.dart' as p;
 
@@ -47,10 +46,14 @@ class CoreService extends CoreInterface {
       );
       if (result.exitCode == 0) {
         _isAvailable = true;
-        commonPrint('CoreService: croc ready — ${result.stdout.toString().trim()}');
+        commonPrint(
+          'CoreService: croc ready — ${result.stdout.toString().trim()}',
+        );
         return true;
       }
-      commonPrint('CoreService: croc --version failed (exit ${result.exitCode})');
+      commonPrint(
+        'CoreService: croc --version failed (exit ${result.exitCode})',
+      );
     } catch (e) {
       commonPrint('CoreService: croc launch failed — $e');
     }
@@ -89,7 +92,9 @@ class CoreService extends CoreInterface {
     }
 
     // No system PATH search — only use bundled croc
-    commonPrint('CoreService: croc binary not found in bundle (not searching PATH)');
+    commonPrint(
+      'CoreService: croc binary not found in bundle (not searching PATH)',
+    );
     return null;
   }
 
@@ -113,7 +118,9 @@ class CoreService extends CoreInterface {
       }
       if (Platform.isLinux) {
         final home = Platform.environment['HOME'] ?? '';
-        final xdg = Platform.environment['XDG_DATA_HOME'] ?? p.join(home, '.local', 'share');
+        final xdg =
+            Platform.environment['XDG_DATA_HOME'] ??
+            p.join(home, '.local', 'share');
         return p.join(xdg, 'flcroc');
       }
       if (Platform.isMacOS) {
@@ -158,7 +165,8 @@ class CoreService extends CoreInterface {
     if (_crocPath == null || !_isAvailable) {
       yield const TransferProgress(
         status: TransferProgressStatus.failed,
-        error: 'croc binary not available. Run `flutter_croc_setup` to download.',
+        error:
+            'croc binary not available. Run `flutter_croc_setup` to download.',
       );
       return;
     }
@@ -175,14 +183,15 @@ class CoreService extends CoreInterface {
       final args = <String>[
         'send',
         if (options.sendingText && options.textContent.isNotEmpty) ...[
-          '--text', options.textContent,
+          '--text',
+          options.textContent,
         ] else if (!options.sendingText)
           ...options.filePaths,
-        if (code != null && code.isNotEmpty) ...[
-          '--code', code,
-        ],
-        '--curve', options.curve,
-        '--hash', options.hashAlgorithm,
+        if (code != null && code.isNotEmpty) ...['--code', code],
+        '--curve',
+        options.curve,
+        '--hash',
+        options.hashAlgorithm,
         if (options.noCompress) '--no-compress',
         if (options.overwrite) '--overwrite',
         if (options.zipFolder) '--zip',
@@ -191,16 +200,22 @@ class CoreService extends CoreInterface {
         if (options.disableLocal) '--no-local',
         if (options.disableClipboard) '--disable-clipboard',
         if (options.transport.isNotEmpty && options.transport != 'auto')
-          '--transport', options.transport,
-        if (options.throttleUpload.isNotEmpty)
-          '--throttleUpload', options.throttleUpload,
-        if (options.socks5Proxy.isNotEmpty) '--socks5', options.socks5Proxy,
-        if (options.httpProxy.isNotEmpty) '--connect', options.httpProxy,
-        if (options.exclude.isNotEmpty) '--exclude', options.exclude.join(','),
+          '--transport',
+        options.transport,
+        if (options.throttleUpload.isNotEmpty) '--throttleUpload',
+        options.throttleUpload,
+        if (options.socks5Proxy.isNotEmpty) '--socks5',
+        options.socks5Proxy,
+        if (options.httpProxy.isNotEmpty) '--connect',
+        options.httpProxy,
+        if (options.exclude.isNotEmpty) '--exclude',
+        options.exclude.join(','),
         if (options.relayAddress != null && options.relayAddress!.isNotEmpty)
-          '--relay', options.relayAddress!,
+          '--relay',
+        options.relayAddress!,
         if (options.relayPassword != null && options.relayPassword!.isNotEmpty)
-          '--pass', options.relayPassword!,
+          '--pass',
+        options.relayPassword!,
       ];
 
       commonPrint('croc send args: $args');
@@ -214,9 +229,10 @@ class CoreService extends CoreInterface {
       final process = await Process.start(_crocPath!, args, runInShell: false);
       _process = process;
 
-      await for (final line in process.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())) {
+      await for (final line
+          in process.stdout
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())) {
         final progress = _parseOutput(line, transferId);
         if (progress != null) yield progress;
       }
@@ -230,9 +246,7 @@ class CoreService extends CoreInterface {
           status: TransferProgressStatus.completed,
         );
       } else {
-        final stderr = await process.stderr
-            .transform(utf8.decoder)
-            .join();
+        final stderr = await process.stderr.transform(utf8.decoder).join();
         yield TransferProgress(
           transferId: transferId,
           status: TransferProgressStatus.failed,
@@ -254,7 +268,8 @@ class CoreService extends CoreInterface {
     if (_crocPath == null || !_isAvailable) {
       yield const TransferProgress(
         status: TransferProgressStatus.failed,
-        error: 'croc binary not available. Run `flutter_croc_setup` to download.',
+        error:
+            'croc binary not available. Run `flutter_croc_setup` to download.',
       );
       return;
     }
@@ -271,13 +286,18 @@ class CoreService extends CoreInterface {
         if (options.overwrite) '--overwrite',
         if (options.rename) '--rename',
         if (options.onlyLocal) '--local',
-        if (options.outputPath.isNotEmpty) '--out', options.outputPath,
-        if (options.socks5Proxy.isNotEmpty) '--socks5', options.socks5Proxy,
-        if (options.httpProxy.isNotEmpty) '--connect', options.httpProxy,
+        if (options.outputPath.isNotEmpty) '--out',
+        options.outputPath,
+        if (options.socks5Proxy.isNotEmpty) '--socks5',
+        options.socks5Proxy,
+        if (options.httpProxy.isNotEmpty) '--connect',
+        options.httpProxy,
         if (options.relayAddress != null && options.relayAddress!.isNotEmpty)
-          '--relay', options.relayAddress!,
+          '--relay',
+        options.relayAddress!,
         if (options.relayPassword != null && options.relayPassword!.isNotEmpty)
-          '--pass', options.relayPassword!,
+          '--pass',
+        options.relayPassword!,
         options.codePhrase,
       ];
 
@@ -291,9 +311,10 @@ class CoreService extends CoreInterface {
       final process = await Process.start(_crocPath!, args, runInShell: false);
       _process = process;
 
-      await for (final line in process.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())) {
+      await for (final line
+          in process.stdout
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())) {
         final progress = _parseOutput(line, transferId);
         if (progress != null) yield progress;
       }
@@ -307,9 +328,7 @@ class CoreService extends CoreInterface {
           status: TransferProgressStatus.completed,
         );
       } else {
-        final stderr = await process.stderr
-            .transform(utf8.decoder)
-            .join();
+        final stderr = await process.stderr.transform(utf8.decoder).join();
         yield TransferProgress(
           transferId: transferId,
           status: TransferProgressStatus.failed,

@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 /// A status chip with a capsule-shaped progress border.
@@ -71,12 +69,9 @@ class CapsuleProgressChip extends StatelessWidget {
       tween: Tween<double>(begin: 0.0, end: progress.clamp(0.0, 1.0)),
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
-      builder: (_, value, __) {
+      builder: (_, value, _) {
         return CustomPaint(
-          painter: _CapsuleProgressPainter(
-            progress: value,
-            color: color,
-          ),
+          painter: _CapsuleProgressPainter(progress: value, color: color),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             margin: const EdgeInsets.all(2),

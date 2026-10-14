@@ -6,8 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-final appStateProvider =
-    StateNotifierProvider<AppStateNotifier, AppState>((ref) {
+final appStateProvider = StateNotifierProvider<AppStateNotifier, AppState>((
+  ref,
+) {
   return AppStateNotifier();
 });
 
@@ -16,10 +17,7 @@ class AppStateNotifier extends StateNotifier<AppState> {
   static const _maxTransfers = 100;
 
   AppStateNotifier()
-      : super(AppState(
-          viewSize: Size.zero,
-          brightness: Brightness.light,
-        )) {
+    : super(AppState(viewSize: Size.zero, brightness: Brightness.light)) {
     _loadTransfers();
   }
 
@@ -29,7 +27,11 @@ class AppStateNotifier extends StateNotifier<AppState> {
       final data = prefs.getStringList(_transfersKey);
       if (data != null && data.isNotEmpty) {
         final transfers = data
-            .map((e) => TransferRecord.fromJson(jsonDecode(e) as Map<String, dynamic>))
+            .map(
+              (e) => TransferRecord.fromJson(
+                jsonDecode(e) as Map<String, dynamic>,
+              ),
+            )
             .toList();
         state = state.copyWith(transfers: transfers);
       }
@@ -70,7 +72,9 @@ class AppStateNotifier extends StateNotifier<AppState> {
 
   void updateTransfer(TransferRecord transfer) {
     state = state.copyWith(
-      transfers: state.transfers.map((t) => t.id == transfer.id ? transfer : t).toList(),
+      transfers: state.transfers
+          .map((t) => t.id == transfer.id ? transfer : t)
+          .toList(),
     );
     _saveTransfers();
   }

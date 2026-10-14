@@ -36,7 +36,9 @@ class _FileDropTargetState extends State<FileDropTarget> {
 
     return DropTarget(
       onDragDone: (detail) {
-        commonPrint('DropTarget onDragDone: ${detail.files.length} files, paths=${detail.files.map((f) => f.path).toList()}');
+        commonPrint(
+          'DropTarget onDragDone: ${detail.files.length} files, paths=${detail.files.map((f) => f.path).toList()}',
+        );
         final files = <File>[];
         for (final f in detail.files) {
           final file = File(f.path);

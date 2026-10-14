@@ -27,11 +27,11 @@ class SendView extends ConsumerStatefulWidget {
   ConsumerState<SendView> createState() => _SendViewState();
 }
 
-class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMixin {
+class _SendViewState extends ConsumerState<SendView>
+    with TickerProviderStateMixin {
   final List<PlatformFile> _selectedFiles = [];
   bool _isTextMode = false;
   bool _dragOverFile = false;
-  bool _dragOverText = false;
   bool _isPhrasePasteMode = true; // phrase field: default paste
   PhraseMode _phraseMode = PhraseMode.defaultMode;
   SendPhase _phase = SendPhase.idle;
@@ -111,10 +111,14 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    _shakeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
-    _shakeAnim = Tween<double>(begin: 0, end: 2 * pi * 3).animate(
-      CurvedAnimation(parent: _shakeCtrl, curve: Curves.elasticIn),
+    _shakeCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
     );
+    _shakeAnim = Tween<double>(
+      begin: 0,
+      end: 2 * pi * 3,
+    ).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.elasticIn));
     _loadSendPrefs();
     _textController.addListener(_enforceTextLimit);
     if (_savedCodePhrase.isNotEmpty) {
@@ -132,14 +136,19 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       final f = File(p);
       if (!f.existsSync()) continue;
       if (_selectedFiles.any((s) => s.path == p)) continue;
-      newFiles.add(PlatformFile(
-        name: p.split(Platform.pathSeparator).last,
-        path: p,
-        size: f.lengthSync(),
-      ));
+      newFiles.add(
+        PlatformFile(
+          name: p.split(Platform.pathSeparator).last,
+          path: p,
+          size: f.lengthSync(),
+        ),
+      );
     }
     if (newFiles.isNotEmpty) {
-      setState(() { _selectedFiles.addAll(newFiles); _isTextMode = false; });
+      setState(() {
+        _selectedFiles.addAll(newFiles);
+        _isTextMode = false;
+      });
     }
     ref.read(pendingSharedFilesProvider.notifier).state = [];
   }
@@ -219,9 +228,13 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
   void _removeFile(int index) => setState(() => _selectedFiles.removeAt(index));
   void _clearFiles() {
-    setState(() { _selectedFiles.clear(); _selectedFolder = null; });
+    setState(() {
+      _selectedFiles.clear();
+      _selectedFolder = null;
+    });
     if (mounted) context.showSnackBar(context.appLocalizations.cleared);
   }
+
   void _clearText() {
     _textController.clear();
     if (mounted) context.showSnackBar(context.appLocalizations.cleared);
@@ -245,7 +258,16 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   Future<void> _pickTextFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['txt', 'md', 'json', 'xml', 'csv', 'log', 'yaml', 'yml'],
+      allowedExtensions: [
+        'txt',
+        'md',
+        'json',
+        'xml',
+        'csv',
+        'log',
+        'yaml',
+        'yml',
+      ],
     );
     if (result != null && result.files.isNotEmpty) {
       final file = result.files.first;
@@ -277,8 +299,33 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   // ── Code phrase ──
 
   void _generateCode() {
-    const adj = ['swift','bold','calm','keen','warm','cool','fast','bright','sharp','pure','free','wild'];
-    const nouns = ['falcon','jaguar','python','raven','otter','eagle','tiger','whale','hawk','wolf','bear'];
+    const adj = [
+      'swift',
+      'bold',
+      'calm',
+      'keen',
+      'warm',
+      'cool',
+      'fast',
+      'bright',
+      'sharp',
+      'pure',
+      'free',
+      'wild',
+    ];
+    const nouns = [
+      'falcon',
+      'jaguar',
+      'python',
+      'raven',
+      'otter',
+      'eagle',
+      'tiger',
+      'whale',
+      'hawk',
+      'wolf',
+      'bear',
+    ];
     final rng = Random();
     final a = adj[rng.nextInt(adj.length)];
     final n = nouns[rng.nextInt(nouns.length)];
@@ -320,19 +367,25 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: 200, height: 200,
-                child: _buildQR(code, 200),
-              ),
+              SizedBox(width: 200, height: 200, child: _buildQR(code, 200)),
               const SizedBox(height: 12),
-              Text(code, style: const TextStyle(fontFamily: 'monospace', fontSize: 14, fontWeight: FontWeight.w600)),
+              Text(
+                code,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
           actions: [
             FilledButton(
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: code));
-                if (mounted) context.showSnackBar(context.appLocalizations.codeCopied);
+                if (mounted) {
+                  context.showSnackBar(context.appLocalizations.codeCopied);
+                }
               },
               child: Text(l10n.copy),
             ),
@@ -452,8 +505,18 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     final files = isText
         ? [FileItem(name: textContent, path: '', size: textContent.length)]
         : _selectedFolder != null
-            ? [FileItem(name: _selectedFolder!.split(Platform.pathSeparator).last, path: _selectedFolder!, size: 0)]
-            : _selectedFiles.map((f) => FileItem(name: f.name, path: f.path ?? '', size: f.size)).toList();
+        ? [
+            FileItem(
+              name: _selectedFolder!.split(Platform.pathSeparator).last,
+              path: _selectedFolder!,
+              size: 0,
+            ),
+          ]
+        : _selectedFiles
+              .map(
+                (f) => FileItem(name: f.name, path: f.path ?? '', size: f.size),
+              )
+              .toList();
     final totalSize = isText
         ? textContent.length
         : files.fold<int>(0, (a, f) => a + f.size);
@@ -462,7 +525,8 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       id: transferId,
       direction: TransferDirection.sent,
       status: TransferStatus.pending,
-      files: files, totalSize: totalSize,
+      files: files,
+      totalSize: totalSize,
       startTime: DateTime.now(),
       codePhrase: code.isNotEmpty ? code : '(croc)',
     );
@@ -494,7 +558,9 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
             try {
               final bytes = await File(p).readAsBytes();
               tempDirPath ??= (await getTemporaryDirectory()).path;
-              final tempFile = File('$tempDirPath${Platform.pathSeparator}${f.name}');
+              final tempFile = File(
+                '$tempDirPath${Platform.pathSeparator}${f.name}',
+              );
               await tempFile.writeAsBytes(bytes);
               resolvedPaths.add(tempFile.path);
             } catch (_) {
@@ -513,10 +579,14 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
     final options = SendOptions(
       filePaths: isText ? [] : resolvedPaths,
-      codePhrase: code.isEmpty ? null : code, sendingText: isText, textContent: isText ? textContent : '',
+      codePhrase: code.isEmpty ? null : code,
+      sendingText: isText,
+      textContent: isText ? textContent : '',
       tempDir: tempDirPath ?? '',
-      curve: _sendConfig.curve, hashAlgorithm: _sendConfig.hashAlgorithm,
-      noCompress: _sendConfig.noCompress, overwrite: _sendConfig.overwrite,
+      curve: _sendConfig.curve,
+      hashAlgorithm: _sendConfig.hashAlgorithm,
+      noCompress: _sendConfig.noCompress,
+      overwrite: _sendConfig.overwrite,
       zipFolder: _sendConfig.zipFolder,
       // These three were declared in SendConfig but never reached the bridge,
       // so the toggles below silently did nothing.
@@ -540,86 +610,125 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
       _resetProgress();
     });
 
-    _sendSubscription = coreController.sendFiles(options).listen(
-      (progress) {
-        if (!mounted) return;
-        _activeTransferId = progress.transferId;
-        // Capture code phrase generated by croc
-        if (progress.codePhrase != null && progress.codePhrase!.isNotEmpty) {
-          _codeController.text = progress.codePhrase!;
-          appController.updateTransferRecord(record.copyWith(codePhrase: progress.codePhrase));
-          if (_autoCopyPhrase) _copyPhrase();
-          setState(() {}); // rebuild to show QR code
-        }
-        switch (progress.status) {
-          case TransferProgressStatus.completed:
-            appController.setSpeed(record.id, 0);
-            setState(() {
-              _progress = 1;
-              _completedFiles = _totalFiles;
-              _speed = 0;
-              _phase = SendPhase.success;
-            });
-            appController.updateTransferRecord(record.copyWith(status: TransferStatus.completed, transferredSize: totalSize, endTime: DateTime.now()));
-            _sendSubscription = null;
-            break;
-          case TransferProgressStatus.failed:
-            appController.setSpeed(record.id, 0);
-            setState(() => _phase = SendPhase.fail);
-            appController.updateTransferRecord(record.copyWith(status: TransferStatus.failed, endTime: DateTime.now()));
-            if (progress.error != null && mounted) {
-              commonPrint('Send failed: ${progress.error}');
-              context.showSnackBar(l10n.localizeCrocError(progress.error!, isSend: true));
-            }
-            _sendSubscription = null;
-            break;
-          case TransferProgressStatus.cancelled:
-            appController.setSpeed(record.id, 0);
-            setState(() => _phase = SendPhase.cancelled);
-            appController.updateTransferRecord(record.copyWith(status: TransferStatus.cancelled, endTime: DateTime.now()));
-            _sendSubscription = null;
-            break;
-          case TransferProgressStatus.initializing:
-          case TransferProgressStatus.connecting:
-            break;
-          case TransferProgressStatus.transferring:
-            // Real progress from the bridge: bytes, current file and speed.
-            setState(() {
-              if (progress.totalSize > 0) {
-                _progress = (progress.transferredSize / progress.totalSize).clamp(0.0, 1.0);
-              }
-              if (progress.totalFiles > 0) _totalFiles = progress.totalFiles;
-              _completedFiles = progress.completedFiles;
-              if (progress.currentFile.isNotEmpty) _currentFile = progress.currentFile;
-              if (progress.speed > 0) _speed = progress.speed;
-            });
-            appController.setSpeed(record.id, progress.speed);
-            // Persisting the record writes prefs, so throttle it while the
-            // bridge reports every 200ms.
-            if (_shouldPersistRecord()) {
+    _sendSubscription = coreController
+        .sendFiles(options)
+        .listen(
+          (progress) {
+            if (!mounted) return;
+            _activeTransferId = progress.transferId;
+            // Capture code phrase generated by croc
+            if (progress.codePhrase != null &&
+                progress.codePhrase!.isNotEmpty) {
+              _codeController.text = progress.codePhrase!;
               appController.updateTransferRecord(
-                record.copyWith(
-                  status: TransferStatus.transferring,
-                  transferredSize: progress.transferredSize,
-                ),
+                record.copyWith(codePhrase: progress.codePhrase),
               );
+              if (_autoCopyPhrase) _copyPhrase();
+              setState(() {}); // rebuild to show QR code
             }
-            break;
-        }
-      },
-      onError: (e) {
-        if (!mounted) return;
-        setState(() => _phase = SendPhase.fail);
-        appController.updateTransferRecord(record.copyWith(status: TransferStatus.failed, endTime: DateTime.now()));
-        context.showSnackBar(l10n.localizeCrocError(e.toString(), isSend: true));
-        commonPrint('Send error: $e');
-        _sendSubscription = null;
-      },
-      onDone: () {
-        if (mounted && _phase != SendPhase.success && _phase != SendPhase.cancelled) setState(() => _phase = SendPhase.fail);
-        _sendSubscription = null;
-      },
-    );
+            switch (progress.status) {
+              case TransferProgressStatus.completed:
+                appController.setSpeed(record.id, 0);
+                setState(() {
+                  _progress = 1;
+                  _completedFiles = _totalFiles;
+                  _speed = 0;
+                  _phase = SendPhase.success;
+                });
+                appController.updateTransferRecord(
+                  record.copyWith(
+                    status: TransferStatus.completed,
+                    transferredSize: totalSize,
+                    endTime: DateTime.now(),
+                  ),
+                );
+                _sendSubscription = null;
+                break;
+              case TransferProgressStatus.failed:
+                appController.setSpeed(record.id, 0);
+                setState(() => _phase = SendPhase.fail);
+                appController.updateTransferRecord(
+                  record.copyWith(
+                    status: TransferStatus.failed,
+                    endTime: DateTime.now(),
+                  ),
+                );
+                if (progress.error != null && mounted) {
+                  commonPrint('Send failed: ${progress.error}');
+                  context.showSnackBar(
+                    l10n.localizeCrocError(progress.error!, isSend: true),
+                  );
+                }
+                _sendSubscription = null;
+                break;
+              case TransferProgressStatus.cancelled:
+                appController.setSpeed(record.id, 0);
+                setState(() => _phase = SendPhase.cancelled);
+                appController.updateTransferRecord(
+                  record.copyWith(
+                    status: TransferStatus.cancelled,
+                    endTime: DateTime.now(),
+                  ),
+                );
+                _sendSubscription = null;
+                break;
+              case TransferProgressStatus.initializing:
+              case TransferProgressStatus.connecting:
+                break;
+              case TransferProgressStatus.transferring:
+                // Real progress from the bridge: bytes, current file and speed.
+                setState(() {
+                  if (progress.totalSize > 0) {
+                    _progress = (progress.transferredSize / progress.totalSize)
+                        .clamp(0.0, 1.0);
+                  }
+                  if (progress.totalFiles > 0) {
+                    _totalFiles = progress.totalFiles;
+                  }
+                  _completedFiles = progress.completedFiles;
+                  if (progress.currentFile.isNotEmpty) {
+                    _currentFile = progress.currentFile;
+                  }
+                  if (progress.speed > 0) _speed = progress.speed;
+                });
+                appController.setSpeed(record.id, progress.speed);
+                // Persisting the record writes prefs, so throttle it while the
+                // bridge reports every 200ms.
+                if (_shouldPersistRecord()) {
+                  appController.updateTransferRecord(
+                    record.copyWith(
+                      status: TransferStatus.transferring,
+                      transferredSize: progress.transferredSize,
+                    ),
+                  );
+                }
+                break;
+            }
+          },
+          onError: (e) {
+            if (!mounted) return;
+            setState(() => _phase = SendPhase.fail);
+            appController.updateTransferRecord(
+              record.copyWith(
+                status: TransferStatus.failed,
+                endTime: DateTime.now(),
+              ),
+            );
+            context.showSnackBar(
+              l10n.localizeCrocError(e.toString(), isSend: true),
+            );
+            commonPrint('Send error: $e');
+            _sendSubscription = null;
+          },
+          onDone: () {
+            if (mounted &&
+                _phase != SendPhase.success &&
+                _phase != SendPhase.cancelled) {
+              setState(() => _phase = SendPhase.fail);
+            }
+            _sendSubscription = null;
+          },
+        );
   }
 
   Future<void> _cancelSend() async {
@@ -654,13 +763,17 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   // ── Build ──
 
   Widget _buildQR(String data, double size) {
+    final fg = _whiteBgQR
+        ? Colors.black
+        : (Theme.of(context).brightness == Brightness.dark
+              ? Colors.white
+              : Colors.black);
     final qr = QrImageView(
       data: data,
       version: QrVersions.auto,
       size: size,
-      foregroundColor: _whiteBgQR
-          ? Colors.black
-          : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
+      eyeStyle: QrEyeStyle(color: fg),
+      dataModuleStyle: QrDataModuleStyle(color: fg),
     );
     if (!_whiteBgQR) return qr;
     return Container(
@@ -679,7 +792,9 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     // Watch for files shared from other apps (warm start)
     ref.listen<List<String>>(pendingSharedFilesProvider, (prev, next) {
       if (next.isNotEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _pickUpSharedFiles());
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _pickUpSharedFiles(),
+        );
       }
     });
 
@@ -692,23 +807,44 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
             controller: _codeController,
             readOnly: _phraseMode != PhraseMode.never,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 1),
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1,
+            ),
             decoration: InputDecoration(
               hintText: _phraseHint(l10n),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 0,
+              ),
               isDense: true,
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(width: 28, height: 28, child: IconButton(icon: const Icon(Icons.qr_code, size: 16), onPressed: _showQRCode, padding: EdgeInsets.zero, tooltip: l10n.generateQRCode)),
                   SizedBox(
-                    width: 28, height: 28,
+                    width: 28,
+                    height: 28,
+                    child: IconButton(
+                      icon: const Icon(Icons.qr_code, size: 16),
+                      onPressed: _showQRCode,
+                      padding: EdgeInsets.zero,
+                      tooltip: l10n.generateQRCode,
+                    ),
+                  ),
+                  SizedBox(
+                    width: 28,
+                    height: 28,
                     child: _ClipboardToggleButton(
                       isPasteMode: _isPhrasePasteMode,
                       isActive: false,
                       onTap: _isPhrasePasteMode ? _pastePhrase : _copyPhrase,
-                      onLongPress: () => setState(() => _isPhrasePasteMode = !_isPhrasePasteMode),
+                      onLongPress: () => setState(
+                        () => _isPhrasePasteMode = !_isPhrasePasteMode,
+                      ),
                     ),
                   ),
                 ],
@@ -720,11 +856,12 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
           if (_phase != SendPhase.idle) _buildStatusChip(l10n),
           const SizedBox(width: 8),
           FilledButtonWidget(
-            onPressed: _phase == SendPhase.sending || _phase == SendPhase.pending
+            onPressed:
+                _phase == SendPhase.sending || _phase == SendPhase.pending
                 ? _cancelSend
                 : _phase == SendPhase.cancelled
-                    ? null
-                    : _startSend,
+                ? null
+                : _startSend,
             text: _phase == SendPhase.sending || _phase == SendPhase.pending
                 ? l10n.cancel
                 : l10n.send,
@@ -742,105 +879,174 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: SegmentedButton<bool>(
               segments: [
-                ButtonSegment(value: false, label: Text(l10n.file), icon: const Icon(Icons.insert_drive_file)),
-                ButtonSegment(value: true, label: Text(l10n.text), icon: const Icon(Icons.text_snippet)),
+                ButtonSegment(
+                  value: false,
+                  label: Text(l10n.file),
+                  icon: const Icon(Icons.insert_drive_file),
+                ),
+                ButtonSegment(
+                  value: true,
+                  label: Text(l10n.text),
+                  icon: const Icon(Icons.text_snippet),
+                ),
               ],
               selected: {_isTextMode},
-              onSelectionChanged: (v) => setState(() { _isTextMode = v.first; _saveSendPrefs(); }),
+              onSelectionChanged: (v) => setState(() {
+                _isTextMode = v.first;
+                _saveSendPrefs();
+              }),
             ),
           ),
 
           if (_isTextMode) ...[
-            _shakeWrap(1, _buildSection(l10n.text, Icons.text_snippet, [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                child: FileDropTarget(
-                  enabled: isDesktop,
-                  onFilesDropped: _onTextDrop,
-                  onHoverChanged: (over) => setState(() => _dragOverText = over),
-                  child: TextField(
-                    controller: _textController, maxLines: 5,
-                    decoration: InputDecoration(
-                      hintText: l10n.textHint,
-                      border: InputBorder.none,
-                      suffixIcon: _ClipboardToggleButton(
-                        isPasteMode: _isPasteMode,
-                        isActive: false,
-                        onTap: _isPasteMode ? _pasteText : _copyText,
-                        onLongPress: () => setState(() => _isPasteMode = !_isPasteMode),
+            _shakeWrap(
+              1,
+              _buildSection(l10n.text, Icons.text_snippet, [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: FileDropTarget(
+                    enabled: isDesktop,
+                    onFilesDropped: _onTextDrop,
+                    child: TextField(
+                      controller: _textController,
+                      maxLines: 5,
+                      decoration: InputDecoration(
+                        hintText: l10n.textHint,
+                        border: InputBorder.none,
+                        suffixIcon: _ClipboardToggleButton(
+                          isPasteMode: _isPasteMode,
+                          isActive: false,
+                          onTap: _isPasteMode ? _pasteText : _copyText,
+                          onLongPress: () =>
+                              setState(() => _isPasteMode = !_isPasteMode),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
-                child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  TextButton.icon(
-                    onPressed: _pickTextFile,
-                    icon: const Icon(Icons.add, size: 16),
-                    label: Text(l10n.selectTextFile),
-                  ),
-                  TextButton.icon(
-                    onPressed: _clearText,
-                    icon: const Icon(Icons.clear_all, size: 16),
-                    label: Text(l10n.clear),
-                  ),
-                ]),
-              ),
-            ])),
-          ] else ...[
-            _shakeWrap(0, _buildSection(l10n.file, Icons.insert_drive_file, [
-              FileDropTarget(
-                enabled: isDesktop,
-                onFilesDropped: _onFileDrop,
-                onHoverChanged: (over) => setState(() => _dragOverFile = over),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  if (_selectedFolder != null)
-                    ListTile(
-                      leading: const Icon(Icons.folder, color: Colors.amber),
-                      title: Text(_selectedFolder!.split(Platform.pathSeparator).last),
-                      subtitle: Text(_selectedFolder!, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textTheme.bodySmall),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.close, size: 18),
-                        onPressed: () => setState(() => _selectedFolder = null),
-                        visualDensity: VisualDensity.compact,
+                Padding(
+                  padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton.icon(
+                        onPressed: _pickTextFile,
+                        icon: const Icon(Icons.add, size: 16),
+                        label: Text(l10n.selectTextFile),
                       ),
-                    )
-                  else if (_selectedFiles.isEmpty)
-                    NullStatusWidget(
-                      message: _dragOverFile ? l10n.dropToAdd : l10n.noFiles,
-                      icon: _dragOverFile ? Icons.cloud_upload : Icons.cloud_upload_outlined,
-                    )
-                  else
-                    ...List.generate(_selectedFiles.length, (i) {
-                      final f = _selectedFiles[i];
-                      return ListTile(
-                        leading: const Icon(Icons.insert_drive_file), title: Text(f.name),
-                        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Text(f.size.fileSize, style: context.textTheme.bodySmall), const SizedBox(width: 4),
-                          IconButton(icon: const Icon(Icons.close, size: 18), onPressed: () => _removeFile(i), visualDensity: VisualDensity.compact),
-                        ]),
-                      );
-                    }),
-                ]),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
-                child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  Row(mainAxisSize: MainAxisSize.min, children: [
-                    TextButton.icon(onPressed: _pickFiles, icon: const Icon(Icons.add, size: 16), label: Text(l10n.selectFiles)),
-                    const SizedBox(width: 8),
-                    TextButton.icon(onPressed: _pickFolder, icon: const Icon(Icons.create_new_folder, size: 16), label: Text(l10n.selectFolder)),
-                  ]),
-                  TextButton.icon(
-                    onPressed: _selectedFiles.isNotEmpty || _selectedFolder != null ? _clearFiles : null,
-                    icon: const Icon(Icons.clear_all, size: 16),
-                    label: Text(l10n.clear),
+                      TextButton.icon(
+                        onPressed: _clearText,
+                        icon: const Icon(Icons.clear_all, size: 16),
+                        label: Text(l10n.clear),
+                      ),
+                    ],
                   ),
-                ]),
-              ),
-            ])),
+                ),
+              ]),
+            ),
+          ] else ...[
+            _shakeWrap(
+              0,
+              _buildSection(l10n.file, Icons.insert_drive_file, [
+                FileDropTarget(
+                  enabled: isDesktop,
+                  onFilesDropped: _onFileDrop,
+                  onHoverChanged: (over) =>
+                      setState(() => _dragOverFile = over),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_selectedFolder != null)
+                        ListTile(
+                          leading: const Icon(
+                            Icons.folder,
+                            color: Colors.amber,
+                          ),
+                          title: Text(
+                            _selectedFolder!.split(Platform.pathSeparator).last,
+                          ),
+                          subtitle: Text(
+                            _selectedFolder!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.textTheme.bodySmall,
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            onPressed: () =>
+                                setState(() => _selectedFolder = null),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        )
+                      else if (_selectedFiles.isEmpty)
+                        NullStatusWidget(
+                          message: _dragOverFile
+                              ? l10n.dropToAdd
+                              : l10n.noFiles,
+                          icon: _dragOverFile
+                              ? Icons.cloud_upload
+                              : Icons.cloud_upload_outlined,
+                        )
+                      else
+                        ...List.generate(_selectedFiles.length, (i) {
+                          final f = _selectedFiles[i];
+                          return ListTile(
+                            leading: const Icon(Icons.insert_drive_file),
+                            title: Text(f.name),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  f.size.fileSize,
+                                  style: context.textTheme.bodySmall,
+                                ),
+                                const SizedBox(width: 4),
+                                IconButton(
+                                  icon: const Icon(Icons.close, size: 18),
+                                  onPressed: () => _removeFile(i),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextButton.icon(
+                            onPressed: _pickFiles,
+                            icon: const Icon(Icons.add, size: 16),
+                            label: Text(l10n.selectFiles),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton.icon(
+                            onPressed: _pickFolder,
+                            icon: const Icon(Icons.create_new_folder, size: 16),
+                            label: Text(l10n.selectFolder),
+                          ),
+                        ],
+                      ),
+                      TextButton.icon(
+                        onPressed:
+                            _selectedFiles.isNotEmpty || _selectedFolder != null
+                            ? _clearFiles
+                            : null,
+                        icon: const Icon(Icons.clear_all, size: 16),
+                        label: Text(l10n.clear),
+                      ),
+                    ],
+                  ),
+                ),
+              ]),
+            ),
           ],
 
           // Transfer options — collapsible (collapsed while sending)
@@ -857,49 +1063,120 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                 title: Text(l10n.phraseMode),
                 subtitle: Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Wrap(spacing: 8, runSpacing: 4, children: [
-                    _phraseChip(l10n.defaultLabel, PhraseMode.defaultMode),
-                    _phraseChip(l10n.phraseModeOn, PhraseMode.on),
-                    _phraseChip(l10n.custom, PhraseMode.never),
-                    if (_phraseMode == PhraseMode.never)
-                      SizedBox(
-                        height: 32,
-                        child: IconButton(
-                          icon: const Icon(Icons.refresh, size: 16),
-                          tooltip: l10n.generate,
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          onPressed: _generateCode,
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      _phraseChip(l10n.defaultLabel, PhraseMode.defaultMode),
+                      _phraseChip(l10n.phraseModeOn, PhraseMode.on),
+                      _phraseChip(l10n.custom, PhraseMode.never),
+                      if (_phraseMode == PhraseMode.never)
+                        SizedBox(
+                          height: 32,
+                          child: IconButton(
+                            icon: const Icon(Icons.refresh, size: 16),
+                            tooltip: l10n.generate,
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            onPressed: _generateCode,
+                          ),
                         ),
-                      ),
-                  ]),
+                    ],
+                  ),
                 ),
               ),
               ListItem.switchItem(
                 leading: const Icon(Icons.copy, size: 20),
                 title: Text(l10n.autoCopyPhrase),
-                delegate: SwitchDelegate(value: _autoCopyPhrase, onChanged: (v) => setState(() { _autoCopyPhrase = v; _saveSendPrefs(); })),
+                delegate: SwitchDelegate(
+                  value: _autoCopyPhrase,
+                  onChanged: (v) => setState(() {
+                    _autoCopyPhrase = v;
+                    _saveSendPrefs();
+                  }),
+                ),
               ),
               ListItem.switchItem(
                 leading: const Icon(Icons.content_paste_go, size: 20),
                 title: Text(l10n.crocClipboard),
                 delegate: SwitchDelegate(
                   value: _sendConfig.copyCodeToClipboard,
-                  onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(copyCodeToClipboard: v); _saveSendPrefs(); }),
+                  onChanged: (v) => setState(() {
+                    _sendConfig = _sendConfig.copyWith(copyCodeToClipboard: v);
+                    _saveSendPrefs();
+                  }),
                 ),
               ),
               ListItem.switchItem(
                 leading: const Icon(Icons.qr_code_2, size: 20),
                 title: Text(l10n.whiteBgQR),
-                delegate: SwitchDelegate(value: _whiteBgQR, onChanged: (v) => setState(() { _whiteBgQR = v; _saveSendPrefs(); })),
+                delegate: SwitchDelegate(
+                  value: _whiteBgQR,
+                  onChanged: (v) => setState(() {
+                    _whiteBgQR = v;
+                    _saveSendPrefs();
+                  }),
+                ),
               ),
-              ListItem(leading: const Icon(Icons.show_chart), title: Text(l10n.encryptionCurve), subtitle: _buildCurveChips(l10n)),
-              ListItem(leading: const Icon(Icons.swap_calls), title: Text(l10n.transportMode), subtitle: _buildTransportChips(l10n)),
-              ListItem(leading: const Icon(Icons.tag), title: Text(l10n.hashAlgorithm), subtitle: _buildHashChips(l10n)),
-              ListItem.switchItem(leading: const Icon(Icons.compress), title: Text(l10n.enableCompression), delegate: SwitchDelegate(value: !_sendConfig.noCompress, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(noCompress: !v); _saveSendPrefs(); }))),
-              ListItem.switchItem(leading: const Icon(Icons.folder_zip), title: Text(l10n.zipFolder), delegate: SwitchDelegate(value: _sendConfig.zipFolder, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(zipFolder: v); _saveSendPrefs(); }))),
-              ListItem.switchItem(leading: const Icon(Icons.description_outlined), title: Text(l10n.respectGitIgnore), delegate: SwitchDelegate(value: _sendConfig.gitIgnore, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(gitIgnore: v); _saveSendPrefs(); }))),
-              ListItem.switchItem(leading: const Icon(Icons.lan_outlined), title: Text(l10n.disableLocalRelay), delegate: SwitchDelegate(value: _sendConfig.disableLocal, onChanged: (v) => setState(() { _sendConfig = _sendConfig.copyWith(disableLocal: v); _saveSendPrefs(); }))),
+              ListItem(
+                leading: const Icon(Icons.show_chart),
+                title: Text(l10n.encryptionCurve),
+                subtitle: _buildCurveChips(l10n),
+              ),
+              ListItem(
+                leading: const Icon(Icons.swap_calls),
+                title: Text(l10n.transportMode),
+                subtitle: _buildTransportChips(l10n),
+              ),
+              ListItem(
+                leading: const Icon(Icons.tag),
+                title: Text(l10n.hashAlgorithm),
+                subtitle: _buildHashChips(l10n),
+              ),
+              ListItem.switchItem(
+                leading: const Icon(Icons.compress),
+                title: Text(l10n.enableCompression),
+                delegate: SwitchDelegate(
+                  value: !_sendConfig.noCompress,
+                  onChanged: (v) => setState(() {
+                    _sendConfig = _sendConfig.copyWith(noCompress: !v);
+                    _saveSendPrefs();
+                  }),
+                ),
+              ),
+              ListItem.switchItem(
+                leading: const Icon(Icons.folder_zip),
+                title: Text(l10n.zipFolder),
+                delegate: SwitchDelegate(
+                  value: _sendConfig.zipFolder,
+                  onChanged: (v) => setState(() {
+                    _sendConfig = _sendConfig.copyWith(zipFolder: v);
+                    _saveSendPrefs();
+                  }),
+                ),
+              ),
+              ListItem.switchItem(
+                leading: const Icon(Icons.description_outlined),
+                title: Text(l10n.respectGitIgnore),
+                delegate: SwitchDelegate(
+                  value: _sendConfig.gitIgnore,
+                  onChanged: (v) => setState(() {
+                    _sendConfig = _sendConfig.copyWith(gitIgnore: v);
+                    _saveSendPrefs();
+                  }),
+                ),
+              ),
+              ListItem.switchItem(
+                leading: const Icon(Icons.lan_outlined),
+                title: Text(l10n.disableLocalRelay),
+                delegate: SwitchDelegate(
+                  value: _sendConfig.disableLocal,
+                  onChanged: (v) => setState(() {
+                    _sendConfig = _sendConfig.copyWith(disableLocal: v);
+                    _saveSendPrefs();
+                  }),
+                ),
+              ),
               _optionTextField(
                 icon: Icons.filter_alt_outlined,
                 title: l10n.excludePatterns,
@@ -954,26 +1231,53 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                   child: Row(
                     children: [
                       ChoiceChip(
-                        label: Text(l10n.defaultLabel, style: const TextStyle(fontSize: 12)),
+                        label: Text(
+                          l10n.defaultLabel,
+                          style: const TextStyle(fontSize: 12),
+                        ),
                         selected: _textByteLimit == null,
                         onSelected: (v) {
-                          if (v) setState(() { _textByteLimit = null; _limitCtrl.clear(); _saveSendPrefs(); });
+                          if (v) {
+                            setState(() {
+                              _textByteLimit = null;
+                              _limitCtrl.clear();
+                              _saveSendPrefs();
+                            });
+                          }
                         },
                       ),
                       const SizedBox(width: 8),
                       ChoiceChip(
-                        label: Text(l10n.unlimited, style: const TextStyle(fontSize: 12)),
+                        label: Text(
+                          l10n.unlimited,
+                          style: const TextStyle(fontSize: 12),
+                        ),
                         selected: _textByteLimit == 0,
                         onSelected: (v) {
-                          if (v) setState(() { _textByteLimit = 0; _limitCtrl.clear(); _saveSendPrefs(); });
+                          if (v) {
+                            setState(() {
+                              _textByteLimit = 0;
+                              _limitCtrl.clear();
+                              _saveSendPrefs();
+                            });
+                          }
                         },
                       ),
                       const SizedBox(width: 8),
                       ChoiceChip(
-                        label: Text(l10n.custom, style: const TextStyle(fontSize: 12)),
+                        label: Text(
+                          l10n.custom,
+                          style: const TextStyle(fontSize: 12),
+                        ),
                         selected: _textByteLimit != null && _textByteLimit! > 0,
                         onSelected: (v) {
-                          if (v) setState(() { _textByteLimit = _defaultTextLimit; _limitCtrl.text = '$_defaultTextLimit'; _saveSendPrefs(); });
+                          if (v) {
+                            setState(() {
+                              _textByteLimit = _defaultTextLimit;
+                              _limitCtrl.text = '$_defaultTextLimit';
+                              _saveSendPrefs();
+                            });
+                          }
                         },
                       ),
                       if (_textByteLimit != null && _textByteLimit! > 0) ...[
@@ -986,7 +1290,10 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                             style: const TextStyle(fontSize: 13),
                             decoration: const InputDecoration(
                               isDense: true,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 4,
+                              ),
                               border: OutlineInputBorder(),
                             ),
                             onChanged: (v) {
@@ -1005,7 +1312,10 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
                           icon: const Icon(Icons.restart_alt, size: 16),
                           visualDensity: VisualDensity.compact,
                           padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                          constraints: const BoxConstraints(
+                            minWidth: 28,
+                            minHeight: 28,
+                          ),
                           tooltip: l10n.reset,
                           onPressed: () {
                             setState(() {
@@ -1026,7 +1336,10 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
 
           // QR code — below transfer options
           if (_currentPhrase.isNotEmpty)
-            Padding(padding: const EdgeInsets.all(16), child: Center(child: _buildQR(_currentPhrase, 160))),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Center(child: _buildQR(_currentPhrase, 160)),
+            ),
 
           const SizedBox(height: 32),
         ],
@@ -1040,7 +1353,9 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
         try {
           final content = f.readAsStringSync();
           _textController.text = _applyTextLimit(content);
-          _textController.selection = TextSelection.collapsed(offset: _textController.text.length);
+          _textController.selection = TextSelection.collapsed(
+            offset: _textController.text.length,
+          );
           return;
         } catch (_) {}
       }
@@ -1048,13 +1363,16 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   }
 
   void _onFileDrop(List<File> files) {
-    commonPrint('_onFileDrop: ${files.length} files, paths=${files.map((f) => f.path).toList()}');
+    commonPrint(
+      '_onFileDrop: ${files.length} files, paths=${files.map((f) => f.path).toList()}',
+    );
     // Check for directories first
     for (final f in files) {
       final path = f.path.endsWith(Platform.pathSeparator)
           ? f.path.substring(0, f.path.length - 1)
           : f.path;
-      if (FileSystemEntity.isDirectorySync(path) || Directory(path).existsSync()) {
+      if (FileSystemEntity.isDirectorySync(path) ||
+          Directory(path).existsSync()) {
         setState(() {
           _selectedFolder = path;
           _selectedFiles.clear();
@@ -1067,7 +1385,13 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     for (final f in files) {
       if (!FileSystemEntity.isDirectorySync(f.path) &&
           !_selectedFiles.any((s) => s.path == f.path)) {
-        newFiles.add(PlatformFile(name: f.path.split(Platform.pathSeparator).last, path: f.path, size: f.lengthSync()));
+        newFiles.add(
+          PlatformFile(
+            name: f.path.split(Platform.pathSeparator).last,
+            path: f.path,
+            size: f.lengthSync(),
+          ),
+        );
       }
     }
     if (newFiles.isNotEmpty) setState(() => _selectedFiles.addAll(newFiles));
@@ -1095,14 +1419,15 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
   };
 
   Widget _phraseChip(String label, PhraseMode mode) => ChoiceChip(
-    label: Text(label), selected: _phraseMode == mode,
+    label: Text(label),
+    selected: _phraseMode == mode,
     onSelected: (v) {
       if (v) {
         setState(() {
-        _phraseMode = mode;
-        if (mode != PhraseMode.defaultMode) _codeController.clear();
-        _saveSendPrefs();
-      });
+          _phraseMode = mode;
+          if (mode != PhraseMode.defaultMode) _codeController.clear();
+          _saveSendPrefs();
+        });
       }
     },
   );
@@ -1116,13 +1441,27 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
           ChoiceChip(
             label: Text(l10n.defaultLabel),
             selected: _sendConfig.curve == defaultCurve,
-            onSelected: (v) { if (v) setState(() { _sendConfig = _sendConfig.copyWith(curve: defaultCurve); _saveSendPrefs(); }); },
+            onSelected: (v) {
+              if (v) {
+                setState(() {
+                  _sendConfig = _sendConfig.copyWith(curve: defaultCurve);
+                  _saveSendPrefs();
+                });
+              }
+            },
           ),
           ...availableCurves.where((c) => c != defaultCurve).map((c) {
             return ChoiceChip(
               label: Text(c),
               selected: _sendConfig.curve == c,
-              onSelected: (v) { if (v) setState(() { _sendConfig = _sendConfig.copyWith(curve: c); _saveSendPrefs(); }); },
+              onSelected: (v) {
+                if (v) {
+                  setState(() {
+                    _sendConfig = _sendConfig.copyWith(curve: c);
+                    _saveSendPrefs();
+                  });
+                }
+              },
             );
           }),
         ],
@@ -1150,7 +1489,10 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
           decoration: InputDecoration(
             isDense: true,
             hintText: hint,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 8,
+              vertical: 8,
+            ),
             border: const OutlineInputBorder(),
           ),
           onChanged: onChanged,
@@ -1174,7 +1516,14 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
           return ChoiceChip(
             label: Text(e.value),
             selected: _sendConfig.transport == e.key,
-            onSelected: (v) { if (v) setState(() { _sendConfig = _sendConfig.copyWith(transport: e.key); _saveSendPrefs(); }); },
+            onSelected: (v) {
+              if (v) {
+                setState(() {
+                  _sendConfig = _sendConfig.copyWith(transport: e.key);
+                  _saveSendPrefs();
+                });
+              }
+            },
           );
         }).toList(),
       ),
@@ -1190,13 +1539,29 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
           ChoiceChip(
             label: Text(l10n.defaultLabel),
             selected: _sendConfig.hashAlgorithm == defaultHashAlgo,
-            onSelected: (v) { if (v) setState(() { _sendConfig = _sendConfig.copyWith(hashAlgorithm: defaultHashAlgo); _saveSendPrefs(); }); },
+            onSelected: (v) {
+              if (v) {
+                setState(() {
+                  _sendConfig = _sendConfig.copyWith(
+                    hashAlgorithm: defaultHashAlgo,
+                  );
+                  _saveSendPrefs();
+                });
+              }
+            },
           ),
           ...availableHashAlgos.where((h) => h != defaultHashAlgo).map((h) {
             return ChoiceChip(
               label: Text(h),
               selected: _sendConfig.hashAlgorithm == h,
-              onSelected: (v) { if (v) setState(() { _sendConfig = _sendConfig.copyWith(hashAlgorithm: h); _saveSendPrefs(); }); },
+              onSelected: (v) {
+                if (v) {
+                  setState(() {
+                    _sendConfig = _sendConfig.copyWith(hashAlgorithm: h);
+                    _saveSendPrefs();
+                  });
+                }
+              },
             );
           }),
         ],
@@ -1239,21 +1604,43 @@ class _SendViewState extends ConsumerState<SendView> with TickerProviderStateMix
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-      child: Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
-  Widget _buildSection(String title, IconData icon, List<Widget> children) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Row(children: [
-        Icon(icon, size: 18, color: context.colorScheme.primary), const SizedBox(width: 8),
-        Text(title, style: context.textTheme.titleSmall?.copyWith(color: context.colorScheme.primary)),
-      ])),
-      ...children,
-    ],
-  );
+  Widget _buildSection(String title, IconData icon, List<Widget> children) =>
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: context.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: context.textTheme.titleSmall?.copyWith(
+                    color: context.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ...children,
+        ],
+      );
 }
 
 /// Animated clipboard button with press animation and long-press paste/copy toggle.
@@ -1281,20 +1668,25 @@ class _ClipboardToggleButtonState extends State<_ClipboardToggleButton> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onLongPress: widget.isActive ? null : widget.onLongPress,
-      onTapDown: widget.isActive ? null : (_) => setState(() => _pressed = true),
+      onTapDown: widget.isActive
+          ? null
+          : (_) => setState(() => _pressed = true),
       onTapUp: widget.isActive ? null : (_) => setState(() => _pressed = false),
       onTapCancel: () => setState(() => _pressed = false),
-      onTap: widget.isActive ? null : () {
-        widget.onTap();
-        setState(() => _pressed = false);
-      },
+      onTap: widget.isActive
+          ? null
+          : () {
+              widget.onTap();
+              setState(() => _pressed = false);
+            },
       child: AnimatedScale(
         scale: _pressed ? 0.75 : 1.0,
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeInOut,
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 200),
-          transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+          transitionBuilder: (child, anim) =>
+              ScaleTransition(scale: anim, child: child),
           child: Icon(
             key: ValueKey(widget.isPasteMode),
             widget.isPasteMode ? Icons.content_paste : Icons.content_copy,

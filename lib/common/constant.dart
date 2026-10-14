@@ -21,10 +21,7 @@ const dialogCommonWidth = 300.0;
 const maxTextScale = 1.4;
 const minTextScale = 0.8;
 
-final baseInfoEdgeInsets = EdgeInsets.symmetric(
-  vertical: 16,
-  horizontal: 16,
-);
+final baseInfoEdgeInsets = EdgeInsets.symmetric(vertical: 16, horizontal: 16);
 
 final commonDuration = const Duration(milliseconds: 200);
 

@@ -24,7 +24,9 @@ void main() {
       id: 'test-1',
       direction: TransferDirection.sent,
       status: TransferStatus.pending,
-      files: [const FileItem(name: 'test.txt', path: '/tmp/test.txt', size: 1024)],
+      files: [
+        const FileItem(name: 'test.txt', path: '/tmp/test.txt', size: 1024),
+      ],
       totalSize: 1024,
       startTime: DateTime(2026, 5, 24),
     );

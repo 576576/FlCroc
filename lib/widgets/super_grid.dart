@@ -39,7 +39,7 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
 
     final itemWidth =
         (width - (effectiveCrossAxisCount - 1) * widget.crossAxisSpacing - 32) /
-            effectiveCrossAxisCount;
+        effectiveCrossAxisCount;
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -47,13 +47,14 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
         spacing: widget.crossAxisSpacing,
         runSpacing: widget.mainAxisSpacing,
         children: widget.children.map((item) {
-          final crossAxisCellCount = item.crossAxisCellCount.clamp(1, effectiveCrossAxisCount);
-          final childWidth = itemWidth * crossAxisCellCount +
-              widget.crossAxisSpacing * (crossAxisCellCount - 1);
-          return SizedBox(
-            width: childWidth,
-            child: item.child,
+          final crossAxisCellCount = item.crossAxisCellCount.clamp(
+            1,
+            effectiveCrossAxisCount,
           );
+          final childWidth =
+              itemWidth * crossAxisCellCount +
+              widget.crossAxisSpacing * (crossAxisCellCount - 1);
+          return SizedBox(width: childWidth, child: item.child);
         }).toList(),
       ),
     );

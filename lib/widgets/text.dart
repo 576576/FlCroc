@@ -5,12 +5,7 @@ class StyledText extends StatelessWidget {
   final TextStyle? style;
   final TextAlign? textAlign;
 
-  const StyledText(
-    this.text, {
-    super.key,
-    this.style,
-    this.textAlign,
-  });
+  const StyledText(this.text, {super.key, this.style, this.textAlign});
 
   @override
   Widget build(BuildContext context) {
@@ -44,10 +39,7 @@ class _FadeScaleBoxState extends State<FadeScaleBox>
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
-    _animation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOut,
-    );
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
   }
 
   @override

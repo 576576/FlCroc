@@ -40,7 +40,9 @@ class _ApplicationState extends ConsumerState<Application> {
     try {
       final client = HttpClient();
       try {
-        final tag = channel == UpdateChannel.nightly ? 'tags/nightly' : 'releases/latest';
+        final tag = channel == UpdateChannel.nightly
+            ? 'tags/nightly'
+            : 'releases/latest';
         final uri = Uri.https('api.github.com', '/repos/$repository/$tag');
         final request = await client.getUrl(uri);
         request.headers.set('User-Agent', 'FlCroc');
@@ -49,36 +51,48 @@ class _ApplicationState extends ConsumerState<Application> {
         if (response.statusCode != 200) return;
         final body = await response.transform(utf8.decoder).join();
         final data = jsonDecode(body) as Map<String, dynamic>;
-        final latestTag = (data['tag_name'] as String?)?.replaceFirst(RegExp(r'^v'), '') ?? '';
+        final latestTag =
+            (data['tag_name'] as String?)?.replaceFirst(RegExp(r'^v'), '') ??
+            '';
         if (channel == UpdateChannel.nightly) {
           final title = (data['name'] as String?) ?? '';
           final buildMatch = RegExp(r'\+(\d+)').firstMatch(title);
-          final nightlyBuild = buildMatch != null ? int.tryParse(buildMatch.group(1)!) ?? 0 : 0;
+          final nightlyBuild = buildMatch != null
+              ? int.tryParse(buildMatch.group(1)!) ?? 0
+              : 0;
           final curBuild = int.tryParse(currentBuild) ?? 0;
           if (nightlyBuild <= curBuild) return;
         } else {
-          if (latestTag.isEmpty || _isVersionSameOrOlder(latestTag, currentVer)) return;
+          if (latestTag.isEmpty ||
+              _isVersionSameOrOlder(latestTag, currentVer)) {
+            return;
+          }
         }
         if (!mounted) return;
         final ctx = globalState.navigatorKey.currentContext;
-        if (ctx == null) return;
+        // ctx 不是本 State 的 context，!mounted 拦不住它 —— 必须查它自己的 mounted。
+        if (ctx == null || !ctx.mounted) return;
         showDialog(
           context: ctx,
           builder: (ctx2) => AlertDialog(
-            title: Text(AppLocalizations.of(ctx)!.newVersionAvailable),
-            content: Text('${AppLocalizations.of(ctx)!.latestVersion}: $latestTag\n${AppLocalizations.of(ctx)!.currentVersion}: $currentVer'),
+            title: Text(AppLocalizations.of(ctx).newVersionAvailable),
+            content: Text(
+              '${AppLocalizations.of(ctx).latestVersion}: $latestTag\n${AppLocalizations.of(ctx).currentVersion}: $currentVer',
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx2),
-                child: Text(AppLocalizations.of(ctx)!.cancel),
+                child: Text(AppLocalizations.of(ctx).cancel),
               ),
               FilledButton.icon(
                 onPressed: () {
                   Navigator.pop(ctx2);
-                  globalState.openUrl('https://github.com/$repository/releases');
+                  globalState.openUrl(
+                    'https://github.com/$repository/releases',
+                  );
                 },
                 icon: const Icon(Icons.open_in_new, size: 18),
-                label: Text(AppLocalizations.of(ctx)!.update),
+                label: Text(AppLocalizations.of(ctx).update),
               ),
             ],
           ),
@@ -95,7 +109,9 @@ class _ApplicationState extends ConsumerState<Application> {
     final currentBase = current.split(RegExp(r'[-+]')).first;
     final latestParts = latestBase.split('.').map(int.tryParse).toList();
     final currentParts = currentBase.split('.').map(int.tryParse).toList();
-    final len = latestParts.length > currentParts.length ? latestParts.length : currentParts.length;
+    final len = latestParts.length > currentParts.length
+        ? latestParts.length
+        : currentParts.length;
     for (int i = 0; i < len; i++) {
       final l = i < latestParts.length ? (latestParts[i] ?? 0) : 0;
       final c = i < currentParts.length ? (currentParts[i] ?? 0) : 0;
@@ -129,11 +145,20 @@ class _ApplicationState extends ConsumerState<Application> {
           },
           scrollBehavior: const _NaturalScrollBehavior(),
           title: appName,
-          locale: locale != null ? _parseLocale(locale!) : _resolveSystemLocale(),
+          locale: locale != null
+              ? _parseLocale(locale)
+              : _resolveSystemLocale(),
           supportedLocales: AppLocalizations.supportedLocales,
           themeMode: _getThemeMode(appSettings.themeMode),
-          theme: _buildLightTheme(themeProps.primaryColor, appSettings.disableAnimations),
-          darkTheme: _buildDarkTheme(themeProps.primaryColor, appSettings.pureBlackMode, appSettings.disableAnimations),
+          theme: _buildLightTheme(
+            themeProps.primaryColor,
+            appSettings.disableAnimations,
+          ),
+          darkTheme: _buildDarkTheme(
+            themeProps.primaryColor,
+            appSettings.pureBlackMode,
+            appSettings.disableAnimations,
+          ),
           home: const HomePage(),
         );
       },
@@ -155,7 +180,11 @@ class _ApplicationState extends ConsumerState<Application> {
   Locale _parseLocale(String s) {
     final parts = s.split('-');
     if (parts.length >= 3) {
-      return Locale.fromSubtags(languageCode: parts[0], scriptCode: parts[1], countryCode: parts[2]);
+      return Locale.fromSubtags(
+        languageCode: parts[0],
+        scriptCode: parts[1],
+        countryCode: parts[2],
+      );
     } else if (parts.length == 2) {
       // Could be script or country — try script (uppercase 4-char = script)
       return (parts[1].length == 4)
@@ -182,7 +211,8 @@ class _ApplicationState extends ConsumerState<Application> {
     // Language + script match
     for (final loc in supported) {
       if (loc.languageCode == system.languageCode &&
-          loc.scriptCode != null && loc.scriptCode == system.scriptCode) {
+          loc.scriptCode != null &&
+          loc.scriptCode == system.scriptCode) {
         return loc;
       }
     }
@@ -195,7 +225,9 @@ class _ApplicationState extends ConsumerState<Application> {
     }
     // Language-only match
     for (final loc in supported) {
-      if (loc.languageCode == system.languageCode && loc.countryCode == null && loc.scriptCode == null) {
+      if (loc.languageCode == system.languageCode &&
+          loc.countryCode == null &&
+          loc.scriptCode == null) {
         return loc;
       }
     }
@@ -203,10 +235,17 @@ class _ApplicationState extends ConsumerState<Application> {
   }
 
   ThemeData _buildLightTheme(int primaryColor, bool disableAnimations) {
-    return _buildBaseTheme(cachedColorScheme(primaryColor, Brightness.light), disableAnimations);
+    return _buildBaseTheme(
+      cachedColorScheme(primaryColor, Brightness.light),
+      disableAnimations,
+    );
   }
 
-  ThemeData _buildDarkTheme(int primaryColor, bool isPureBlack, bool disableAnimations) {
+  ThemeData _buildDarkTheme(
+    int primaryColor,
+    bool isPureBlack,
+    bool disableAnimations,
+  ) {
     var scheme = cachedColorScheme(primaryColor, Brightness.dark);
     if (isPureBlack) {
       scheme = scheme.copyWith(
@@ -217,20 +256,31 @@ class _ApplicationState extends ConsumerState<Application> {
         surfaceContainerHigh: const Color(0xFF151515),
       );
     }
-    return _buildBaseTheme(scheme, disableAnimations).copyWith(
-      scaffoldBackgroundColor: isPureBlack ? Colors.black : null,
-    );
+    return _buildBaseTheme(
+      scheme,
+      disableAnimations,
+    ).copyWith(scaffoldBackgroundColor: isPureBlack ? Colors.black : null);
   }
 
   ThemeData _buildBaseTheme(ColorScheme colorScheme, bool disableAnimations) {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      fontFamilyFallback: const ['Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC'],
+      fontFamilyFallback: const [
+        'Microsoft YaHei',
+        'PingFang SC',
+        'Noto Sans CJK SC',
+      ],
       pageTransitionsTheme: PageTransitionsTheme(
         builders: disableAnimations
-            ? {for (final p in TargetPlatform.values) p: const _NoTransitionBuilder()}
-            : {for (final p in TargetPlatform.values) p: const CupertinoPageTransitionsBuilder()},
+            ? {
+                for (final p in TargetPlatform.values)
+                  p: const _NoTransitionBuilder(),
+              }
+            : {
+                for (final p in TargetPlatform.values)
+                  p: const CupertinoPageTransitionsBuilder(),
+              },
       ),
     );
   }
@@ -258,5 +308,7 @@ class _NaturalScrollBehavior extends MaterialScrollBehavior {
 
   @override
   ScrollPhysics getScrollPhysics(BuildContext context) =>
-      const BouncingScrollPhysics(decelerationRate: ScrollDecelerationRate.normal);
+      const BouncingScrollPhysics(
+        decelerationRate: ScrollDecelerationRate.normal,
+      );
 }

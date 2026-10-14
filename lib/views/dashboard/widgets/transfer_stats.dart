@@ -11,7 +11,8 @@ class TransferStatsWidget extends ConsumerStatefulWidget {
   const TransferStatsWidget({super.key});
 
   @override
-  ConsumerState<TransferStatsWidget> createState() => _TransferStatsWidgetState();
+  ConsumerState<TransferStatsWidget> createState() =>
+      _TransferStatsWidgetState();
 }
 
 class _TransferStatsWidgetState extends ConsumerState<TransferStatsWidget>
@@ -21,9 +22,10 @@ class _TransferStatsWidgetState extends ConsumerState<TransferStatsWidget>
     vsync: this,
     duration: const Duration(milliseconds: 100),
   );
-  late final _pressAnim = Tween<double>(begin: 1, end: 0.96).animate(
-    CurvedAnimation(parent: _pressCtrl, curve: Curves.easeInOut),
-  );
+  late final _pressAnim = Tween<double>(
+    begin: 1,
+    end: 0.96,
+  ).animate(CurvedAnimation(parent: _pressCtrl, curve: Curves.easeInOut));
 
   @override
   void dispose() {
@@ -46,7 +48,10 @@ class _TransferStatsWidgetState extends ConsumerState<TransferStatsWidget>
     // Total elapsed time across all completed transfers
     transfers
         .where((t) => t.endTime != null)
-        .fold<int>(0, (a, t) => a + t.endTime!.difference(t.startTime).inSeconds);
+        .fold<int>(
+          0,
+          (a, t) => a + t.endTime!.difference(t.startTime).inSeconds,
+        );
 
     String primaryValue;
 
@@ -83,28 +88,28 @@ class _TransferStatsWidgetState extends ConsumerState<TransferStatsWidget>
       behavior: HitTestBehavior.opaque,
       child: AnimatedBuilder(
         animation: _pressAnim,
-        builder: (_, child) => Transform.scale(scale: _pressAnim.value, child: child),
+        builder: (_, child) =>
+            Transform.scale(scale: _pressAnim.value, child: child),
         child: CommonCard(
-      info: Info(iconData: infoIcon, label: infoLabel),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              primaryValue,
-              style: context.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: context.colorScheme.primary,
-              ),
+          info: Info(iconData: infoIcon, label: infoLabel),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  primaryValue,
+                  style: context.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: context.colorScheme.primary,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
-      ),
-    ),
     );
   }
-
 }

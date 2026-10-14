@@ -107,15 +107,15 @@ class CommonScaffoldFabExtendedProvider extends InheritedWidget {
   });
 
   @override
-  bool updateShouldNotify(
-      CommonScaffoldFabExtendedProvider oldWidget) {
+  bool updateShouldNotify(CommonScaffoldFabExtendedProvider oldWidget) {
     return isExtended != oldWidget.isExtended;
   }
 
   static bool of(BuildContext context) {
     final widget = context
         .dependOnInheritedWidgetOfExactType<
-            CommonScaffoldFabExtendedProvider>();
+          CommonScaffoldFabExtendedProvider
+        >();
     return widget?.isExtended ?? true;
   }
 }

@@ -14,13 +14,16 @@ class HistoryView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final transfers = ref.watch(transfersProvider);
-    final completed = transfers
-        .where((t) =>
-            t.status == TransferStatus.completed ||
-            t.status == TransferStatus.failed ||
-            t.status == TransferStatus.cancelled)
-        .toList()
-      ..sort((a, b) => b.startTime.compareTo(a.startTime));
+    final completed =
+        transfers
+            .where(
+              (t) =>
+                  t.status == TransferStatus.completed ||
+                  t.status == TransferStatus.failed ||
+                  t.status == TransferStatus.cancelled,
+            )
+            .toList()
+          ..sort((a, b) => b.startTime.compareTo(a.startTime));
     final l10n = context.appLocalizations;
 
     return BaseScaffold(
@@ -39,16 +42,14 @@ class HistoryView extends ConsumerWidget {
         const SizedBox(width: 8),
       ],
       body: completed.isEmpty
-          ? NullStatusWidget(
-              message: l10n.noHistory,
-              icon: Icons.history,
-            )
+          ? NullStatusWidget(message: l10n.noHistory, icon: Icons.history)
           : ListView.builder(
               itemCount: completed.length,
               itemBuilder: (_, index) {
                 final transfer = completed[index];
                 final isSent = transfer.direction == TransferDirection.sent;
-                final hasReceivedFile = !isSent &&
+                final hasReceivedFile =
+                    !isSent &&
                     transfer.status == TransferStatus.completed &&
                     transfer.files.isNotEmpty &&
                     transfer.files.any((f) => f.path.isNotEmpty);
@@ -74,7 +75,9 @@ class HistoryView extends ConsumerWidget {
                           tooltip: l10n.openFolder,
                           visualDensity: VisualDensity.compact,
                           onPressed: () {
-                            final f = transfer.files.firstWhere((f) => f.path.isNotEmpty);
+                            final f = transfer.files.firstWhere(
+                              (f) => f.path.isNotEmpty,
+                            );
                             globalState.openFolder(f.path);
                           },
                         ),
@@ -92,7 +95,9 @@ class HistoryView extends ConsumerWidget {
     final names = t.files.map((f) => f.name);
     final joined = names.join(', ');
     // If it's a text transfer (single file with no extension and path empty), truncate
-    if (t.files.length == 1 && !t.files.first.name.contains('.') && t.files.first.path.isEmpty) {
+    if (t.files.length == 1 &&
+        !t.files.first.name.contains('.') &&
+        t.files.first.path.isEmpty) {
       return joined.length > 50 ? '${joined.substring(0, 50)}…' : joined;
     }
     return joined;
@@ -137,10 +142,7 @@ class HistoryView extends ConsumerWidget {
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 11, color: color),
-      ),
+      child: Text(label, style: TextStyle(fontSize: 11, color: color)),
     );
   }
 }

@@ -6,8 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 final appSettingProvider =
     StateNotifierProvider<AppSettingNotifier, AppSettingProps>((ref) {
-  return AppSettingNotifier();
-});
+      return AppSettingNotifier();
+    });
 
 class AppSettingNotifier extends StateNotifier<AppSettingProps> {
   AppSettingNotifier() : super(const AppSettingProps());
@@ -59,8 +59,8 @@ class AppSettingNotifier extends StateNotifier<AppSettingProps> {
 
 final themeSettingProvider =
     StateNotifierProvider<ThemeSettingNotifier, ThemeProps>((ref) {
-  return ThemeSettingNotifier();
-});
+      return ThemeSettingNotifier();
+    });
 
 class ThemeSettingNotifier extends StateNotifier<ThemeProps> {
   ThemeSettingNotifier() : super(ThemeProps());

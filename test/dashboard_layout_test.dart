@@ -30,31 +30,34 @@ List<String> _names(Iterable<DashboardWidget> w) =>
     w.map((e) => e.name).toList();
 
 AppSettingProps _roundTrip(AppSettingProps props) => AppSettingProps.fromJson(
-      jsonDecode(jsonEncode(props.toJson())) as Map<String, Object?>,
-    );
+  jsonDecode(jsonEncode(props.toJson())) as Map<String, Object?>,
+);
 
 Widget _app(ProviderContainer c, Widget home) => UncontrolledProviderScope(
-      container: c,
-      child: MaterialApp(
-        // A fresh key so that repeated pumpWidget() calls really rebuild from
-        // scratch instead of reusing the previous MaterialApp subtree.
-        key: UniqueKey(),
-        locale: const Locale('en'),
-        localizationsDelegates: const [AppLocalizations.delegate],
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: home,
-      ),
-    );
+  container: c,
+  child: MaterialApp(
+    // A fresh key so that repeated pumpWidget() calls really rebuild from
+    // scratch instead of reusing the previous MaterialApp subtree.
+    key: UniqueKey(),
+    locale: const Locale('en'),
+    localizationsDelegates: const [AppLocalizations.delegate],
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: home,
+  ),
+);
 
 /// Same navigation mechanism as lib/pages/home.dart: the page is a PageView
 /// child, so it is disposed whenever the neighbouring page becomes visible.
 Widget _twoPage(ProviderContainer c, PageController pc) => _app(
-      c,
-      PageView(
-        controller: pc,
-        children: const [DashboardView(), Center(child: Text('other-page'))],
-      ),
-    );
+  c,
+  PageView(
+    controller: pc,
+    children: const [
+      DashboardView(),
+      Center(child: Text('other-page')),
+    ],
+  ),
+);
 
 Future<void> _seed(ProviderContainer c, List<DashboardWidget> w) => c
     .read(appSettingProvider.notifier)
@@ -70,7 +73,9 @@ List<DashboardWidget> _onScreenOrder(WidgetTester t) {
     final o = t.getTopLeft(f.first);
     placed.add((o.dy, o.dx, w));
   }
-  placed.sort((a, b) => a.$1 != b.$1 ? a.$1.compareTo(b.$1) : a.$2.compareTo(b.$2));
+  placed.sort(
+    (a, b) => a.$1 != b.$1 ? a.$1.compareTo(b.$1) : a.$2.compareTo(b.$2),
+  );
   return placed.map((e) => e.$3).toList();
 }
 
@@ -121,57 +126,82 @@ void main() {
     test('legacy quickSend / quickReceive names migrate to quickTransfer', () {
       // Written by builds before 8684da4, which split quick transfer in two.
       expect(
-        _names(const DashboardWidgetListConverter()
-            .fromJson(['quickSend', 'transferStats', 'quickReceive'])),
+        _names(
+          const DashboardWidgetListConverter().fromJson([
+            'quickSend',
+            'transferStats',
+            'quickReceive',
+          ]),
+        ),
         [_qt.name, _ts.name],
       );
     });
 
     test('one unknown name no longer discards the whole saved layout', () {
       expect(
-        _names(const DashboardWidgetListConverter()
-            .fromJson(['transferStats', 'nonsense', 'quickTransfer'])),
+        _names(
+          const DashboardWidgetListConverter().fromJson([
+            'transferStats',
+            'nonsense',
+            'quickTransfer',
+          ]),
+        ),
         [_ts.name, _qt.name],
       );
     });
 
     test('duplicates collapse and the first occurrence keeps its position', () {
       expect(
-        _names(const DashboardWidgetListConverter()
-            .fromJson(['recentTransfers', 'quickTransfer', 'recentTransfers'])),
+        _names(
+          const DashboardWidgetListConverter().fromJson([
+            'recentTransfers',
+            'quickTransfer',
+            'recentTransfers',
+          ]),
+        ),
         [_rt.name, _qt.name],
       );
     });
 
     test('a missing key falls back to the default layout', () {
-      expect(_names(AppSettingProps.fromJson(const {}).dashboardWidgets),
-          _names(_default));
+      expect(
+        _names(AppSettingProps.fromJson(const {}).dashboardWidgets),
+        _names(_default),
+      );
     });
 
     test('an explicitly empty layout is respected, not resurrected', () {
       expect(
-          AppSettingProps.fromJson(const {'dashboardWidgets': <Object>[]})
-              .dashboardWidgets,
-          isEmpty);
+        AppSettingProps.fromJson(const {
+          'dashboardWidgets': <Object>[],
+        }).dashboardWidgets,
+        isEmpty,
+      );
     });
   });
 
   group('dashboard renders what was saved', () {
-    testWidgets('a saved layout that does not start with quickTransfer is kept',
-        (t) async {
-      final c = ProviderContainer();
-      addTearDown(c.dispose);
-      await _seed(c, const [_ts, _rt, _qt]);
+    testWidgets(
+      'a saved layout that does not start with quickTransfer is kept',
+      (t) async {
+        final c = ProviderContainer();
+        addTearDown(c.dispose);
+        await _seed(c, const [_ts, _rt, _qt]);
 
-      await t.pumpWidget(_app(c, const DashboardView()));
-      await _settleFrames(t);
+        await t.pumpWidget(_app(c, const DashboardView()));
+        await _settleFrames(t);
 
-      expect(_onScreenOrder(t), const [_ts, _rt, _qt],
-          reason: '挂载时不得把 quickTransfer 挪回首位');
-    });
+        expect(_onScreenOrder(t), const [
+          _ts,
+          _rt,
+          _qt,
+        ], reason: '挂载时不得把 quickTransfer 挪回首位');
+      },
+    );
 
-    testWidgets('a layout the user deleted quickTransfer from stays deleted',
-        (t) async {
+    testWidgets('a layout the user deleted quickTransfer from stays deleted', (
+      t,
+    ) async {
       final c = ProviderContainer();
       addTearDown(c.dispose);
       await _seed(c, const [_ts, _rt]);
@@ -179,12 +209,12 @@ void main() {
       await t.pumpWidget(_app(c, const DashboardView()));
       await _settleFrames(t);
 
-      expect(_onScreenOrder(t), const [_ts, _rt],
-          reason: '用户删掉的卡片不得被自动塞回');
+      expect(_onScreenOrder(t), const [_ts, _rt], reason: '用户删掉的卡片不得被自动塞回');
     });
 
-    testWidgets('control: the default layout renders as the default',
-        (t) async {
+    testWidgets('control: the default layout renders as the default', (
+      t,
+    ) async {
       final c = ProviderContainer();
       addTearDown(c.dispose);
       await _seed(c, _default);
@@ -211,7 +241,9 @@ void main() {
       await _settleFrames(t);
 
       final del = find.descendant(
-          of: find.byKey(const ValueKey(_qt)), matching: find.byIcon(Icons.close));
+        of: find.byKey(const ValueKey(_qt)),
+        matching: find.byIcon(Icons.close),
+      );
       expect(del, findsOneWidget, reason: 'Quick Transfer 卡片上应有删除按钮');
       await t.tap(del.first);
       await _settleFrames(t);
@@ -220,13 +252,16 @@ void main() {
       await t.tap(_appBarAction(Icons.check));
       await _settleFrames(t);
 
-      final persisted =
-          (await SharedPreferences.getInstance()).getString('app_settings');
+      final persisted = (await SharedPreferences.getInstance()).getString(
+        'app_settings',
+      );
       expect(jsonDecode(persisted!)['dashboardWidgets'], [_ts.name, _rt.name]);
 
       await _switchTabAndBack(t, pc);
-      expect(_onScreenOrder(t), const [_ts, _rt],
-          reason: '切走再切回，删除应当仍在（issue #6 症状 2）');
+      expect(_onScreenOrder(t), const [
+        _ts,
+        _rt,
+      ], reason: '切走再切回，删除应当仍在（issue #6 症状 2）');
     });
 
     testWidgets('a removed card can be added back from the editor', (t) async {
@@ -259,8 +294,11 @@ void main() {
       await t.tap(_appBarAction(Icons.check));
       await _settleFrames(t);
       await _switchTabAndBack(t, pc);
-      expect(_onScreenOrder(t), const [_ts, _rt, _qt],
-          reason: '重新加回来的卡片与位置都应当保存住');
+      expect(_onScreenOrder(t), const [
+        _ts,
+        _rt,
+        _qt,
+      ], reason: '重新加回来的卡片与位置都应当保存住');
     });
 
     testWidgets('a reorder survives a tab round-trip', (t) async {
@@ -283,8 +321,7 @@ void main() {
       await _settleFrames(t);
 
       await _switchTabAndBack(t, pc);
-      expect(_onScreenOrder(t), dragged,
-          reason: '切走再切回，拖出来的顺序应当保留');
+      expect(_onScreenOrder(t), dragged, reason: '切走再切回，拖出来的顺序应当保留');
     });
   });
 
@@ -297,19 +334,24 @@ void main() {
       await _settleFrames(t);
     }
 
-    testWidgets('a card dragged forward lands on the card it was dropped on',
-        (t) async {
+    testWidgets('a card dragged forward lands on the card it was dropped on', (
+      t,
+    ) async {
       final c = ProviderContainer();
       addTearDown(c.dispose);
       await openEditor(t, c);
 
       await _dragCard(t, _qt, _rt);
-      expect(_onScreenOrder(t), const [_ts, _rt, _qt],
-          reason: '向前拖到末尾就该落到末尾，而不是只前进一格');
+      expect(_onScreenOrder(t), const [
+        _ts,
+        _rt,
+        _qt,
+      ], reason: '向前拖到末尾就该落到末尾，而不是只前进一格');
     });
 
-    testWidgets('a card dragged backward lands on the card it was dropped on',
-        (t) async {
+    testWidgets('a card dragged backward lands on the card it was dropped on', (
+      t,
+    ) async {
       final c = ProviderContainer();
       addTearDown(c.dispose);
       await openEditor(t, c);
@@ -318,8 +360,9 @@ void main() {
       expect(_onScreenOrder(t), const [_rt, _qt, _ts]);
     });
 
-    testWidgets('a one-slot forward drag still moves exactly one slot',
-        (t) async {
+    testWidgets('a one-slot forward drag still moves exactly one slot', (
+      t,
+    ) async {
       final c = ProviderContainer();
       addTearDown(c.dispose);
       await openEditor(t, c);

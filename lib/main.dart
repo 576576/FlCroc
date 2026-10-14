@@ -41,9 +41,7 @@ Future<void> main() async {
   } catch (e, s) {
     runApp(
       MaterialApp(
-        home: Scaffold(
-          body: Center(child: Text('Init Error: $e\n$s')),
-        ),
+        home: Scaffold(body: Center(child: Text('Init Error: $e\n$s'))),
       ),
     );
   }

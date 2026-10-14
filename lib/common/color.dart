@@ -13,5 +13,8 @@ final Map<int, ColorScheme> _darkCache = {};
 
 ColorScheme cachedColorScheme(int seed, Brightness brightness) {
   final cache = brightness == Brightness.light ? _lightCache : _darkCache;
-  return cache.putIfAbsent(seed, () => ColorScheme.fromSeed(seedColor: Color(seed), brightness: brightness));
+  return cache.putIfAbsent(
+    seed,
+    () => ColorScheme.fromSeed(seedColor: Color(seed), brightness: brightness),
+  );
 }

@@ -39,16 +39,18 @@ class _DashboardViewState extends ConsumerState<DashboardView>
     // rewrote the saved layout back to the default (issue #6). Legacy name
     // migration and de-duplication now live in the JSON converter, i.e. they
     // happen once when the config is read, not on every build of this page.
-    _currentWidgetsNotifier.value =
-        List<DashboardWidget>.from(ref.read(appSettingProvider).dashboardWidgets);
+    _currentWidgetsNotifier.value = List<DashboardWidget>.from(
+      ref.read(appSettingProvider).dashboardWidgets,
+    );
 
     _shakeCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 120),
     );
-    _shakeAnim = Tween<double>(begin: -0.012, end: 0.012).animate(
-      CurvedAnimation(parent: _shakeCtrl, curve: Curves.easeInOut),
-    );
+    _shakeAnim = Tween<double>(
+      begin: -0.012,
+      end: 0.012,
+    ).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -70,9 +72,12 @@ class _DashboardViewState extends ConsumerState<DashboardView>
       // Exiting edit mode → stop shake, save
       _shakeCtrl.stop();
       _shakeCtrl.value = 0;
-      ref.read(appSettingProvider.notifier).update(
+      ref
+          .read(appSettingProvider.notifier)
+          .update(
             (s) => s.copyWith(
-                dashboardWidgets: List.from(_currentWidgetsNotifier.value)),
+              dashboardWidgets: List.from(_currentWidgetsNotifier.value),
+            ),
           );
     }
   }
@@ -116,10 +121,11 @@ class _DashboardViewState extends ConsumerState<DashboardView>
       actions: [
         ValueListenableBuilder<QuickStatus?>(
           valueListenable: QuickTransferWidget.statusNotifier,
-          builder: (_, status, __) {
+          builder: (_, status, _) {
             if (status == null) return const SizedBox.shrink();
-            final isActive = status.label == context.appLocalizations.sending ||
-                             status.label == context.appLocalizations.receiving;
+            final isActive =
+                status.label == context.appLocalizations.sending ||
+                status.label == context.appLocalizations.receiving;
             return Padding(
               padding: const EdgeInsets.only(right: 4),
               child: isActive
@@ -130,12 +136,22 @@ class _DashboardViewState extends ConsumerState<DashboardView>
                       detail: status.detail,
                     )
                   : Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: status.color.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text(status.label, style: TextStyle(fontSize: 12, color: status.color, fontWeight: FontWeight.w600)),
+                      child: Text(
+                        status.label,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: status.color,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
             );
           },
@@ -155,75 +171,80 @@ class _DashboardViewState extends ConsumerState<DashboardView>
           return ValueListenableBuilder<bool>(
             valueListenable: _isEditNotifier,
             builder: (_, isEdit, _) {
-              return LayoutBuilder(builder: (context, constraints) {
-                final availableWidth = constraints.maxWidth - 32;
-                final columns = availableWidth < 560
-                    ? 1
-                    : availableWidth < 900
-                        ? 2
-                        : 3;
-                final cardWidth =
-                    (availableWidth - (columns - 1) * 8) / columns;
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: List.generate(widgets.length, (index) {
-                          final w = widgets[index];
-                          final child =
-                              builders[w] ?? const SizedBox.shrink();
-                          return SizedBox(
-                            width: cardWidth,
-                            child: _DashboardCard(
-                              key: ValueKey(w),
-                              widgetType: w,
-                              isEdit: isEdit,
-                              index: index,
-                              shakeAnim: _shakeAnim,
-                              onDelete: () => _removeWidget(index),
-                              onMove: (oldIdx, newIdx) =>
-                                  _moveWidget(oldIdx, newIdx),
-                              child: child,
-                            ),
-                          );
-                        }),
-                      ),
-                      if (isEdit) ...[
-                        const SizedBox(height: 24),
-                        Text(
-                          l10n.availableWidgets,
-                          style: context.textTheme.titleSmall?.copyWith(
-                            color: context.colorScheme.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final availableWidth = constraints.maxWidth - 32;
+                  final columns = availableWidth < 560
+                      ? 1
+                      : availableWidth < 900
+                      ? 2
+                      : 3;
+                  final cardWidth =
+                      (availableWidth - (columns - 1) * 8) / columns;
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: DashboardWidget.values
-                              .where((w) => !widgets.contains(w))
-                              .map((w) {
-                            return ActionChip(
-                              avatar: const Icon(Icons.add, size: 18),
-                              label: Text(l10n.dashboardWidgetName(w)),
-                              onPressed: () {
-                                final updated = List<DashboardWidget>.from(
-                                    _currentWidgetsNotifier.value);
-                                updated.add(w);
-                                _currentWidgetsNotifier.value = updated;
-                              },
+                          children: List.generate(widgets.length, (index) {
+                            final w = widgets[index];
+                            final child =
+                                builders[w] ?? const SizedBox.shrink();
+                            return SizedBox(
+                              width: cardWidth,
+                              child: _DashboardCard(
+                                key: ValueKey(w),
+                                widgetType: w,
+                                isEdit: isEdit,
+                                index: index,
+                                shakeAnim: _shakeAnim,
+                                onDelete: () => _removeWidget(index),
+                                onMove: (oldIdx, newIdx) =>
+                                    _moveWidget(oldIdx, newIdx),
+                                child: child,
+                              ),
                             );
-                          }).toList(),
+                          }),
                         ),
+                        if (isEdit) ...[
+                          const SizedBox(height: 24),
+                          Text(
+                            l10n.availableWidgets,
+                            style: context.textTheme.titleSmall?.copyWith(
+                              color: context.colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: DashboardWidget.values
+                                .where((w) => !widgets.contains(w))
+                                .map((w) {
+                                  return ActionChip(
+                                    avatar: const Icon(Icons.add, size: 18),
+                                    label: Text(l10n.dashboardWidgetName(w)),
+                                    onPressed: () {
+                                      final updated =
+                                          List<DashboardWidget>.from(
+                                            _currentWidgetsNotifier.value,
+                                          );
+                                      updated.add(w);
+                                      _currentWidgetsNotifier.value = updated;
+                                    },
+                                  );
+                                })
+                                .toList(),
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                );
-              });
+                    ),
+                  );
+                },
+              );
             },
           );
         },
@@ -279,12 +300,14 @@ class _DashboardCardState extends State<_DashboardCard>
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
-    _deleteScale = Tween(begin: 1.0, end: 0.4).animate(
-      CurvedAnimation(parent: _deleteCtrl, curve: Curves.easeIn),
-    );
-    _deleteFade = Tween(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _deleteCtrl, curve: Curves.easeIn),
-    );
+    _deleteScale = Tween(
+      begin: 1.0,
+      end: 0.4,
+    ).animate(CurvedAnimation(parent: _deleteCtrl, curve: Curves.easeIn));
+    _deleteFade = Tween(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(parent: _deleteCtrl, curve: Curves.easeIn));
   }
 
   @override
@@ -386,10 +409,7 @@ class _DashboardCardState extends State<_DashboardCard>
               child: widget.child,
             ),
           ),
-          childWhenDragging: Opacity(
-            opacity: 0.4,
-            child: widget.child,
-          ),
+          childWhenDragging: Opacity(opacity: 0.4, child: widget.child),
           child: AnimatedOpacity(
             opacity: isHovering ? 0.6 : 1.0,
             duration: const Duration(milliseconds: 150),

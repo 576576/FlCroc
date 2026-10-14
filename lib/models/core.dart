@@ -73,8 +73,7 @@ abstract class ReceiveOptions with _$ReceiveOptions {
 abstract class TransferProgress with _$TransferProgress {
   const factory TransferProgress({
     @Default('') String transferId,
-    @Default(TransferProgressStatus.initializing)
-    TransferProgressStatus status,
+    @Default(TransferProgressStatus.initializing) TransferProgressStatus status,
     @Default(0) int totalFiles,
     @Default(0) int completedFiles,
     @Default(0) int totalSize,

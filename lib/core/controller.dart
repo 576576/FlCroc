@@ -26,8 +26,7 @@ class CoreController {
     return _instance!;
   }
 
-  bool get isAvailable =>
-      _interface?.isAvailable ?? false;
+  bool get isAvailable => _interface?.isAvailable ?? false;
 
   bool get isCompleted => isAvailable;
 
@@ -74,20 +73,24 @@ class CoreController {
 
   Stream<TransferProgress> sendFiles(SendOptions options) {
     if (_interface == null) {
-      return Stream.value(const TransferProgress(
-        status: TransferProgressStatus.failed,
-        error: CoreController.noBackendError,
-      ));
+      return Stream.value(
+        const TransferProgress(
+          status: TransferProgressStatus.failed,
+          error: CoreController.noBackendError,
+        ),
+      );
     }
     return _interface!.sendFiles(options);
   }
 
   Stream<TransferProgress> receiveFiles(ReceiveOptions options) {
     if (_interface == null) {
-      return Stream.value(const TransferProgress(
-        status: TransferProgressStatus.failed,
-        error: CoreController.noBackendError,
-      ));
+      return Stream.value(
+        const TransferProgress(
+          status: TransferProgressStatus.failed,
+          error: CoreController.noBackendError,
+        ),
+      );
     }
     return _interface!.receiveFiles(options);
   }

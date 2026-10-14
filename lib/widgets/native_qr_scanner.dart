@@ -6,11 +6,7 @@ import 'package:flutter/services.dart';
 /// QR scanner widget using native CameraX + ZXing on Android via PlatformView.
 /// On non-Android platforms, shows an unsupported message.
 class NativeQrScanner extends StatefulWidget {
-  const NativeQrScanner({
-    super.key,
-    required this.onDetect,
-    this.errorBuilder,
-  });
+  const NativeQrScanner({super.key, required this.onDetect, this.errorBuilder});
 
   final ValueChanged<String> onDetect;
   final Widget Function(BuildContext context, String error)? errorBuilder;
@@ -39,10 +35,14 @@ class _NativeQrScannerState extends State<NativeQrScanner> {
   Widget build(BuildContext context) {
     if (!Platform.isAndroid) {
       final msg = 'QR scanning is only supported on Android';
-      if (widget.errorBuilder != null) return widget.errorBuilder!(context, msg);
+      if (widget.errorBuilder != null) {
+        return widget.errorBuilder!(context, msg);
+      }
       return const Center(
-        child: Text('QR scanning not supported on this platform',
-            style: TextStyle(color: Colors.white70)),
+        child: Text(
+          'QR scanning not supported on this platform',
+          style: TextStyle(color: Colors.white70),
+        ),
       );
     }
     return AndroidView(

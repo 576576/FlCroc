@@ -79,19 +79,23 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     try {
       final client = HttpClient();
       try {
-        final tag = channel == UpdateChannel.nightly ? 'tags/nightly' : 'releases/latest';
+        final tag = channel == UpdateChannel.nightly
+            ? 'tags/nightly'
+            : 'releases/latest';
         final uri = Uri.https('api.github.com', '/repos/$repository/$tag');
         final request = await client.getUrl(uri);
         request.headers.set('User-Agent', 'FlCroc');
         request.headers.set('Accept', 'application/vnd.github+json');
         final response = await request.close();
         if (response.statusCode != 200) {
-          if (mounted) context.showSnackBar(l10n.alreadyLatest);
+          if (context.mounted) context.showSnackBar(l10n.alreadyLatest);
           return;
         }
         final body = await response.transform(utf8.decoder).join();
         final data = jsonDecode(body) as Map<String, dynamic>;
-        final latestTag = (data['tag_name'] as String?)?.replaceFirst(RegExp(r'^v'), '') ?? '';
+        final latestTag =
+            (data['tag_name'] as String?)?.replaceFirst(RegExp(r'^v'), '') ??
+            '';
 
         // Nightly channel: compare build number from release title
         if (channel == UpdateChannel.nightly) {
@@ -99,20 +103,29 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           final nightlyBuild = _parseBuildFromTitle(title);
           final curBuild = int.tryParse(currentBuild) ?? 0;
           if (nightlyBuild <= curBuild) {
-            if (mounted) context.showSnackBar(l10n.alreadyLatest);
+            if (context.mounted) context.showSnackBar(l10n.alreadyLatest);
             return;
           }
           final displayVer = _parseVersionFromTitle(title) ?? latestTag;
-          if (mounted) _showUpdateDialog(context, l10n, displayVer, currentVer, nightlyBuild, curBuild);
+          if (context.mounted) {
+            _showUpdateDialog(
+              context,
+              l10n,
+              displayVer,
+              currentVer,
+              nightlyBuild,
+              curBuild,
+            );
+          }
           return;
         }
 
         // Release channel: compare base version
         if (latestTag.isEmpty || _isSameOrOlder(latestTag, currentVer)) {
-          if (mounted) context.showSnackBar(l10n.alreadyLatest);
+          if (context.mounted) context.showSnackBar(l10n.alreadyLatest);
           return;
         }
-        if (mounted) {
+        if (context.mounted) {
           showDialog(
             context: context,
             builder: (ctx) => AlertDialog(
@@ -134,7 +147,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 FilledButton.icon(
                   onPressed: () {
                     Navigator.pop(ctx);
-                    globalState.openUrl('https://github.com/$repository/releases');
+                    globalState.openUrl(
+                      'https://github.com/$repository/releases',
+                    );
                   },
                   icon: const Icon(Icons.open_in_new, size: 18),
                   label: Text(l10n.update),
@@ -147,7 +162,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         client.close();
       }
     } catch (_) {
-      if (mounted) context.showSnackBar(l10n.alreadyLatest);
+      if (context.mounted) context.showSnackBar(l10n.alreadyLatest);
     }
   }
 
@@ -166,7 +181,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       final l = i < latestParts.length ? (latestParts[i] ?? 0) : 0;
       final c = i < currentParts.length ? (currentParts[i] ?? 0) : 0;
       if (l > c) return false; // latest is newer
-      if (l < c) return true;  // latest is older
+      if (l < c) return true; // latest is older
     }
     return true; // same base version — consider already latest
   }
@@ -183,8 +198,14 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     return match?.group(1);
   }
 
-  void _showUpdateDialog(BuildContext context, AppLocalizations l10n,
-      String latestVer, String currentVer, int latestBuild, int currentBuild) {
+  void _showUpdateDialog(
+    BuildContext context,
+    AppLocalizations l10n,
+    String latestVer,
+    String currentVer,
+    int latestBuild,
+    int currentBuild,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -219,7 +240,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   String _defaultDownloadPath() => AppPaths.savePathSync;
 
   Future<void> _pickSavePath(WidgetRef ref) async {
-    final l10n = context.appLocalizations;
     final result = await FilePicker.platform.getDirectoryPath();
     if (result == null) return;
 
@@ -234,9 +254,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       return;
     }
 
-    ref.read(appSettingProvider.notifier).update(
-          (s) => s.copyWith(defaultSavePath: result),
-        );
+    ref
+        .read(appSettingProvider.notifier)
+        .update((s) => s.copyWith(defaultSavePath: result));
   }
 
   void _updateRelayControllers(String address, String port, String password) {
@@ -253,8 +273,14 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         title: Text(l10n.resetAllSettings),
         content: Text(l10n.resetAllConfirm),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.cancel)),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.reset)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.reset),
+          ),
         ],
       ),
     );
@@ -271,7 +297,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     await AppPrefs.remove('send_isTextMode');
     await AppPrefs.remove('send_textByteLimit');
     await AppPrefs.remove('send_whiteBgQR');
-    if (mounted) context.showSnackBar(l10n.settingsReset);
+    if (context.mounted) context.showSnackBar(l10n.settingsReset);
   }
 
   void _startResetLongPress() {
@@ -340,10 +366,15 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   suffix: IconButton(
                     icon: const Icon(Icons.restart_alt, size: 20),
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
                     tooltip: l10n.resetRelay,
                     onPressed: () {
-                      ref.read(appSettingProvider.notifier).update(
+                      ref
+                          .read(appSettingProvider.notifier)
+                          .update(
                             (s) => s.copyWith(
                               relayConfig: s.relayConfig.copyWith(
                                 address: defaultRelay,
@@ -352,11 +383,17 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                               ),
                             ),
                           );
-                      _updateRelayControllers(defaultRelay, defaultPort, defaultPassphrase);
+                      _updateRelayControllers(
+                        defaultRelay,
+                        defaultPort,
+                        defaultPassphrase,
+                      );
                     },
                   ),
                   onChanged: (v) {
-                    ref.read(appSettingProvider.notifier).update(
+                    ref
+                        .read(appSettingProvider.notifier)
+                        .update(
                           (s) => s.copyWith(
                             relayConfig: s.relayConfig.copyWith(address: v),
                           ),
@@ -368,7 +405,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   hint: l10n.port,
                   controller: _relayPortCtrl,
                   onChanged: (v) {
-                    ref.read(appSettingProvider.notifier).update(
+                    ref
+                        .read(appSettingProvider.notifier)
+                        .update(
                           (s) => s.copyWith(
                             relayConfig: s.relayConfig.copyWith(port: v),
                           ),
@@ -379,7 +418,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   hint: l10n.relayPassword,
                   controller: _relayPassCtrl,
                   onChanged: (v) {
-                    ref.read(appSettingProvider.notifier).update(
+                    ref
+                        .read(appSettingProvider.notifier)
+                        .update(
                           (s) => s.copyWith(
                             relayConfig: s.relayConfig.copyWith(password: v),
                           ),
@@ -403,16 +444,17 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               // Pure black — only relevant when dark
               if (appSettings.themeMode == ThemeModeOption.dark ||
                   (appSettings.themeMode == ThemeModeOption.system &&
-                      MediaQuery.of(context).platformBrightness == Brightness.dark)) ...[
+                      MediaQuery.of(context).platformBrightness ==
+                          Brightness.dark)) ...[
                 ListItem.switchItem(
                   leading: const Icon(Icons.dark_mode),
                   title: Text(l10n.pureBlackMode),
                   delegate: SwitchDelegate(
                     value: appSettings.pureBlackMode,
                     onChanged: (v) {
-                      ref.read(appSettingProvider.notifier).update(
-                            (s) => s.copyWith(pureBlackMode: v),
-                          );
+                      ref
+                          .read(appSettingProvider.notifier)
+                          .update((s) => s.copyWith(pureBlackMode: v));
                     },
                   ),
                 ),
@@ -420,8 +462,16 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ListItem(
                 leading: Consumer(
                   builder: (_, ref, c) {
-                    final primary = ref.watch(themeSettingProvider.select((s) => s.primaryColor));
-                    return Icon(Icons.palette, color: cachedColorScheme(primary, Theme.of(context).brightness).primary);
+                    final primary = ref.watch(
+                      themeSettingProvider.select((s) => s.primaryColor),
+                    );
+                    return Icon(
+                      Icons.palette,
+                      color: cachedColorScheme(
+                        primary,
+                        Theme.of(context).brightness,
+                      ).primary,
+                    );
                   },
                 ),
                 title: Row(
@@ -429,14 +479,27 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     Expanded(child: Text(l10n.colorPalette)),
                     Consumer(
                       builder: (_, ref, c) {
-                        final current = ref.watch(themeSettingProvider.select((s) => s.primaryColor));
+                        final current = ref.watch(
+                          themeSettingProvider.select((s) => s.primaryColor),
+                        );
                         final isDefault = current == defaultPrimaryColor;
                         return TextButton.icon(
-                          onPressed: isDefault ? null : () {
-                            ref.read(themeSettingProvider.notifier).update((s) => s.copyWith(primaryColor: defaultPrimaryColor));
-                          },
+                          onPressed: isDefault
+                              ? null
+                              : () {
+                                  ref
+                                      .read(themeSettingProvider.notifier)
+                                      .update(
+                                        (s) => s.copyWith(
+                                          primaryColor: defaultPrimaryColor,
+                                        ),
+                                      );
+                                },
                           icon: const Icon(Icons.restart_alt, size: 16),
-                          label: Text(l10n.defaultLabel, style: const TextStyle(fontSize: 12)),
+                          label: Text(
+                            l10n.defaultLabel,
+                            style: const TextStyle(fontSize: 12),
+                          ),
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 8),
                             visualDensity: VisualDensity.compact,
@@ -458,9 +521,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 delegate: SwitchDelegate(
                   value: appSettings.noTextMode,
                   onChanged: (v) {
-                    ref.read(appSettingProvider.notifier).update(
-                          (s) => s.copyWith(noTextMode: v),
-                        );
+                    ref
+                        .read(appSettingProvider.notifier)
+                        .update((s) => s.copyWith(noTextMode: v));
                   },
                 ),
               ),
@@ -471,9 +534,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 delegate: SwitchDelegate(
                   value: appSettings.disableAnimations,
                   onChanged: (v) {
-                    ref.read(appSettingProvider.notifier).update(
-                          (s) => s.copyWith(disableAnimations: v),
-                        );
+                    ref
+                        .read(appSettingProvider.notifier)
+                        .update((s) => s.copyWith(disableAnimations: v));
                   },
                 ),
               ),
@@ -493,10 +556,14 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ListItem(
                 leading: const Icon(Icons.folder),
                 title: Text(l10n.defaultSavePath),
-                subtitle: Text(formatPathForDisplay(
-                  appSettings.defaultSavePath.isEmpty ? _defaultDownloadPath() : appSettings.defaultSavePath,
-                  storageLabel: l10n.storageFolder,
-                )),
+                subtitle: Text(
+                  formatPathForDisplay(
+                    appSettings.defaultSavePath.isEmpty
+                        ? _defaultDownloadPath()
+                        : appSettings.defaultSavePath,
+                    storageLabel: l10n.storageFolder,
+                  ),
+                ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -506,9 +573,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                         tooltip: l10n.reset,
                         visualDensity: VisualDensity.compact,
                         onPressed: () {
-                          ref.read(appSettingProvider.notifier).update(
-                                (s) => s.copyWith(defaultSavePath: ''),
-                              );
+                          ref
+                              .read(appSettingProvider.notifier)
+                              .update((s) => s.copyWith(defaultSavePath: ''));
                         },
                       ),
                     IconButton(
@@ -516,7 +583,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                       tooltip: l10n.open,
                       visualDensity: VisualDensity.compact,
                       onPressed: () {
-                        final path = appSettings.defaultSavePath.isEmpty ? _defaultDownloadPath() : appSettings.defaultSavePath;
+                        final path = appSettings.defaultSavePath.isEmpty
+                            ? _defaultDownloadPath()
+                            : appSettings.defaultSavePath;
                         globalState.openFolder(path);
                       },
                     ),
@@ -541,76 +610,107 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 onLongPressStart: (_) => _startResetLongPress(),
                 onLongPressEnd: (_) => _cancelResetLongPress(),
                 onLongPressCancel: () => _cancelResetLongPress(),
-                child: Builder(builder: (context) {
-                  final alpha = (_resetProgress * 80).clamp(0.0, 80.0).toInt();
-                  return Container(
-                    color: _resetPressing ? Colors.red.withAlpha(alpha) : Colors.transparent,
-                    child: ListItem(
-                    leading: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: _showResetUI
-                          ? const Icon(Icons.restart_alt, color: Colors.red)
-                          : Image.asset('assets/images/icon.png', width: 24, height: 24),
-                    ),
-                    title: _showResetUI
-                        ? Text(l10n.resetAllSettings, style: const TextStyle(color: Colors.red))
-                        : Text(l10n.appVersion),
-                    subtitle: _showResetUI
-                        ? null
-                        : Text(_debugMode
-                            ? '${globalState.packageInfo.version}+${globalState.packageInfo.buildNumber}'
-                            : globalState.packageInfo.version),
-                    trailing: _showResetUI
-                        ? null
-                        : Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.update, size: 18),
-                                tooltip: l10n.checkUpdate,
-                                visualDensity: VisualDensity.compact,
-                                onPressed: () => _checkForUpdate(context),
+                child: Builder(
+                  builder: (context) {
+                    final alpha = (_resetProgress * 80)
+                        .clamp(0.0, 80.0)
+                        .toInt();
+                    return Container(
+                      color: _resetPressing
+                          ? Colors.red.withAlpha(alpha)
+                          : Colors.transparent,
+                      child: ListItem(
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: _showResetUI
+                              ? const Icon(Icons.restart_alt, color: Colors.red)
+                              : Image.asset(
+                                  'assets/images/icon.png',
+                                  width: 24,
+                                  height: 24,
+                                ),
+                        ),
+                        title: _showResetUI
+                            ? Text(
+                                l10n.resetAllSettings,
+                                style: const TextStyle(color: Colors.red),
+                              )
+                            : Text(l10n.appVersion),
+                        subtitle: _showResetUI
+                            ? null
+                            : Text(
+                                _debugMode
+                                    ? '${globalState.packageInfo.version}+${globalState.packageInfo.buildNumber}'
+                                    : globalState.packageInfo.version,
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.open_in_new, size: 18),
-                                tooltip: l10n.open,
-                                visualDensity: VisualDensity.compact,
-                                onPressed: () => globalState.openUrl('https://github.com/$repository'),
+                        trailing: _showResetUI
+                            ? null
+                            : Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.update, size: 18),
+                                    tooltip: l10n.checkUpdate,
+                                    visualDensity: VisualDensity.compact,
+                                    onPressed: () => _checkForUpdate(context),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.open_in_new,
+                                      size: 18,
+                                    ),
+                                    tooltip: l10n.open,
+                                    visualDensity: VisualDensity.compact,
+                                    onPressed: () => globalState.openUrl(
+                                      'https://github.com/$repository',
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                      onTap: () {
-                        final now = DateTime.now();
-                        if (_lastVersionTap != null &&
-                            now.difference(_lastVersionTap!).inSeconds >= 3) {
-                          _versionTaps = 0;
-                        }
-                        _lastVersionTap = now;
-                        _versionTaps++;
-                        if (_versionTaps >= 5) {
-                          _versionTaps = 0;
-                          _lastVersionTap = null;
-                          setState(() => _debugMode = !_debugMode);
-                          LogBuffer.debugMode = _debugMode;
-                          if (_autoClearLog) LogBuffer.clear();
-                          final dL10n = context.appLocalizations;
-                          context.showSnackBar(_debugMode ? dL10n.debugModeOn : dL10n.debugModeOff);
-                        } else if (_versionTaps >= 2) {
-                          final remaining = 5 - _versionTaps;
-                          final enable = !_debugMode;
-                          context.showSnackBar(
-                            context.appLocalizations.debugTapHint(remaining, enable: enable),
-                          );
-                        }
-                      },
-                    ),
-                  );
-                }),
+                        onTap: () {
+                          final now = DateTime.now();
+                          if (_lastVersionTap != null &&
+                              now.difference(_lastVersionTap!).inSeconds >= 3) {
+                            _versionTaps = 0;
+                          }
+                          _lastVersionTap = now;
+                          _versionTaps++;
+                          if (_versionTaps >= 5) {
+                            _versionTaps = 0;
+                            _lastVersionTap = null;
+                            setState(() => _debugMode = !_debugMode);
+                            LogBuffer.debugMode = _debugMode;
+                            if (_autoClearLog) LogBuffer.clear();
+                            final dL10n = context.appLocalizations;
+                            context.showSnackBar(
+                              _debugMode
+                                  ? dL10n.debugModeOn
+                                  : dL10n.debugModeOff,
+                            );
+                          } else if (_versionTaps >= 2) {
+                            final remaining = 5 - _versionTaps;
+                            final enable = !_debugMode;
+                            context.showSnackBar(
+                              context.appLocalizations.debugTapHint(
+                                remaining,
+                                enable: enable,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    );
+                  },
+                ),
               ),
               ListItem(
                 leading: const Icon(Icons.link),
                 title: Text(l10n.crocVersion),
-                subtitle: Text(_crocVersion == 'unavailable' ? l10n.unavailable : _crocVersion),
+                subtitle: Text(
+                  _crocVersion == 'unavailable'
+                      ? l10n.unavailable
+                      : _crocVersion,
+                ),
               ),
               ListItem(
                 leading: const Icon(Icons.favorite),
@@ -618,7 +718,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const AcknowledgmentsPage()),
+                    MaterialPageRoute(
+                      builder: (_) => const AcknowledgmentsPage(),
+                    ),
                   );
                 },
               ),
@@ -626,15 +728,21 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 leading: const Icon(Icons.tune),
                 title: Text(l10n.updateChannel),
                 subtitle: _buildUpdateChannelChips(
-                  ref.watch(appSettingProvider.select((s) => s.updateChannel)), ref),
+                  ref.watch(appSettingProvider.select((s) => s.updateChannel)),
+                  ref,
+                ),
               ),
               ListItem.switchItem(
                 leading: const Icon(Icons.update_disabled),
                 title: Text(l10n.autoCheckUpdate),
                 delegate: SwitchDelegate(
-                  value: ref.watch(appSettingProvider.select((s) => s.autoCheckUpdate)),
+                  value: ref.watch(
+                    appSettingProvider.select((s) => s.autoCheckUpdate),
+                  ),
                   onChanged: (v) {
-                    ref.read(appSettingProvider.notifier).update((s) => s.copyWith(autoCheckUpdate: v));
+                    ref
+                        .read(appSettingProvider.notifier)
+                        .update((s) => s.copyWith(autoCheckUpdate: v));
                   },
                 ),
               ),
@@ -695,7 +803,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   };
 
   Widget _buildLanguageChips(
-      BuildContext context, String? currentLocale, WidgetRef ref) {
+    BuildContext context,
+    String? currentLocale,
+    WidgetRef ref,
+  ) {
     final l10n = context.appLocalizations;
     final selectedKey = currentLocale ?? 'auto';
 
@@ -710,15 +821,17 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             selected: selectedKey == 'auto',
             onSelected: (v) {
               if (v) {
-                ref.read(appSettingProvider.notifier).update(
-                      (s) => s.copyWith(locale: null),
-                    );
+                ref
+                    .read(appSettingProvider.notifier)
+                    .update((s) => s.copyWith(locale: null));
               }
             },
           ),
           for (final group in const ['en', 'fr', 'zh', 'ja'])
             () {
-              final variants = _langVariants.where((v) => v.locale.split('-').first == group).toList();
+              final variants = _langVariants
+                  .where((v) => v.locale.split('-').first == group)
+                  .toList();
               final hasVariants = variants.length > 1;
               return ChoiceChip(
                 label: Text(() {
@@ -726,17 +839,22 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     return _langGroupNames[group]!;
                   }
                   if (!hasVariants) return _langGroupNames[group]!;
-                  final v = _langVariants.firstWhere((v) => v.locale == selectedKey);
+                  final v = _langVariants.firstWhere(
+                    (v) => v.locale == selectedKey,
+                  );
                   return v.label;
                 }()),
                 selected: selectedKey.split('-').first == group,
                 onSelected: (_) {
                   final current = currentLocale;
-                  final sameGroup = current != null && current.split('-').first == group;
+                  final sameGroup =
+                      current != null && current.split('-').first == group;
                   if (!sameGroup) {
                     // First selection
                     final first = variants.first.locale;
-                    ref.read(appSettingProvider.notifier).update((s) => s.copyWith(locale: first));
+                    ref
+                        .read(appSettingProvider.notifier)
+                        .update((s) => s.copyWith(locale: first));
                     setState(() {});
                     final label = variants.first.label;
                     if (context.mounted) context.showSnackBar(label);
@@ -746,9 +864,13 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   // Cycle to next variant
                   final idx = variants.indexWhere((v2) => v2.locale == current);
                   final next = variants[(idx + 1) % variants.length].locale;
-                  ref.read(appSettingProvider.notifier).update((s) => s.copyWith(locale: next));
+                  ref
+                      .read(appSettingProvider.notifier)
+                      .update((s) => s.copyWith(locale: next));
                   setState(() {});
-                  final label = variants.firstWhere((v2) => v2.locale == next).label;
+                  final label = variants
+                      .firstWhere((v2) => v2.locale == next)
+                      .label;
                   if (context.mounted) context.showSnackBar(label);
                 },
               );
@@ -776,7 +898,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             selected: selected,
             onSelected: (v) {
               if (v) {
-                ref.read(appSettingProvider.notifier).update(
+                ref
+                    .read(appSettingProvider.notifier)
+                    .update(
                       (s) => s.copyWith(
                         relayConfig: s.relayConfig.copyWith(type: type),
                       ),
@@ -789,7 +913,13 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     );
   }
 
-  Widget _buildRelayField({required IconData icon, required String hint, required TextEditingController controller, Widget? suffix, required ValueChanged<String> onChanged}) {
+  Widget _buildRelayField({
+    required IconData icon,
+    required String hint,
+    required TextEditingController controller,
+    Widget? suffix,
+    required ValueChanged<String> onChanged,
+  }) {
     return ListItem(
       minVerticalPadding: 4,
       leading: Icon(icon),
@@ -808,7 +938,11 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     );
   }
 
-  Widget _buildPasswordField({required String hint, required TextEditingController controller, required ValueChanged<String> onChanged}) {
+  Widget _buildPasswordField({
+    required String hint,
+    required TextEditingController controller,
+    required ValueChanged<String> onChanged,
+  }) {
     var obscured = true;
     return StatefulBuilder(
       builder: (_, setLocal) {
@@ -823,7 +957,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(vertical: 10),
               suffixIcon: IconButton(
-                icon: Icon(obscured ? Icons.visibility : Icons.visibility_off, size: 20),
+                icon: Icon(
+                  obscured ? Icons.visibility : Icons.visibility_off,
+                  size: 20,
+                ),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 onPressed: () => setLocal(() => obscured = !obscured),
@@ -847,17 +984,19 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         children: ThemeModeOption.values.map((mode) {
           final selected = mode == current;
           return ChoiceChip(
-            label: Text(mode == ThemeModeOption.light
-                ? l10n.light
-                : mode == ThemeModeOption.dark
-                    ? l10n.dark
-                    : l10n.system),
+            label: Text(
+              mode == ThemeModeOption.light
+                  ? l10n.light
+                  : mode == ThemeModeOption.dark
+                  ? l10n.dark
+                  : l10n.system,
+            ),
             selected: selected,
             onSelected: (v) {
               if (v) {
-                ref.read(appSettingProvider.notifier).update(
-                      (s) => s.copyWith(themeMode: mode),
-                    );
+                ref
+                    .read(appSettingProvider.notifier)
+                    .update((s) => s.copyWith(themeMode: mode));
               }
             },
           );
@@ -875,15 +1014,17 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         children: UpdateChannel.values.map((ch) {
           final selected = ch == current;
           return ChoiceChip(
-            label: Text(ch == UpdateChannel.nightly
-                ? l10n.nightlyChannel
-                : l10n.releaseChannel),
+            label: Text(
+              ch == UpdateChannel.nightly
+                  ? l10n.nightlyChannel
+                  : l10n.releaseChannel,
+            ),
             selected: selected,
             onSelected: (v) {
               if (v) {
-                ref.read(appSettingProvider.notifier).update(
-                      (s) => s.copyWith(updateChannel: ch),
-                    );
+                ref
+                    .read(appSettingProvider.notifier)
+                    .update((s) => s.copyWith(updateChannel: ch));
               }
             },
           );
@@ -891,7 +1032,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       ),
     );
   }
-
 }
 
 /// Hue slider bar — replaces the 6-preset + custom chip palette.
@@ -910,8 +1050,13 @@ class _HueSliderState extends ConsumerState<_HueSlider> {
   final _hexFocus = FocusNode();
 
   static const _rainbow = [
-    Color(0xFFFF0000), Color(0xFFFFFF00), Color(0xFF00FF00),
-    Color(0xFF00FFFF), Color(0xFF0000FF), Color(0xFFFF00FF), Color(0xFFFF0000),
+    Color(0xFFFF0000),
+    Color(0xFFFFFF00),
+    Color(0xFF00FF00),
+    Color(0xFF00FFFF),
+    Color(0xFF0000FF),
+    Color(0xFFFF00FF),
+    Color(0xFFFF0000),
   ];
 
   @override
@@ -934,7 +1079,9 @@ class _HueSliderState extends ConsumerState<_HueSlider> {
 
   void _commit() {
     final seed = HSVColor.fromAHSV(1, _dragHue, 0.5, 1.0).toColor().toARGB32();
-    ref.read(themeSettingProvider.notifier).update((s) => s.copyWith(primaryColor: seed));
+    ref
+        .read(themeSettingProvider.notifier)
+        .update((s) => s.copyWith(primaryColor: seed));
   }
 
   void _onHexSubmit(String value) {
@@ -942,19 +1089,24 @@ class _HueSliderState extends ConsumerState<_HueSlider> {
     if (hex.length != 6) return;
     final parsed = int.tryParse(hex, radix: 16);
     if (parsed == null) return;
-    ref.read(themeSettingProvider.notifier).update((s) => s.copyWith(primaryColor: 0xFF000000 | parsed));
+    ref
+        .read(themeSettingProvider.notifier)
+        .update((s) => s.copyWith(primaryColor: 0xFF000000 | parsed));
     _hexFocus.unfocus();
   }
 
   @override
   Widget build(BuildContext context) {
-    final current = ref.watch(themeSettingProvider.select((s) => s.primaryColor));
+    final current = ref.watch(
+      themeSettingProvider.select((s) => s.primaryColor),
+    );
     if (!_isDragging) {
       _dragHue = HSVColor.fromColor(Color(current)).hue;
     }
 
     final seedColor = HSVColor.fromAHSV(1, _dragHue, 0.5, 1.0).toColor();
-    final hex = '#${seedColor.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
+    final hex =
+        '#${seedColor.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
 
     // Only update hex field when not focused (user isn't typing)
     if (!_hexFocus.hasFocus) {
@@ -984,12 +1136,15 @@ class _HueSliderState extends ConsumerState<_HueSlider> {
                     child: Align(
                       alignment: Alignment(-1 + _dragHue / 180, 0),
                       child: Container(
-                        width: 20, height: 20,
+                        width: 20,
+                        height: 20,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: seedColor,
                           border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 2)],
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black26, blurRadius: 2),
+                          ],
                         ),
                       ),
                     ),
@@ -1012,7 +1167,11 @@ class _HueSliderState extends ConsumerState<_HueSlider> {
               contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               border: OutlineInputBorder(),
               prefixText: '#',
-              prefixStyle: TextStyle(fontSize: 13, fontFamily: 'monospace', color: Colors.grey),
+              prefixStyle: TextStyle(
+                fontSize: 13,
+                fontFamily: 'monospace',
+                color: Colors.grey,
+              ),
             ),
             onSubmitted: _onHexSubmit,
           ),
@@ -1051,9 +1210,17 @@ class _LogViewerPageState extends State<_LogViewerPage> {
     final timestamp = DateFormat('yyMMdd-HHmmss').format(DateTime.now());
     final dir = Directory(AppPaths.savePathSync);
     if (!dir.existsSync()) dir.createSync(recursive: true);
-    final file = File('${dir.path}${Platform.pathSeparator}FlCroc-debug-$timestamp.log');
+    final file = File(
+      '${dir.path}${Platform.pathSeparator}FlCroc-debug-$timestamp.log',
+    );
     await file.writeAsString(logs.join('\n'));
-    if (mounted) context.showSnackBar(l10n.logExported(formatPathForDisplay(file.path, storageLabel: l10n.storageFolder)));
+    if (mounted) {
+      context.showSnackBar(
+        l10n.logExported(
+          formatPathForDisplay(file.path, storageLabel: l10n.storageFolder),
+        ),
+      );
+    }
   }
 
   @override
@@ -1084,14 +1251,25 @@ class _LogViewerPageState extends State<_LogViewerPage> {
           if (isWindows || isLinux) const WindowTitleBar(),
           Expanded(
             child: logs.isEmpty
-                ? Center(child: Text(l10n.noLogs, style: context.textTheme.bodyMedium))
+                ? Center(
+                    child: Text(
+                      l10n.noLogs,
+                      style: context.textTheme.bodyMedium,
+                    ),
+                  )
                 : ListView.builder(
                     itemCount: logs.length,
                     itemBuilder: (_, i) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
                       child: SelectableText(
                         logs[i],
-                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ),
