@@ -119,17 +119,7 @@ class _ApplicationState extends ConsumerState<Application> {
             AppLocalizations.delegate,
             ...GlobalMaterialLocalizations.delegates,
           ],
-          builder: (_, child) {
-            // fluttertoast 与 flutter_riverpod 仍在 import 核心 SDK 里的 material，
-            // 桥负责把新包的 ThemeData 映射回去，让那些 widget 还能取到 legacy 的
-            // Theme 与 Localizations。
-            // 桥自身已标记废弃（它是过渡工具，依赖迁完就该删），但这两个依赖还没迁完，
-            // 现在必须留着它。
-            // ignore: deprecated_member_use
-            return MaterialUiCompatibilityBridge(
-              child: ThemeManager(child: child!),
-            );
-          },
+          builder: (_, child) => ThemeManager(child: child!),
           scrollBehavior: const _NaturalScrollBehavior(),
           title: appName,
           locale: locale != null
