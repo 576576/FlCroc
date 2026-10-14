@@ -1,8 +1,7 @@
 # go_bridge 稳定性调研与改造方案
 
-> 调研基线：croc fork（`576576/croc`）`flcroc` 分支 @ `v11.5.4-flcroc.1`，
-> 即上游 v11.5.4 + FlCroc 补丁。croc 侧一律用**符号名**定位（函数 / 方法名），
-> 不用行号 —— submodule 跟上游最新，行号会漂。
+> 调研基线：croc fork（`576576/croc`）的 `flcroc` 分支，即上游 + FlCroc 补丁。
+> croc 侧一律用**符号名**定位（函数 / 方法名），不用行号 —— submodule 跟上游最新，行号会漂。
 
 ---
 
@@ -96,14 +95,12 @@ Flutter (Dart isolate) ──dart:ffi，每 200ms 轮询──► libcroc_bridge
 
 > `docs/agent/croc-v11-feature-audit.md` 第七节第 9 项也把它列为"未做"。
 
-### F4 【P1 · 已在 fork 修掉】进度计数器无锁 → 数据竞争
+### F4 【已修】进度计数器无锁 → 数据竞争
 
-bridge 直接读 `TotalSent` / `FilesToTransferCurrentNum` / `FilesToTransfer`，
-这些由 croc 自己的 goroutine 并发写，没有可共享的锁。`recover()` 只能兜住索引越界；
-**`FilesHasFinished` 是 map，并发读是 fatal error，不可 recover**，只能靠"记住别碰"躲。
-
-**现状**：`v11.5.4-flcroc.1` 已加 `progressMu` 并导出 `ProgressSnapshot()`
-（`src/croc/progress.go`，带 `-race` 测试）。bridge 侧还没切过去 —— 见 A9。
+bridge 曾直接读 `TotalSent` / `FilesToTransferCurrentNum` / `FilesToTransfer`，这些由 croc
+自己的 goroutine 并发写、没有共享的锁；**`FilesHasFinished` 是 map，并发读是 fatal error，
+`recover()` 兜不住**。fork 已加 `progressMu` 并导出 `ProgressSnapshot()`
+（`src/croc/progress.go`，带 `-race` 测试）；bridge 侧切过去见 A9。
 
 ### F5 【P1】全局单通道 → 串台 或 向 nil channel 发送导致永久阻塞
 
@@ -182,12 +179,12 @@ Go runtime 的线程 / GC / 信号处理与 Dart VM 共存。这条是 C 档的�
 
 ### 4.2 B 档：fork croc 补丁
 
-原则见 `plan/croc-fork-sync.md`：每个补丁都要能独立回上游。
+原则见 `plan/croc-fork-sync.md`：每个补丁都要能独立回上游。已落地的补丁记在那份文档的
+补丁表里，这里只列还没定的。
 
 | # | 补丁 | 状态 |
 |---|---|---|
 | B1 | `Quiet` 时把进度条 / 接收状态的 writer 设为 `io.Discard` | **不做** —— 要改 25 处调用点，rebase 成本远高于收益；A3 零改动就能解决同一问题 |
-| B2 | 进度计数器加锁 + `ProgressSnapshot()` | ✅ **已落地**，`v11.5.4-flcroc.1` |
 | B3 | 库路径 `panic` → `error`（`Options.LibraryMode` 门控） | 待定；A2 能兜住大部分 |
 | B4 | `src/crypt/crypt.go` 的 `log.Fatalf` → `error` | 待定；概率极低但后果最重 |
 | B5 | `Options.OutputPath`（不再需要宿主 `os.Chdir`） | 待定；A6 先顶着 |

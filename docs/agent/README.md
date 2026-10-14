@@ -11,12 +11,18 @@
 ## 跳转
 
 - [croc v10 → v11 特性落地审计](croc-v11-feature-audit.md) —— 结论已落地，清单留档
+- [Dart 3.13 / Flutter 3.47：现行约束与遗留项](dart3.13-flutter3.47.md) —— 迁移已执行，只留约束与遗留
 - [上游 PR 草稿：`ProgressSnapshot()`](upstream-pr-lifecycle-accessor.md) —— 已在 fork 实现，未提 PR
 - [Weblate 迁移操作手册](weblate-migration.md) —— 待执行
 - [go_bridge 失效模式与改造方案](plan/go-bridge-stability.md) —— 进行中
 - [croc fork 的分支模型与同步流程](plan/croc-fork-sync.md) —— 进行中
 - [fluttertoast fork 的分支模型与同步流程](plan/fluttertoast-fork-sync.md) —— 进行中
-- [Dart 3.13 / Flutter 3.47 迁移方案](plan/dart3.13-flutter3.47-migration.md) —— 已执行（Phase 0–2 + material_ui）
+
+`plan/` 只放**还没落地**或**长期维护**的东西：改造方案与 fork 同步流程。执行完的方案不留档，
+只把仍然有效的约束与遗留项整理成文档放进本目录。
+
+> `.workbuddy/memory/` 是本机的 agent 记忆，被 `.gitignore` 忽略、不进仓库 ——
+> 要留给维护者的知识必须写进 `docs/`。
 
 回到给人看的文档：[BUILD.md](../BUILD.md) · [i18n.md](../i18n.md)
 
@@ -25,12 +31,12 @@
 | 文件 | 用途 | 状态 |
 |---|---|---|
 | [`croc-v11-feature-audit.md`](croc-v11-feature-audit.md) | croc v10 → v11 特性落地审计 | 结论已落地，清单留档 |
+| [`dart3.13-flutter3.47.md`](dart3.13-flutter3.47.md) | 语言版本 / Flutter 版本的现行约束与遗留项 | 迁移已执行，留档 |
 | [`upstream-pr-lifecycle-accessor.md`](upstream-pr-lifecycle-accessor.md) | 投给上游的 PR 草稿：`ProgressSnapshot()` | 已在 fork 实现，未提 PR |
 | [`weblate-migration.md`](weblate-migration.md) | 翻译流程迁到 Weblate 的操作手册 | 待执行 |
 | [`plan/go-bridge-stability.md`](plan/go-bridge-stability.md) | go_bridge 失效模式与改造方案 | 进行中 |
 | [`plan/croc-fork-sync.md`](plan/croc-fork-sync.md) | croc fork 的分支模型、补丁边界与同步流程 | 进行中 |
 | [`plan/fluttertoast-fork-sync.md`](plan/fluttertoast-fork-sync.md) | fluttertoast fork 的分支模型与 pub git 依赖的接入方式 | 进行中 |
-| [`plan/dart3.13-flutter3.47-migration.md`](plan/dart3.13-flutter3.47-migration.md) | 语言版本与 Flutter 版本迁移的分阶段方案 | 已执行（Phase 0–2 + material_ui） |
 
 ## 上游 fork 的当前状态
 
