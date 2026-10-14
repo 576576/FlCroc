@@ -45,9 +45,10 @@ REM --- Verify go.mod replace directive ---
 echo.
 echo [STEP 2/4] Verifying Go module...
 cd /d "%SCRIPT_DIR%"
-go mod tidy
+REM go.mod / go.sum are committed; the build is read-only so they cannot drift.
+go mod download
 if %ERRORLEVEL% neq 0 (
-    echo [ERROR] go mod tidy failed
+    echo [ERROR] go mod download failed
     exit /b 1
 )
 
@@ -102,7 +103,7 @@ if "%PLATFORM%"=="windows" (
 ) else (
     set "LDFLAGS=-s -w"
 )
-go build -buildmode=c-shared ^
+go build -mod=readonly -buildmode=c-shared ^
     -o "%OUTPUT_DIR%\libcroc_bridge%EXT%" ^
     -ldflags="%LDFLAGS%" .
 

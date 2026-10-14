@@ -625,6 +625,10 @@ func doSend(s *session, paths []string, code string, opts sendOptions) {
 		DisableClipboard: disableClipboard,
 		Transport:        transport,
 		ThrottleUpload:   throttle,
+
+		// croc panics on malformed options; a panic inside a c-shared library
+		// takes the Flutter process down with it, so ask for errors instead.
+		LibraryMode: true,
 	}
 
 	s.emit(progressEvent{Type: 4, CodePhrase: code})
@@ -733,6 +737,9 @@ func doReceive(s *session, code string, opts receiveOptions) {
 		Overwrite:     opts.Overwrite,
 		Rename:        rename,
 		Quiet:         true,
+
+		// Same as the sender: report instead of panicking.
+		LibraryMode: true,
 	}
 
 	c, err := croc.NewCtx(s.ctx, crocOpts)
@@ -746,8 +753,15 @@ func doReceive(s *session, code string, opts receiveOptions) {
 	restoreStderr := captureStderr(s)
 	defer restoreStderr()
 
+	// croc resolves the destination relative to the process working directory,
+	// so the chdir is required; cwd is process-wide and shared with the Flutter
+	// host, so it has to be put back on the way out.
 	if opts.OutputPath != "" {
-		os.Chdir(opts.OutputPath)
+		if oldWd, err := os.Getwd(); err == nil {
+			if err := os.Chdir(opts.OutputPath); err == nil {
+				defer os.Chdir(oldWd)
+			}
+		}
 	}
 
 	// Signal that transfer has started (type 4 — mirrors doSend)

@@ -148,9 +148,11 @@ esac
 echo ""
 echo "[STEP 3/4] Preparing Go module and building..."
 cd "${SCRIPT_DIR}"
-go mod tidy
+# go.mod / go.sum 是入库的，构建时只读：tidy 会联网改写它们，让依赖集随机器而变，
+# 也会让上游 fork 的 replace 指向被悄悄改掉。
+go mod download
 mkdir -p "${OUTPUT_DIR}"
-go build -buildmode=c-shared -o "${OUTPUT_DIR}/${OUT_NAME}" -ldflags="${LDFLAGS}" .
+go build -mod=readonly -buildmode=c-shared -o "${OUTPUT_DIR}/${OUT_NAME}" -ldflags="${LDFLAGS}" .
 echo "[OK] Built"
 
 # --- Stage next to the Flutter platform ---
