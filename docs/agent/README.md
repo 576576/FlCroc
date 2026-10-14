@@ -14,7 +14,7 @@
 - [Dart 3.13 / Flutter 3.47：现行约束与遗留项](dart3.13-flutter3.47.md) —— 迁移已执行，只留约束与遗留
 - [上游 PR 草稿：`ProgressSnapshot()`](upstream-pr-lifecycle-accessor.md) —— 已在 fork 实现，未提 PR
 - [Weblate 迁移操作手册](weblate-migration.md) —— 待执行
-- [go_bridge 失效模式与改造方案](plan/go-bridge-stability.md) —— 进行中
+- [go_bridge 失效模式与遗留项](plan/go-bridge-stability.md) —— A 档已落地，留清单与遗留
 - [croc fork 的分支模型与同步流程](plan/croc-fork-sync.md) —— 进行中
 - [fluttertoast fork 的分支模型与同步流程](plan/fluttertoast-fork-sync.md) —— 进行中
 
@@ -34,7 +34,7 @@
 | [`dart3.13-flutter3.47.md`](dart3.13-flutter3.47.md) | 语言版本 / Flutter 版本的现行约束与遗留项 | 迁移已执行，留档 |
 | [`upstream-pr-lifecycle-accessor.md`](upstream-pr-lifecycle-accessor.md) | 投给上游的 PR 草稿：`ProgressSnapshot()` | 已在 fork 实现，未提 PR |
 | [`weblate-migration.md`](weblate-migration.md) | 翻译流程迁到 Weblate 的操作手册 | 待执行 |
-| [`plan/go-bridge-stability.md`](plan/go-bridge-stability.md) | go_bridge 失效模式与改造方案 | 进行中 |
+| [`plan/go-bridge-stability.md`](plan/go-bridge-stability.md) | go_bridge 失效模式清单、遗留项与验证方法 | A 档已落地 |
 | [`plan/croc-fork-sync.md`](plan/croc-fork-sync.md) | croc fork 的分支模型、补丁边界与同步流程 | 进行中 |
 | [`plan/fluttertoast-fork-sync.md`](plan/fluttertoast-fork-sync.md) | fluttertoast fork 的分支模型与 pub git 依赖的接入方式 | 进行中 |
 
@@ -54,6 +54,11 @@ Go 侧挂 submodule，Dart 侧走 pub 的 git 依赖（仓库根的 `dart format
 |---|---|
 | `v11.5.4-flcroc.1` | 进度计数器加锁 + `ProgressSnapshot()`（`src/croc/progress.go`） |
 | `v11.5.4-flcroc.2` | 导出 `WebReceiveURL()`（`src/croc/web_receive_url.go`）：bridge 与 App 都不再自己拼 getcroc.com 的 URL |
+| `v11.5.4-flcroc.3` | `Options.LibraryMode`：会 panic 的库路径改返回 error（`src/croc/croc.go`）；`crypt.New` / `NewArgon2` 不再 `log.Fatalf`（`src/crypt/crypt.go`） |
+
+`flcroc` 每轮同步会 rebase 到新的上游基底，补丁 commit 的 hash 随之改变，旧 tag 留在
+原基底上不动（tag 不可变）。**当下有效的补丁集以 `flcroc` 分支为准**，tag 只用来钉住某一轮
+给消费方引用的快照。
 
 ### fluttertoast（Dart）
 

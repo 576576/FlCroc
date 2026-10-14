@@ -25,15 +25,18 @@
   范围内；动过 `sdk:` 或 freezed 之后必须重新生成，不能靠 CI 绕开。
 - 本地 Windows 构建**不再需要** `CL=-utf-8`：`connectivity_plus` 已删，做过全量重编验证。
   再遇到 C4819 就加回去，注意 Git Bash 会把 `/utf-8` 转成路径，必须写 `-utf-8`。
+- **类一律写主构造函数**：`analysis_options.yaml` 开着 `use_primary_constructors`（3.13 的
+  主构造函数特性对应的规则，本身仍是实验性的）。没有构造参数的类也要写括号 `()`。新类不跟进
+  会让 `flutter analyze` 报 info，而 CI 把 info 当失败。
+- **riverpod 只用 3.x 的正统 API**：`StateProvider` / `StateNotifierProvider` 已全部迁到
+  `Notifier` / `NotifierProvider`。`Notifier.state` 是 protected —— 外部要改值得在 notifier 上
+  开方法（例：`PendingSharedFilesNotifier.setPaths`），不能直接 `.notifier).state = x`。
 
 ## 还没做
 
 | 项 | 说明 |
 |---|---|
-| `StateProvider` / `StateNotifierProvider` → `Notifier` | 22 + 3 处仍在 riverpod 的 legacy API 上（官方支持的过渡路径） |
-| Primary constructors | 192 个类声明，纯书写形式变化 |
 | Android 侧拖放 | 只做了 Windows，移动端目前靠选文件按钮 |
 | 拖放与 QR 的真机验证 | 只有编译级保证与结构断言，需要人工拖一次、扫一次 |
-| `flutter_localizations` 直接依赖 | `lib/` 与 `test/` 里没有任何地方 import 它（本地化委托来自 `material_ui`），可以直接删声明 |
 | `fluttertoast` 的去留 | 它只为移动端的原生 toast 存在，桌面端走 `ScaffoldMessenger`；见 [fluttertoast fork 文档](plan/fluttertoast-fork-sync.md) §4 |
 | `flutter_riverpod` 的 legacy material import | `lib/src/core.dart` 只 import、代码里零使用（换成 `flutter/widgets.dart` 实测能过）。现在不阻塞，但核心 SDK 去掉 material 后会编译失败 |
