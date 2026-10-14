@@ -53,16 +53,6 @@ class AcknowledgmentsPage extends StatelessWidget {
       },
     );
 
-    if (isDesktop) {
-      return Column(
-        children: [
-          const WindowTitleBar(),
-          Expanded(
-            child: BaseScaffold(title: l10n.openSourceProjects, body: body),
-          ),
-        ],
-      );
-    }
     return BaseScaffold(title: l10n.openSourceProjects, body: body);
   }
 }

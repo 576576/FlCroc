@@ -1232,36 +1232,23 @@ class _LogViewerPageState extends State<_LogViewerPage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          if (isWindows || isLinux) const WindowTitleBar(),
-          Expanded(
-            child: logs.isEmpty
-                ? Center(
-                    child: Text(
-                      l10n.noLogs,
-                      style: context.textTheme.bodyMedium,
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: logs.length,
-                    itemBuilder: (_, i) => Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      child: SelectableText(
-                        logs[i],
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-          ),
-        ],
-      ),
+      body: logs.isEmpty
+          ? Center(
+              child: Text(l10n.noLogs, style: context.textTheme.bodyMedium),
+            )
+          : ListView.builder(
+              itemCount: logs.length,
+              itemBuilder: (_, i) => Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                child: SelectableText(
+                  logs[i],
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                ),
+              ),
+            ),
     );
   }
 }

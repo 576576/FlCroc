@@ -2,7 +2,6 @@ import 'package:fl_croc/common/common.dart';
 import 'package:fl_croc/controller.dart';
 import 'package:fl_croc/models/models.dart';
 import 'package:fl_croc/providers/providers.dart';
-import 'package:fl_croc/widgets/window_title_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -192,15 +191,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         ],
       );
       if (isDesktop) {
-        return Container(
-          color: context.colorScheme.surface,
-          child: Column(
-            children: [
-              const WindowTitleBar(),
-              Expanded(child: wideBody),
-            ],
-          ),
-        );
+        return Container(color: context.colorScheme.surface, child: wideBody);
       }
       return wideBody;
     }
@@ -236,7 +227,6 @@ class _HomePageState extends ConsumerState<HomePage> {
         color: context.colorScheme.surface,
         child: Column(
           children: [
-            const WindowTitleBar(),
             Expanded(child: pageBody),
             SafeArea(child: navBar),
           ],

@@ -14,4 +14,3 @@ export 'super_grid.dart';
 export 'switch_delegate.dart';
 export 'tab.dart';
 export 'text.dart';
-export 'window_title_bar.dart';

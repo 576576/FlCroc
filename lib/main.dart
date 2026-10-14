@@ -8,20 +8,12 @@ import 'package:fl_croc/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_receiver/share_receiver.dart';
-import 'package:window_manager/window_manager.dart';
 
 import 'application.dart';
 
 Future<void> main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
-
-    // Hide native title bar via window_manager (handles DWM frame & rounded corners properly).
-    if (isWindows || isLinux) {
-      await windowManager.ensureInitialized();
-      await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
-      await windowManager.setMinimumSize(const Size(400, 500));
-    }
 
     await AppPrefs.init();
     final version = 1;
