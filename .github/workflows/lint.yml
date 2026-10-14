@@ -1,0 +1,92 @@
+name: Lint
+
+# 质量门禁：格式 / 静态检查 / 测试。
+#
+# **自己不跟 push / PR**，有两个调用方：release.yml 在调用 build 之前调它
+# （workflow_call，所以发布链路上没有任何一道能绕过它），pr.yml 在 PR 上调它。
+# 单跑它一个用 workflow_dispatch。
+on:
+  workflow_call:
+  workflow_dispatch:
+
+env:
+  # 与 release.yml / build.yml 的同名 env 保持一致（build.yml 里那份是编译真正
+  # 用的版本），改一处必须同步改另外两处。
+  GO_VERSION: '1.27.1'
+  FLUTTER_VERSION: '3.47.5'
+
+jobs:
+  fmt:
+    name: dart format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: 检查格式
+        # --set-exit-if-changed：有文件需要重排就非零退出。
+        run: dart format --output=none --set-exit-if-changed .
+
+  analyze:
+    name: flutter analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: 'recursive'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Install dependencies
+        run: flutter pub get
+      - name: 静态检查
+        run: flutter analyze
+
+  test:
+    name: flutter test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: 'recursive'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Install dependencies
+        run: flutter pub get
+      - name: 测试
+        run: flutter test
+
+  go:
+    name: go_bridge（gofmt / vet / test）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # go_bridge/go.mod 用 replace 指向 ../submodules/croc，少了它编译不过。
+          submodules: 'recursive'
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: 检查格式
+        run: |
+          set -euo pipefail
+          out="$(gofmt -l go_bridge)"
+          if [ -n "$out" ]; then
+            echo "::error::以下文件需要 gofmt -w："
+            echo "$out"
+            exit 1
+          fi
+      - name: 静态检查
+        working-directory: go_bridge
+        run: go vet ./...
+      - name: 测试
+        working-directory: go_bridge
+        run: go test -race -count=1 ./...

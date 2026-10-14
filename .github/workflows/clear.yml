@@ -1,0 +1,199 @@
+name: Clear Pre-release
+
+# 预发布清理（只手动触发）：每个 window_hours 窗口内只留最新的 1 个预发布，其余删掉。
+#
+# 存在的理由：nightly 每次 push 打一个 r<1000+提交数> 的 tag（见 release.yml），
+# 预发布只增不减 —— 不清的话 Releases 页会堆成几百条。默认 dry_run=true，
+# 跑一遍先看预览表，确认无误再去掉勾选真删。
+
+on:
+  workflow_dispatch:
+    inputs:
+      window_hours:
+        description: 保留窗口（小时）—— 每个窗口内只留最新的 1 个预发布
+        type: string
+        default: '24'
+      dry_run:
+        description: 只预览不删除（去掉勾选才真删）
+        type: boolean
+        default: true
+      cleanup_tag:
+        description: 删除 Release 时一并删除关联 tag
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  clear:
+    name: 清理预发布
+    runs-on: ubuntu-latest
+    steps:
+      # gh release delete --cleanup-tag 内部要跑 git 删本地 tag，所以必须有仓库且 tag 已拉全。
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: 列出待清理的预发布
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WINDOW_HOURS: ${{ github.event.inputs.window_hours }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          set -euo pipefail
+
+          # 全量拉取：Release 数量远超单页 100 条，不翻页会漏掉最旧的那批
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" > /tmp/releases.json
+
+          python3 - <<'PY'
+          import json, os, sys
+          from datetime import datetime, timedelta, timezone
+
+          def die(msg):
+              print(f"::error::{msg}")
+              sys.exit(1)
+
+          raw_h = (os.environ.get("WINDOW_HOURS") or "").strip() or "24"
+          try:
+              window = float(raw_h)
+          except ValueError:
+              die(f"window_hours 不是数字：{raw_h!r}")
+          if window <= 0:
+              die(f"window_hours 必须为正数：{window}")
+          window_td = timedelta(hours=window)
+          dry = (os.environ.get("DRY_RUN") or "").strip().lower() == "true"
+
+          raw = open("/tmp/releases.json", encoding="utf-8").read().strip()
+          if not raw:
+              die("拉取 Release 列表为空")
+
+          # gh api --paginate 可能给合并后的数组、也可能给 [...][...]，逐个 raw_decode 两种都能读。
+          dec, items, i = json.JSONDecoder(), [], 0
+          while i < len(raw):
+              obj, i = dec.raw_decode(raw, i)
+              if isinstance(obj, list):
+                  items.extend(obj)
+              else:
+                  items.append(obj)
+              while i < len(raw) and raw[i] in " \t\r\n,":
+                  i += 1
+
+          # 字段名两套都认：gh api 给 REST 的 snake_case，gh --json 给 camelCase
+          def pick(r, *keys):
+              for k in keys:
+                  v = r.get(k)
+                  if v:
+                      return v
+              return ""
+
+          def when(r):
+              v = pick(r, "created_at", "createdAt", "published_at", "publishedAt")
+              if not v:
+                  return datetime.min.replace(tzinfo=timezone.utc)
+              return datetime.fromisoformat(v.replace("Z", "+00:00"))
+
+          pres = [r for r in items
+                  if pick(r, "prerelease", "isPrerelease") in (True, "true")
+                  and pick(r, "draft", "isDraft") not in (True, "true")]
+
+          if not pres:
+              print("没有预发布，无需清理")
+              summary = os.environ.get("GITHUB_STEP_SUMMARY")
+              if summary:
+                  open(summary, "a", encoding="utf-8").write("## Clear Pre-release\n\n没有预发布。\n")
+              sys.exit(0)
+
+          # 从新到旧贪心：命中窗口的第一条（即该窗口内最新的）留下当锚点
+          pres.sort(key=when, reverse=True)
+          keep, drop, anchor = [], [], None
+          for r in pres:
+              t = when(r)
+              if anchor is None or (anchor - t) >= window_td:
+                  keep.append(r)
+                  anchor = t
+              else:
+                  drop.append(r)
+
+          def line(r, act):
+              tag = pick(r, "tag_name", "tagName")
+              t = when(r)
+              ts = t.strftime("%Y-%m-%d %H:%M") if t.year > 1 else "?"
+              name = (pick(r, "name") or "").replace("|", "/")
+              return f"| `{tag}` | {ts} UTC | {act} | {name} |"
+
+          rows = ["| tag | 创建时间 | 处理 | 标题 |", "|---|---|---|---|"]
+          rows += [line(r, "保留") for r in keep]
+          # 删除列表按**从旧到新**写出，下一步照这个顺序删
+          rows += [line(r, "删除") for r in reversed(drop)]
+          plan = "\n".join(rows)
+
+          print(f"预发布 {len(pres)} 个：保留 {len(keep)}，删除 {len(drop)}（窗口 {window:g} 小时）")
+          print(plan)
+          print("dry run" if dry else "将执行删除")
+
+          # newline 显式给 "\n"，避免文本模式转换换行（tag 里混进 \r 会让 gh 找不到）。
+          open("/tmp/delete.txt", "w", encoding="utf-8", newline="\n").write(
+              "".join(f"{pick(r, 'tag_name', 'tagName')}\n" for r in reversed(drop)))
+
+          tail = "\n**dry run：以上只是预览，实际没有删除。**\n" if dry else ""
+          print(tail.strip())
+
+          summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary:
+              with open(summary, "a", encoding="utf-8") as f:
+                  f.write("## Clear Pre-release\n\n")
+                  f.write(f"窗口 **{window:g} 小时**，内只留最新的 1 个预发布。"
+                          f"共 {len(pres)} 个预发布：保留 {len(keep)}，删除 {len(drop)}。\n\n")
+                  f.write(plan + "\n")
+                  f.write(tail)
+          PY
+
+      - name: 执行删除
+        # dry_run 关掉才真删；列表为空时下一步自己会退出
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLEANUP_TAG: ${{ github.event.inputs.cleanup_tag }}
+        run: |
+          set -euo pipefail
+
+          # 先自查仓库：缺 checkout 时 gh release delete 每条都失败，且报错难懂。
+          git rev-parse --git-dir >/dev/null 2>&1 || {
+            echo "::error::当前目录不是 git 仓库，gh release delete 无法工作（actions/checkout 丢了？）"
+            exit 1
+          }
+
+          if [ ! -s /tmp/delete.txt ]; then
+            echo "没有需要删除的预发布"
+            exit 0
+          fi
+
+          FLAG=""
+          [ "$CLEANUP_TAG" = "true" ] && FLAG="--cleanup-tag"
+
+          ok=0
+          fail=0
+          # /tmp/delete.txt 已从旧到新排好：中途失败时留下的是最新的那批
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            if gh release delete "$tag" --yes $FLAG; then
+              echo "已删除 $tag"
+              ok=$((ok+1))
+            else
+              # 单个失败不中断（tag 受保护 / 权限不足等），剩下的继续删
+              echo "::warning::删除失败：$tag"
+              fail=$((fail+1))
+            fi
+          done < /tmp/delete.txt
+
+          echo "删除完成：成功 $ok，失败 $fail"
+          {
+            echo
+            echo "## 结果"
+            echo
+            echo "- 成功删除：$ok"
+            echo "- 删除失败：$fail"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$fail" -gt 0 ]; then
+            echo "::warning::$fail 个预发布删除失败，见上面的日志"
+          fi

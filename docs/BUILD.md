@@ -24,7 +24,7 @@ dispatch a run if you want them.
 
 | Input | Default | Effect |
 |-------|---------|--------|
-| `channel` | `nightly` | `nightly` publishes a pre-release — a push updates the fixed `nightly` tag, a manual run tags `r<commit-count>` · `release` cuts a `vX.Y.Z` release · `none` uploads artifacts only |
+| `channel` | `nightly` | `nightly` publishes a pre-release tagged `r<1000+commit-count>` · `release` cuts a `vX.Y.Z` release · `none` uploads artifacts only |
 | `version` | *(from `pubspec.yaml`)* | Override the `x.y.z` part only; the `+build` number always comes from `pubspec.yaml`, where the local pre-commit hook maintains it |
 | `windows_x64` | ✅ | Windows x64 — `FlCroc-x.y.z-windows-x64.zip` |
 | `windows_arm64` | – | Windows ARM64 — `.zip`; the x64 package is built as an intermediate base but only published when `windows_x64` is selected too |
@@ -40,14 +40,13 @@ run fails early. Leaving `channel` at `nightly` while selecting a single platfor
 is the usual way to smoke-test one target; pick `none` to get artifacts without
 creating any release at all.
 
-> **`nightly` tags depend on how the run was started.** A push updates the fixed
-> `nightly` tag, which is what the in-app updater polls (`releases/tags/nightly`); a
-> manual run creates `r<commit-count>` instead — the number of commits reachable from
-> `HEAD`, e.g. `r258`. That keeps every manual build as its own record and leaves the
-> `nightly` slot alone. The trade-off: `r<N>` releases are visible on the GitHub
-> Releases page only — neither in-app update channel (`releases/tags/nightly` and
-> `releases/latest`) will find them. Both flavours stay pre-releases, so neither ever
-> becomes the page's *Latest*; only `channel: release` moves that.
+> **Every `nightly` run gets its own tag** — `r<1000+commit-count>`, e.g. `r1258` for
+> 258 commits reachable from `HEAD`. There is no longer a fixed `nightly` slot: the
+> in-app updater finds the
+> build by taking the newest pre-release instead of polling a fixed name, so the tag
+> rule can change without touching the app. Pre-releases accumulate one per run — use
+> the **Clear Pre-release** workflow to prune them. Nightly stays a pre-release, so it
+> never becomes the page's *Latest*; only `channel: release` moves that.
 
 > **Linux ARM64** needs a native ARM64 host and bootstraps its own Flutter SDK from
 > git — see [Runners and toolchain](#runners-and-toolchain) below.
