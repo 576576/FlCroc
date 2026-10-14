@@ -25,7 +25,6 @@ class AppController {
     _ref = ref;
     isAttach = true;
 
-    // Initialize croc backend (FFI or process-based)
     final ok = await coreController.init();
     if (ok) {
       await updateCoreStatus(CoreStatus.connected);

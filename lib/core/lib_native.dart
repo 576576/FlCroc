@@ -18,7 +18,6 @@ class CoreLib extends CoreInterface {
   DynamicLibrary? _lib;
   bool _isAvailable = false;
 
-  // Cached FFI function for freeing Go-allocated strings
   void Function(Pointer<Utf8>)? _freeGoString;
 
   // Share-code QR helpers. An older bridge library simply will not export them,
@@ -42,7 +41,6 @@ class CoreLib extends CoreInterface {
     try {
       _lib = _loadLibrary();
       if (_lib == null) return false;
-      // Cache the free function
       _freeGoString = _lib!
           .lookupFunction<
             Void Function(Pointer<Utf8>),
@@ -70,7 +68,6 @@ class CoreLib extends CoreInterface {
       if (Platform.isAndroid) {
         return DynamicLibrary.open(libName);
       }
-      // Desktop: look next to the executable
       final exeDir = Directory(Platform.resolvedExecutable).parent.path;
       final localPath = '$exeDir/$libName';
       if (File(localPath).existsSync()) {
@@ -99,7 +96,6 @@ class CoreLib extends CoreInterface {
 
   @override
   Future<String> getVersion() async {
-    // Try FFI first (live croc submodule version).
     try {
       final lib = _lib;
       if (lib != null) {
@@ -172,7 +168,6 @@ class CoreLib extends CoreInterface {
     var transferId = '';
 
     try {
-      // Call CrocSendFiles
       final sendFunc = lib
           .lookupFunction<
             Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>),
@@ -265,7 +260,6 @@ class CoreLib extends CoreInterface {
         codePhrase: result['code_phrase'] as String?,
       );
 
-      // Poll progress until complete
       final pollFunc = lib
           .lookupFunction<Pointer<Utf8> Function(), Pointer<Utf8> Function()>(
             'CrocPollProgress',
@@ -285,7 +279,6 @@ class CoreLib extends CoreInterface {
           final type = event['type'] as int? ?? 0;
 
           if (type == 1) {
-            // Live transfer progress sampled from croc's counters.
             yield _liveProgress(transferId, event);
           } else if (type == 2) {
             yield TransferProgress(
@@ -323,9 +316,7 @@ class CoreLib extends CoreInterface {
               error: event['error'] as String?,
             );
           }
-        } catch (_) {
-          // Ignore malformed poll events; keep polling
-        }
+        } catch (_) {}
       }
     } catch (e) {
       commonPrint('Send exception: $e');
@@ -431,7 +422,6 @@ class CoreLib extends CoreInterface {
         status: TransferProgressStatus.transferring,
       );
 
-      // Poll progress
       final pollFunc = lib
           .lookupFunction<Pointer<Utf8> Function(), Pointer<Utf8> Function()>(
             'CrocPollProgress',
@@ -451,7 +441,6 @@ class CoreLib extends CoreInterface {
           final type = event['type'] as int? ?? 0;
 
           if (type == 1) {
-            // Live transfer progress sampled from croc's counters.
             yield _liveProgress(transferId, event);
           } else if (type == 2) {
             if (event['transfer_id'] != 'closed') {

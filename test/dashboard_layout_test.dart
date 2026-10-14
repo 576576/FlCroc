@@ -1,14 +1,7 @@
-// Regression tests for GitHub issue #6 — "Dashboard edits not saving".
-//
 // These drive the REAL production widgets: DashboardView, the real
 // appSettingProvider (which persists through SharedPreferences) and the real
 // PageView used for switching tabs. Nothing is re-implemented here, so a
 // regression in the actual save/restore chain fails the suite.
-//
-// The issue reported two symptoms:
-//   1. cards could not be dragged to where the user dropped them;
-//   2. after tapping the tick to save, switching tabs and coming back reverted
-//      the layout to the original.
 import 'dart:convert';
 
 import 'package:fl_croc/enum/enum.dart';
@@ -124,7 +117,6 @@ void main() {
     });
 
     test('legacy quickSend / quickReceive names migrate to quickTransfer', () {
-      // Written by builds before 8684da4, which split quick transfer in two.
       expect(
         _names(
           const DashboardWidgetListConverter().fromJson([
@@ -264,9 +256,8 @@ void main() {
     });
 
     testWidgets('a removed card can be added back from the editor', (t) async {
-      // The view used to silently re-insert quickTransfer on every mount. That
-      // is gone now, so the editor's "available widgets" chips are the only way
-      // back — this test pins that recovery path down.
+      // The editor's "available widgets" chips are the only way back to a removed
+      // card; this test pins that recovery path down.
       final c = ProviderContainer();
       addTearDown(c.dispose);
       final pc = PageController();

@@ -87,7 +87,6 @@ class AppPaths {
     try {
       final dir = Directory(path);
       if (!dir.existsSync()) return true; // 可创建
-      // 尝试创建临时文件验证可写
       final testFile = File('$path${Platform.pathSeparator}.flcroc_write_test');
       testFile.writeAsStringSync('test');
       testFile.deleteSync();

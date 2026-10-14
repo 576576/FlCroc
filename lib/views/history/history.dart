@@ -94,7 +94,6 @@ class HistoryView extends ConsumerWidget {
   String _formatTransferTitle(TransferRecord t) {
     final names = t.files.map((f) => f.name);
     final joined = names.join(', ');
-    // If it's a text transfer (single file with no extension and path empty), truncate
     if (t.files.length == 1 &&
         !t.files.first.name.contains('.') &&
         t.files.first.path.isEmpty) {

@@ -77,7 +77,6 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
     return parts.join(' · ');
   }
 
-  // Received content tracking
   final List<FileItem> _receivedFiles = [];
   int _selectedTab = 0; // 0=files, 1=text
   bool _isPasteMode = false; // receive: default copy
@@ -275,7 +274,6 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
     final useNoRelay = relayConfig.type == RelayType.noRelay;
     final useCustom = relayConfig.type == RelayType.customRelay;
 
-    // Resolve effective output path
     final effectivePath = _receiveConfig.outputPath.isNotEmpty
         ? _receiveConfig.outputPath
         : (ref.read(appSettingProvider).defaultSavePath.isNotEmpty
@@ -318,7 +316,6 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                     _resetProgress();
                   });
                 }
-                // Real progress from the bridge: bytes, current file and speed.
                 setState(() {
                   if (progress.totalSize > 0) {
                     _progress = (progress.transferredSize / progress.totalSize)
@@ -382,7 +379,6 @@ class _ReceiveViewState extends ConsumerState<ReceiveView> {
                     ),
                   );
                 } else {
-                  // File receive
                   final fileNames = progress.currentFile.isNotEmpty
                       ? progress.currentFile
                             .split('\n')
@@ -1081,7 +1077,6 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
               ),
               // Scanning overlay — subtle animated indicator
               if (!_hasScanned) const _ScanOverlay(),
-              // Bottom buttons
               Positioned(
                 bottom: 16,
                 left: 0,
@@ -1173,19 +1168,15 @@ class _ScanFramePainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // Top-left corner
     canvas.drawLine(const Offset(0, cornerLen), Offset.zero, paint);
     canvas.drawLine(const Offset(cornerLen, 0), Offset.zero, paint);
 
-    // Top-right corner
     canvas.drawLine(Offset(w - cornerLen, 0), Offset(w, 0), paint);
     canvas.drawLine(Offset(w, cornerLen), Offset(w, 0), paint);
 
-    // Bottom-left corner
     canvas.drawLine(Offset(0, h - cornerLen), Offset(0, h), paint);
     canvas.drawLine(Offset(cornerLen, h), Offset(0, h), paint);
 
-    // Bottom-right corner
     canvas.drawLine(Offset(w - cornerLen, h), Offset(w, h), paint);
     canvas.drawLine(Offset(w, h - cornerLen), Offset(w, h), paint);
   }

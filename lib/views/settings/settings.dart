@@ -157,7 +157,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   bool _isSameOrOlder(String latest, String current) {
     final latestBase = latest.split(RegExp(r'[-+]')).first;
     final currentBase = current.split(RegExp(r'[-+]')).first;
-    // Parse as integer parts for proper numeric comparison
     final latestParts = latestBase.split('.').map(int.tryParse).toList();
     final currentParts = currentBase.split('.').map(int.tryParse).toList();
     final length = latestParts.length > currentParts.length
@@ -273,11 +272,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     if (ok != true) return;
     await ref.read(appSettingProvider.notifier).resetAll();
     ref.read(themeSettingProvider.notifier).resetToDefault();
-    // Clear Quick Transfer saved codes
     await AppPrefs.remove('quick_send_code');
     await AppPrefs.remove('quick_receive_code');
     await AppPrefs.remove('quick_use_same_code');
-    // Clear Send page preferences
     await AppPrefs.remove('send_autoCopy');
     await AppPrefs.remove('send_phraseMode');
     await AppPrefs.remove('send_isTextMode');
@@ -836,7 +833,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   final sameGroup =
                       current != null && current.split('-').first == group;
                   if (!sameGroup) {
-                    // First selection
                     final first = variants.first.locale;
                     ref
                         .read(appSettingProvider.notifier)
@@ -847,7 +843,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     return;
                   }
                   if (!hasVariants) return;
-                  // Cycle to next variant
                   final idx = variants.indexWhere((v2) => v2.locale == current);
                   final next = variants[(idx + 1) % variants.length].locale;
                   ref
@@ -1141,7 +1136,6 @@ class _HueSliderState extends ConsumerState<_HueSlider> {
           ),
         ),
         const SizedBox(width: 8),
-        // Hex input
         SizedBox(
           width: 100,
           child: TextField(

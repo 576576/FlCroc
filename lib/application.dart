@@ -83,7 +83,6 @@ class _ApplicationState extends ConsumerState<Application> {
     } catch (_) {}
   }
 
-  /// Returns true if [latest] is the same base version as [current] or older.
   static bool _isVersionSameOrOlder(String latest, String current) {
     final latestBase = latest.split(RegExp(r'[-+]')).first;
     final currentBase = current.split(RegExp(r'[-+]')).first;

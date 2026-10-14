@@ -61,12 +61,10 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   StreamSubscription<TransferProgress>? _activeSub;
   String? _selectedFolder;
 
-  // Quick codes
   String _quickSendCode = 'shimo-kita-1145';
   String _quickReceiveCode = 'shimo-kita-1145';
   bool _useSameCode = true;
 
-  // Receive results (shown in input area)
   final List<FileItem> _receivedFiles = [];
   String _receivedText = '';
 
@@ -76,13 +74,10 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   int _completedFiles = 0;
   int _totalFiles = 0;
 
-  // Clipboard toggle: long-press paste button to switch paste/copy
   bool _isPasteMode = true;
 
-  // File picker toggle: long-press to switch file/folder mode
   bool _isFolderPicker = false;
 
-  // Drop hover state for picker button
   bool _fileHover = false;
 
   static const _defaultCode = 'shimo-kita-1145';
@@ -164,7 +159,6 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
   }
 
   void _onFileDrop(List<File> files) {
-    // Check for directories first
     for (final f in files) {
       final path = f.path.endsWith(Platform.pathSeparator)
           ? f.path.substring(0, f.path.length - 1)
@@ -178,7 +172,6 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
         return;
       }
     }
-    // Add files
     final newFiles = <FileItem>[];
     for (final f in files) {
       if (!FileSystemEntity.isDirectorySync(f.path) &&
@@ -370,7 +363,6 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
     );
   }
 
-  /// Applies a bridge progress event and refreshes the chip.
   void _applyProgress(TransferProgress progress) {
     if (progress.totalSize > 0) {
       _progress = (progress.transferredSize / progress.totalSize).clamp(
@@ -669,7 +661,6 @@ class _QuickTransferWidgetState extends ConsumerState<QuickTransferWidget> {
     _resetProgress();
     _setPhase(_QuickPhase.receiving);
 
-    // Clear previous input/results before receiving
     setState(() {
       _selectedFiles.clear();
       _selectedFolder = null;

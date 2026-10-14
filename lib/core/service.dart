@@ -31,7 +31,6 @@ class CoreService extends CoreInterface {
       return false;
     }
 
-    // Make sure it's executable
     try {
       if (!Platform.isWindows) {
         await Process.run('chmod', ['+x', _crocPath!]);
@@ -61,7 +60,6 @@ class CoreService extends CoreInterface {
     return false;
   }
 
-  /// Search for croc binary in multiple locations.
   Future<String?> _findCrocBinary() async {
     final binaryName = Platform.isWindows ? 'croc.exe' : 'croc';
 
@@ -101,7 +99,6 @@ class CoreService extends CoreInterface {
 
   Future<String?> _getDataDir() async {
     try {
-      // Use path_provider if available
       final dir = await _getAppSupportDir();
       if (dir != null) return dir;
     } catch (_) {}

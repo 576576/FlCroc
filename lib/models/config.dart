@@ -39,9 +39,8 @@ abstract class AppSettingProps with _$AppSettingProps {
       _$AppSettingPropsFromJson(json);
 }
 
-/// Names written by builds that still had the split `quickSend` / `quickReceive`
-/// cards (removed in 8684da4, before the 1.2.x line). Both now collapse onto the
-/// single [DashboardWidget.quickTransfer] card.
+/// Legacy names from the split `quickSend` / `quickReceive` cards, both now
+/// collapsed onto the single [DashboardWidget.quickTransfer] card.
 const Map<String, DashboardWidget> _legacyDashboardWidgetNames = {
   'quickSend': DashboardWidget.quickTransfer,
   'quickReceive': DashboardWidget.quickTransfer,
@@ -59,10 +58,9 @@ List<DashboardWidget> _dashboardWidgetsFromJson(List<dynamic>? list) {
     final w = name is String
         ? (byName[name] ?? _legacyDashboardWidgetNames[name])
         : null;
-    // Unrecognised and duplicated entries are dropped one by one. The previous
-    // implementation wrapped the whole list in a single try/catch, so a single
-    // unknown name silently threw away the user's entire saved layout.
-    // De-duplicating here also keeps two cards from sharing a sibling key.
+    // Unrecognised and duplicated entries are dropped one by one, so one unknown
+    // name cannot throw away the rest of the saved layout; de-duplicating also
+    // keeps two cards from sharing a sibling key.
     if (w != null && !widgets.contains(w)) widgets.add(w);
   }
   return widgets;

@@ -45,7 +45,6 @@ class _TransferStatsWidgetState extends ConsumerState<TransferStatsWidget>
     final totalSize = transfers.fold<int>(0, (a, t) => a + t.totalSize);
     final transferCount = transfers.length;
 
-    // Total elapsed time across all completed transfers
     transfers
         .where((t) => t.endTime != null)
         .fold<int>(
