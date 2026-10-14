@@ -36,6 +36,7 @@ import (
 	"github.com/schollz/croc/v11/src/models"
 	"github.com/schollz/croc/v11/src/utils"
 	"github.com/schollz/croc/v11/src/version"
+	"github.com/skip2/go-qrcode"
 )
 
 // ── Global state ────────────────────────────────────────────
@@ -281,6 +282,55 @@ func CrocFreeString(str *C.char) {
 	C.free(unsafe.Pointer(str))
 }
 
+// ── Share code → URL / QR ───────────────────────────────────
+
+// qrResult is the JSON payload of CrocQRCode: the module count and one byte per
+// module in row-major order, '1' for a dark module, quiet zone included.
+type qrResult struct {
+	Size    int    `json:"size"`
+	Modules string `json:"modules"`
+}
+
+//export CrocWebReceiveURL
+func CrocWebReceiveURL(code *C.char) *C.char {
+	// croc owns the URL format. Rebuilding it here would drift from upstream and
+	// from what `croc --qr` encodes.
+	return C.CString(croc.WebReceiveURL(C.GoString(code)))
+}
+
+// qrMatrix encodes text as a QR code at croc's error-correction level, returning
+// the module count and one byte per module in row-major order ('1' for dark).
+// go-qrcode's quiet zone is part of the matrix, so callers draw it as-is.
+func qrMatrix(text string) (size int, modules string, err error) {
+	qr, err := qrcode.New(text, qrcode.Medium)
+	if err != nil {
+		return 0, "", err
+	}
+	bitmap := qr.Bitmap()
+	size = len(bitmap)
+	out := make([]byte, 0, size*size)
+	for _, row := range bitmap {
+		for _, dark := range row {
+			if dark {
+				out = append(out, '1')
+			} else {
+				out = append(out, '0')
+			}
+		}
+	}
+	return size, string(out), nil
+}
+
+//export CrocQRCode
+func CrocQRCode(text *C.char) *C.char {
+	size, modules, err := qrMatrix(C.GoString(text))
+	if err != nil {
+		return marshalError(fmt.Sprintf("qrcode: %s", err))
+	}
+	b, _ := json.Marshal(qrResult{Size: size, Modules: modules})
+	return C.CString(string(b))
+}
+
 // ── Internal helpers ────────────────────────────────────────
 
 func marshalResult(transferID, code string) *C.char {
@@ -496,10 +546,8 @@ func doSend(s *session, paths []string, code string, opts sendOptions) {
 		return
 	}
 
-	// Use croc public relay defaults when no explicit address is configured.
-	// The vendored croc has been patched so the public-relay goroutine
-	// returns silently (instead of sending a spurious error) when both
-	// addresses are empty — so local relay and public relay coexist properly.
+	// Public relay defaults, mirroring the CLI: use croc's built-in relay and
+	// then the bare hosts if models.DEFAULT_RELAY / DEFAULT_RELAY6 are blank.
 	relayAddr := opts.RelayAddress
 	if relayAddr == "" {
 		relayAddr = models.DEFAULT_RELAY

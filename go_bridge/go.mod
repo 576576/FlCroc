@@ -2,7 +2,10 @@ module github.com/flcroc/bridge
 
 go 1.27.0
 
-require github.com/schollz/croc/v11 v11.5.2
+require (
+	github.com/schollz/croc/v11 v11.5.4-flcroc.2
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
+)
 
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
@@ -38,7 +41,6 @@ require (
 	github.com/schollz/pake/v3 v3.2.0 // indirect
 	github.com/schollz/peerdiscovery v1.7.6 // indirect
 	github.com/schollz/progressbar/v3 v3.19.1 // indirect
-	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/tailscale/certstore v0.1.1-0.20260409135935-3638fb84b77d // indirect
 	github.com/tailscale/go-winio v0.0.0-20231025203758-c4f33415bf55 // indirect
 	github.com/tailscale/hujson v0.0.0-20260727124030-b80ff77dac4f // indirect

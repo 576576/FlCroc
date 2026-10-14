@@ -7,10 +7,10 @@ set -euo pipefail
 #    platform: linux (default), macos, android, windows
 #    arch:     amd64 (default), arm64
 #
-#  croc always comes from ../submodules/croc: the pinned submodule revision is the
-#  single source of truth. This script never clones croc and never rewrites go.mod —
-#  same contract as go_bridge/build.bat. To try a different croc, point go.mod's
-#  replace directive at it yourself.
+#  croc always comes from ../submodules/croc: the submodule revision is the single
+#  source of truth. This script never clones croc and never rewrites go.mod — same
+#  contract as go_bridge/build.bat. To try a different croc, point go.mod's replace
+#  directive at it yourself.
 #
 #  On Windows prefer build.bat: it resolves the NDK and the native toolchain itself.
 # ============================================================
@@ -37,7 +37,7 @@ if ! command -v go >/dev/null 2>&1; then
 fi
 echo "[OK] Go: $(go version)"
 
-# --- Check the vendored croc ---
+# --- Check the croc submodule ---
 echo ""
 echo "[STEP 1/4] Checking croc submodule..."
 if [ ! -f "${CROC_SRC}/go.mod" ]; then
@@ -51,7 +51,7 @@ if [ -z "${CROC_VER}" ]; then
     # 回退到 croc 自己的版本文件，与 Go 桥报告的 version.Value 是同一个值。
     CROC_VER="$(sed -n 's/.*Value = "\(.*\)"/\1/p' "${CROC_SRC}/src/version/version.go" 2>/dev/null | head -1 || true)"
 fi
-echo "[OK] croc ${CROC_VER:-unknown} (vendored; the submodule revision is authoritative)"
+echo "[OK] croc ${CROC_VER:-unknown} (from the submodule; its revision is authoritative)"
 
 # --- Platform + arch config (validate before touching the module) ---
 echo ""
