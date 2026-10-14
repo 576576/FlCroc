@@ -138,7 +138,7 @@ JSON 格式不支持文件内嵌只读标记，用 Weblate 的 `read-only` flag 
 Hosted Weblate 若用官方 GitHub App 接入，webhook 由 App 自动管理，**不需要**手工加。
 
 **方式二：CI 里主动触发拉取。**
-在 `release.yml` 的 i18n 提交之后追加一步（用 secret 存 token）：
+在 `update_i18n.yml` 的提交步骤之后追加一步（用 secret 存 token）：
 
 ```bash
 curl -sS -X POST \
