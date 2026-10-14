@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -77,89 +76,76 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     final channel = ref.read(appSettingProvider).updateChannel;
 
     try {
-      final client = HttpClient();
-      try {
-        final tag = channel == UpdateChannel.nightly
-            ? 'tags/nightly'
-            : 'releases/latest';
-        final uri = Uri.https('api.github.com', '/repos/$repository/$tag');
-        final request = await client.getUrl(uri);
-        request.headers.set('User-Agent', 'FlCroc');
-        request.headers.set('Accept', 'application/vnd.github+json');
-        final response = await request.close();
-        if (response.statusCode != 200) {
+      final data = channel == UpdateChannel.nightly
+          ? await fetchLatestPrerelease(repository)
+          : await fetchLatestRelease(repository);
+      if (data == null) {
+        if (context.mounted) context.showSnackBar(l10n.alreadyLatest);
+        return;
+      }
+      final latestTag =
+          (data['tag_name'] as String?)?.replaceFirst(RegExp(r'^v'), '') ?? '';
+
+      // Nightly channel: compare build number from release title
+      if (channel == UpdateChannel.nightly) {
+        final title = (data['name'] as String?) ?? '';
+        final nightlyBuild = _parseBuildFromTitle(title);
+        final curBuild = int.tryParse(currentBuild) ?? 0;
+        if (nightlyBuild <= curBuild) {
           if (context.mounted) context.showSnackBar(l10n.alreadyLatest);
           return;
         }
-        final body = await response.transform(utf8.decoder).join();
-        final data = jsonDecode(body) as Map<String, dynamic>;
-        final latestTag =
-            (data['tag_name'] as String?)?.replaceFirst(RegExp(r'^v'), '') ??
-            '';
-
-        // Nightly channel: compare build number from release title
-        if (channel == UpdateChannel.nightly) {
-          final title = (data['name'] as String?) ?? '';
-          final nightlyBuild = _parseBuildFromTitle(title);
-          final curBuild = int.tryParse(currentBuild) ?? 0;
-          if (nightlyBuild <= curBuild) {
-            if (context.mounted) context.showSnackBar(l10n.alreadyLatest);
-            return;
-          }
-          final displayVer = _parseVersionFromTitle(title) ?? latestTag;
-          if (context.mounted) {
-            _showUpdateDialog(
-              context,
-              l10n,
-              displayVer,
-              currentVer,
-              nightlyBuild,
-              curBuild,
-            );
-          }
-          return;
-        }
-
-        // Release channel: compare base version
-        if (latestTag.isEmpty || _isSameOrOlder(latestTag, currentVer)) {
-          if (context.mounted) context.showSnackBar(l10n.alreadyLatest);
-          return;
-        }
+        final displayVer = _parseVersionFromTitle(title) ?? latestTag;
         if (context.mounted) {
-          showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: Text(l10n.newVersionAvailable),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('${l10n.latestVersion}: $latestTag'),
-                  const SizedBox(height: 4),
-                  Text('${l10n.currentVersion}: $currentVer'),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: Text(l10n.cancel),
-                ),
-                FilledButton.icon(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    globalState.openUrl(
-                      'https://github.com/$repository/releases',
-                    );
-                  },
-                  icon: const Icon(Icons.open_in_new, size: 18),
-                  label: Text(l10n.update),
-                ),
-              ],
-            ),
+          _showUpdateDialog(
+            context,
+            l10n,
+            displayVer,
+            currentVer,
+            nightlyBuild,
+            curBuild,
           );
         }
-      } finally {
-        client.close();
+        return;
+      }
+
+      // Release channel: compare base version
+      if (latestTag.isEmpty || _isSameOrOlder(latestTag, currentVer)) {
+        if (context.mounted) context.showSnackBar(l10n.alreadyLatest);
+        return;
+      }
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(l10n.newVersionAvailable),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${l10n.latestVersion}: $latestTag'),
+                const SizedBox(height: 4),
+                Text('${l10n.currentVersion}: $currentVer'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  globalState.openUrl(
+                    'https://github.com/$repository/releases',
+                  );
+                },
+                icon: const Icon(Icons.open_in_new, size: 18),
+                label: Text(l10n.update),
+              ),
+            ],
+          ),
+        );
       }
     } catch (_) {
       if (context.mounted) context.showSnackBar(l10n.alreadyLatest);

@@ -3,6 +3,7 @@ export 'constant.dart';
 export 'context.dart';
 export 'function.dart';
 export 'future.dart';
+export 'github.dart';
 export 'iterable.dart';
 export 'navigation.dart';
 export 'navigator.dart';
