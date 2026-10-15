@@ -61,6 +61,7 @@ Flutter (Dart isolate) ──dart:ffi，每 200ms 轮询──► libcroc_bridge
 | F10 | P2 | 接收时接管 `os.Stdout`，用无上界 `bytes.Buffer` | ⬜ **还在** —— 见 §3 |
 | F11 | P2 | 构建链脆弱 | 🟡 部分：A8 去掉了 `go mod tidy` 的联网改写；交叉编译 / codesign / 16KB 页仍在 |
 | F12 | P2 | c-shared 与 Flutter 同进程的固有耦合 | ⬜ 结构性，是 C 档的动机 |
+| F13 | P1 | 本地 IP 探测与消息协议共用一条控制通道，探测超时后静默放弃 → 迟到的探测应答被消息循环当成压缩帧，传输以 `flate: corrupt input` 判死 | ✅ 已修（fork `v11.5.4-flcroc.4`） |
 
 几条值得记住的细节：
 
@@ -72,6 +73,14 @@ Flutter (Dart isolate) ──dart:ffi，每 200ms 轮询──► libcroc_bridge
   返回值，改成返回是零 API 变化。
 - **F10 的额外一层**：croc 的包级 `init()` 把 logger 绑到**当时的** `os.Stdout`（绕过
   bridge 的管道直写宿主 stdout）并把级别设成 debug，随后 `newClient` 里才降到 warn。
+- **F13 的机制**（两端都是 GUI、CLI↔CLI 却正常，原因在这里）：接收方在 PAKE 之前会向发送方
+  要局域网地址，这段交换用的是**同一连接上的裸 JSON**（`SimpleMessage`，`pake1`/`pake2`），
+  而不是消息协议那套「deflate + 加密」的帧。探测原先给固定 500ms，而发送方要等**自己的中继
+  路由就绪**（先起本地中继、再拨公共中继）才开始应答 —— 接收方常常先到房间，于是 500ms 必然
+  超时；探测**静默放弃**（错误赋给了外层 `err` 却从不检查）直接发 `handshakeRequest` 进入
+  消息阶段，发送方迟到的 `pake2` 就成了流里的孤儿帧。裸 JSON 以 `{` 开头，`flate` 在 offset 6
+  附近报 corrupt input。修法：首次探测读等到对端入房；消息循环把「能解析成探测帧」的帧跳过
+  而不是报解码失败；探测错误不再被丢弃。回归测试见 `go_bridge/e2e_test.go`（`FL_CROC_E2E=1`）。
 
 ---
 
@@ -80,6 +89,7 @@ Flutter (Dart isolate) ──dart:ffi，每 200ms 轮询──► libcroc_bridge
 | 项 | 说明 |
 |---|---|
 | **F10：接收时接管 `os.Stdout`** | 文本载荷靠抓 stdout 拿到（croc 在 `SendingText` 时把正文 echo 出来）。上限 1 MiB，实际有界，但二维码 / `\r` 都可能混进正文 |
+| **接收侧无法禁用本地中继** | `receiveOptions` 没有 `disable_local`（只有 `only_local`），Dart 的 `ReceiveOptions` 也没有，而 CLI 支持 `--no-local` 收。它正好能整条绕开 F13 的探测路径，值得补齐：加字段 + 界面开关 |
 | **§5 的文本传输退化** | 见下 |
 | **B5 `Options.OutputPath`** | fork 侧给输出目录，bridge 就不必 `os.Chdir`。现在 A6 用 `defer` 恢复顶着 |
 | **B6 `Options.EventCallback`** | croc 主动推事件而非轮询，是终局形态，但会让 fork 与上游的 diff 显著变大 |

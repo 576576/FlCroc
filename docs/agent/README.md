@@ -55,6 +55,7 @@ Go 侧挂 submodule，Dart 侧走 pub 的 git 依赖（仓库根的 `dart format
 | `v11.5.4-flcroc.1` | 进度计数器加锁 + `ProgressSnapshot()`（`src/croc/progress.go`） |
 | `v11.5.4-flcroc.2` | 导出 `WebReceiveURL()`（`src/croc/web_receive_url.go`）：bridge 与 App 都不再自己拼 getcroc.com 的 URL |
 | `v11.5.4-flcroc.3` | `Options.LibraryMode`：会 panic 的库路径改返回 error（`src/croc/croc.go`）；`crypt.New` / `NewArgon2` 不再 `log.Fatalf`（`src/crypt/crypt.go`） |
+| `v11.5.4-flcroc.4` | 本地 IP 探测不再把控制流弄乱：首次探测读等到对端入房（`localProbePeerJoinTimeout`）、对端已在场时的应答期限 500ms → 5s、消息循环跳过漏读的探测帧、探测错误不再被丢弃（`src/croc/croc.go`） |
 
 `flcroc` 每轮同步会 rebase 到新的上游基底，补丁 commit 的 hash 随之改变，旧 tag 留在
 原基底上不动（tag 不可变）。**当下有效的补丁集以 `flcroc` 分支为准**，tag 只用来钉住某一轮
