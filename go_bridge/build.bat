@@ -73,7 +73,9 @@ if "%PLATFORM%"=="android" (
     ) else if "%ARCH%"=="amd64" (
         set "ANDROID_ABI=x86_64"
     ) else (
-        echo [ERROR] Unsupported Android arch: %ARCH% (use arm64 or amd64)
+        REM Parentheses must stay out of this echo: cmd counts them when it
+        REM matches the enclosing block, which desyncs the branch below.
+        echo [ERROR] Unsupported Android arch: %ARCH% - use arm64 or amd64
         exit /b 1
     )
     call :resolve_ndk

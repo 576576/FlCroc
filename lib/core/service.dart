@@ -346,9 +346,11 @@ class CoreService() extends CoreInterface {
   TransferProgress? _parseOutput(String line, String transferId) {
     if (line.contains('Code is:')) {
       final m = RegExp(r'Code is:\s*(\S+)').firstMatch(line);
+      // The code is printed while croc is still waiting for the recipient, so
+      // it is not a "transferring" signal.
       return TransferProgress(
         transferId: transferId,
-        status: TransferProgressStatus.transferring,
+        status: TransferProgressStatus.connecting,
         codePhrase: m?.group(1),
       );
     }

@@ -50,6 +50,10 @@ fork  flcroc  = upstream/main + 补丁集（每个补丁一个 commit，前缀 [
 | tag | 基底 | 补丁 |
 |---|---|---|
 | `v11.5.4-flcroc.1` | 上游 v11.5.4 | 进度计数器加锁 + `ProgressSnapshot()`（`src/croc/progress.go`） |
+| `v11.5.4-flcroc.2` | 同基底 | 导出 `WebReceiveURL()`（`src/croc/web_receive_url.go`） |
+| `v11.5.4-flcroc.3` | 同基底 | `Options.LibraryMode`：会 panic 的库路径改返回 error；crypt `New`/`NewArgon2` 不再 `log.Fatalf` |
+| `v11.5.4-flcroc.4` | 同基底 | 本地 IP 探测不再弄乱控制流（`croc.go`：探测期限 + 消息循环跳过探测帧） |
+| `v11.5.4-flcroc.5` | 同基底 | 导出 `LifecycleSnapshot()`（`src/croc/lifecycle.go`），宿主据此区分「等待对端」与「正在传输」 |
 
 ### 打补丁的规范
 

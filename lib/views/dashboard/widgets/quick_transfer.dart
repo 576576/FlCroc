@@ -54,11 +54,19 @@ enum _QuickPhase() {
   cancelled,
 }
 
+/// Amber of the "waiting for the other side" chip, same as the send and
+/// receive pages.
+const _waitingColor = Color(0xFFFF9800);
+
 class _QuickTransferWidgetState() extends ConsumerState<QuickTransferWidget> {
   final _textCtrl = TextEditingController();
   bool _isTextMode = false;
   final List<FileItem> _selectedFiles = [];
   _QuickPhase _phase = _QuickPhase.idle;
+
+  /// False until the bridge reports that the peer has joined; while it is
+  /// false the chip reads "waiting" instead of "sending"/"receiving".
+  bool _connected = false;
   String? _activeTransferId;
   TransferRecord? _activeRecord;
   StreamSubscription<TransferProgress>? _activeSub;
@@ -359,10 +367,12 @@ class _QuickTransferWidgetState() extends ConsumerState<QuickTransferWidget> {
     final l10n = context.appLocalizations;
     final isSend = _phase == _QuickPhase.sending;
     QuickTransferWidget.statusNotifier.value = QuickStatus(
-      label: isSend ? l10n.sending : l10n.receiving,
-      color: Theme.of(context).colorScheme.primary,
-      progress: _progress,
-      detail: _buildProgressDetail(),
+      label: _connected
+          ? (isSend ? l10n.sending : l10n.receiving)
+          : l10n.pending,
+      color: _connected ? Theme.of(context).colorScheme.primary : _waitingColor,
+      progress: _connected ? _progress : -1,
+      detail: _connected ? _buildProgressDetail() : '',
     );
   }
 
@@ -382,15 +392,12 @@ class _QuickTransferWidgetState() extends ConsumerState<QuickTransferWidget> {
   void _setPhase(_QuickPhase phase) {
     if (!mounted) return;
     final l10n = context.appLocalizations;
+    final primary = Theme.of(context).colorScheme.primary;
     final (String? label, Color? color) = switch (phase) {
-      _QuickPhase.sending => (
-        l10n.sending,
-        Theme.of(context).colorScheme.primary,
-      ),
-      _QuickPhase.receiving => (
-        l10n.receiving,
-        Theme.of(context).colorScheme.primary,
-      ),
+      _QuickPhase.sending =>
+        _connected ? (l10n.sending, primary) : (l10n.pending, _waitingColor),
+      _QuickPhase.receiving =>
+        _connected ? (l10n.receiving, primary) : (l10n.pending, _waitingColor),
       _QuickPhase.completed => (
         l10n.completed,
         const Color(0xFF4CAF50),
@@ -414,10 +421,13 @@ class _QuickTransferWidgetState() extends ConsumerState<QuickTransferWidget> {
         label: label,
         color: color,
         progress:
-            (phase == _QuickPhase.sending || phase == _QuickPhase.receiving)
+            _connected &&
+                (phase == _QuickPhase.sending || phase == _QuickPhase.receiving)
             ? _progress
             : -1,
-        detail: (phase == _QuickPhase.sending || phase == _QuickPhase.receiving)
+        detail:
+            _connected &&
+                (phase == _QuickPhase.sending || phase == _QuickPhase.receiving)
             ? _buildProgressDetail()
             : '',
       );
@@ -449,6 +459,7 @@ class _QuickTransferWidgetState() extends ConsumerState<QuickTransferWidget> {
     }
 
     _resetProgress();
+    _connected = false;
     _setPhase(_QuickPhase.sending);
 
     final transferId = appController.generateId();
@@ -577,6 +588,7 @@ class _QuickTransferWidgetState() extends ConsumerState<QuickTransferWidget> {
             }
             switch (progress.status) {
               case TransferProgressStatus.transferring:
+                _connected = true;
                 _applyProgress(progress);
                 appController.setSpeed(record.id, progress.speed);
                 break;
@@ -662,6 +674,7 @@ class _QuickTransferWidgetState() extends ConsumerState<QuickTransferWidget> {
     }
 
     _resetProgress();
+    _connected = false;
     _setPhase(_QuickPhase.receiving);
 
     setState(() {
@@ -724,6 +737,7 @@ class _QuickTransferWidgetState() extends ConsumerState<QuickTransferWidget> {
             }
             switch (progress.status) {
               case TransferProgressStatus.transferring:
+                _connected = true;
                 _applyProgress(progress);
                 appController.setSpeed(record.id, progress.speed);
                 break;

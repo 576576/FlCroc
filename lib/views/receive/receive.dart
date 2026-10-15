@@ -251,6 +251,7 @@ class _ReceiveViewState() extends ConsumerState<ReceiveView> {
     setState(() {
       _isReceiving = true;
       _phase = ReceivePhase.pending;
+      _resetProgress();
       _receivedFiles.clear();
       _receivedTextController.clear();
       _selectedTab = 0;
@@ -300,12 +301,8 @@ class _ReceiveViewState() extends ConsumerState<ReceiveView> {
             switch (progress.status) {
               case TransferProgressStatus.initializing:
               case TransferProgressStatus.connecting:
-                if (mounted) {
-                  setState(() {
-                    _phase = ReceivePhase.receiving;
-                    _resetProgress();
-                  });
-                }
+                // Still [ReceivePhase.pending] ("waiting") until the bridge
+                // reports that the sender has joined.
                 break;
               case TransferProgressStatus.transferring:
                 if (_phase == ReceivePhase.pending) {

@@ -59,6 +59,14 @@ var errTransferInProgress = errors.New("a transfer is already in progress")
 // eventQueueDepth is how many events may pile up before the consumer polls.
 const eventQueueDepth = 100
 
+// Transfer phases carried on type-1 progress events. A transfer is in
+// phaseWaiting until the PAKE handshake with the peer has finished, so the UI
+// can tell "waiting for the other side" from bytes actually moving.
+const (
+	phaseWaiting      = "waiting"
+	phaseTransferring = "transferring"
+)
+
 // session owns the state of one transfer: the channel its events travel on and
 // the context that cancels it.
 type session struct {
@@ -171,6 +179,7 @@ type progressEvent struct {
 	CurrentFile      string  `json:"current_file"`
 	CurrentFileIndex int     `json:"current_file_index"`
 	Speed            float64 `json:"speed"`
+	Phase            string  `json:"phase"`
 	CodePhrase       string  `json:"code_phrase"`
 	Error            string  `json:"error"`
 	IsText           bool    `json:"is_text"`
@@ -501,6 +510,15 @@ func (sm *progressSampler) sample() progressEvent {
 		index = 0
 	}
 
+	// ChannelSecured flips when the PAKE handshake completes, which is the
+	// moment the transfer stops waiting for the peer. Bytes that have already
+	// moved count too: a transport path that never marks the handshake would
+	// otherwise leave the UI on "waiting" for a transfer that is running.
+	phase := phaseWaiting
+	if sm.client.LifecycleSnapshot().ChannelSecured || snap.TransferredSize > 0 {
+		phase = phaseTransferring
+	}
+
 	return progressEvent{
 		Type:             eventTypeProgress,
 		TotalFiles:       snap.TotalFiles,
@@ -509,6 +527,7 @@ func (sm *progressSampler) sample() progressEvent {
 		CurrentFile:      snap.CurrentFile,
 		CurrentFileIndex: index,
 		Speed:            speed,
+		Phase:            phase,
 	}
 }
 

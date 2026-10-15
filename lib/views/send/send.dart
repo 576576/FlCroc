@@ -590,10 +590,9 @@ class _SendViewState()
       relayPorts: useCustom ? relayConfig.port : null,
     );
 
-    setState(() {
-      _phase = SendPhase.sending;
-      _resetProgress();
-    });
+    // Stay in [SendPhase.pending] ("waiting") until the bridge reports that
+    // the peer has joined; the transfer is not sending anything before that.
+    setState(_resetProgress);
 
     _sendSubscription = coreController
         .sendFiles(options)
@@ -661,6 +660,7 @@ class _SendViewState()
                 break;
               case TransferProgressStatus.transferring:
                 setState(() {
+                  if (_phase == SendPhase.pending) _phase = SendPhase.sending;
                   if (progress.totalSize > 0) {
                     _progress = (progress.transferredSize / progress.totalSize)
                         .clamp(0.0, 1.0);

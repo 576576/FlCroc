@@ -128,7 +128,12 @@ class CoreLib._internal() extends CoreInterface {
     final fileIndex = (event['current_file_index'] as int?) ?? 0;
     return TransferProgress(
       transferId: transferId,
-      status: TransferProgressStatus.transferring,
+      // The bridge reports `waiting` until the peer's handshake has finished,
+      // so "still looking for the other side" is not shown as a transfer that
+      // is already moving data.
+      status: event['phase'] == 'waiting'
+          ? TransferProgressStatus.connecting
+          : TransferProgressStatus.transferring,
       totalFiles: (event['total_files'] as int?) ?? 0,
       totalSize: (event['total_size'] as int?) ?? 0,
       transferredSize: (event['transferred_size'] as int?) ?? 0,
@@ -251,10 +256,6 @@ class CoreLib._internal() extends CoreInterface {
       yield TransferProgress(
         transferId: transferId,
         status: TransferProgressStatus.connecting,
-      );
-      yield TransferProgress(
-        transferId: transferId,
-        status: TransferProgressStatus.transferring,
         codePhrase: result['code_phrase'] as String?,
       );
 
@@ -301,7 +302,7 @@ class CoreLib._internal() extends CoreInterface {
           } else if (type == 4) {
             yield TransferProgress(
               transferId: transferId,
-              status: TransferProgressStatus.transferring,
+              status: TransferProgressStatus.connecting,
               totalFiles: (event['total_files'] as int?) ?? 0,
               totalSize: (event['total_size'] as int?) ?? 0,
               codePhrase: event['code_phrase'] as String?,
@@ -415,10 +416,6 @@ class CoreLib._internal() extends CoreInterface {
         transferId: transferId,
         status: TransferProgressStatus.connecting,
       );
-      yield TransferProgress(
-        transferId: transferId,
-        status: TransferProgressStatus.transferring,
-      );
 
       final pollFunc = lib
           .lookupFunction<Pointer<Utf8> Function(), Pointer<Utf8> Function()>(
@@ -465,7 +462,7 @@ class CoreLib._internal() extends CoreInterface {
           } else if (type == 4) {
             yield TransferProgress(
               transferId: transferId,
-              status: TransferProgressStatus.transferring,
+              status: TransferProgressStatus.connecting,
               totalFiles: (event['total_files'] as int?) ?? 0,
               totalSize: (event['total_size'] as int?) ?? 0,
             );

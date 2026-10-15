@@ -18,7 +18,9 @@
 > 访问器落地后 bridge 就能去掉这些绕行，用一行 `c.ProgressSnapshot()` 拿到一致快照。
 >
 > **本仓库内的相关改动**：`6ddba53`（真实进度）、`docs/agent/croc-v11-feature-audit.md`
-> 第五节的「注意并发」段。
+> 第五节的「注意并发」段。fork 侧另外单独导出了 `LifecycleSnapshot()`（`flcroc.5`，
+> `TransferLifecycle` = 内部 `transferLifecycle` 的别名），Go bridge 用它区分「等待对端」和
+> 「正在传输」；上游化时按正文把它并回 `ProgressSnapshot().Lifecycle` 即可。
 >
 > **上游仓库**：https://github.com/schollz/croc
 > **基线**：v11.5.2（`src/croc/croc.go`）

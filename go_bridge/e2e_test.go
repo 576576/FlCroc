@@ -17,6 +17,7 @@ package main
 // transfer died with "flate: corrupt input before offset 6".
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -97,6 +98,39 @@ func reportEvents(t *testing.T, evs []progressEvent) {
 	t.Logf("events (%d): %s", len(evs), b)
 }
 
+// phasesIn returns the phase of every progress event, in order.
+func phasesIn(evs []progressEvent) []string {
+	var out []string
+	for _, ev := range evs {
+		if ev.Type == eventTypeProgress {
+			out = append(out, ev.Phase)
+		}
+	}
+	return out
+}
+
+// requirePhaseOrder fails when a transfer reported "waiting" after it had
+// already reported "transferring", or never left "waiting".
+func requirePhaseOrder(t *testing.T, evs []progressEvent) {
+	t.Helper()
+	phases := phasesIn(evs)
+	if len(phases) == 0 {
+		t.Fatal("no progress event carried a phase")
+	}
+	seenTransferring := false
+	for _, p := range phases {
+		if seenTransferring && p == phaseWaiting {
+			t.Fatalf("phase went back to waiting: %v", phases)
+		}
+		if p == phaseTransferring {
+			seenTransferring = true
+		}
+	}
+	if !seenTransferring {
+		t.Fatalf("transfer never reported the transferring phase: %v", phases)
+	}
+}
+
 func TestE2EAppReceivesFromCLI(t *testing.T) {
 	bin := e2eSkip(t)
 	relay := startRelay(t, bin)
@@ -104,13 +138,19 @@ func TestE2EAppReceivesFromCLI(t *testing.T) {
 
 	outDir := t.TempDir()
 	srcDir := t.TempDir()
+	// Large enough to span several 200 ms progress samples, and throttled so the
+	// samples always land while the bytes are moving: with a tiny payload the
+	// whole handshake-and-transfer can finish between two samples, and the test
+	// could not see the phase leave "waiting".
+	payloadData := bytes.Repeat([]byte("hello from cli\n"), 1<<16) // 1 MiB
 	payload := filepath.Join(srcDir, "payload.txt")
-	if err := os.WriteFile(payload, []byte("hello from cli\n"), 0o644); err != nil {
+	if err := os.WriteFile(payload, payloadData, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	code := "1234-e2e-app-rcv"
 
-	sender := exec.Command(bin, "--relay", e2eRelayAddress, "--yes", "send", "--code", code, payload)
+	sender := exec.Command(bin, "--relay", e2eRelayAddress, "--yes", "--throttleUpload", "500k",
+		"send", "--code", code, payload)
 	sender.Env = e2eEnv()
 	sender.Stdout, sender.Stderr = os.Stdout, os.Stderr
 	if err := sender.Start(); err != nil {
@@ -126,14 +166,16 @@ func TestE2EAppReceivesFromCLI(t *testing.T) {
 	s.run(func(s *session) {
 		doReceive(s, code, receiveOptions{RelayAddress: e2eRelayAddress, OutputPath: outDir})
 	})
-	reportEvents(t, drainEvents(s, 45*time.Second))
+	evs := drainEvents(s, 45*time.Second)
+	reportEvents(t, evs)
+	requirePhaseOrder(t, evs)
 
 	got, err := os.ReadFile(filepath.Join(outDir, "payload.txt"))
 	if err != nil {
 		t.Fatalf("payload not received: %v", err)
 	}
-	if string(got) != "hello from cli\n" {
-		t.Fatalf("payload mismatch: %q", got)
+	if !bytes.Equal(got, payloadData) {
+		t.Fatalf("payload mismatch: got %d bytes, want %d", len(got), len(payloadData))
 	}
 }
 
@@ -144,8 +186,11 @@ func TestE2EAppSendsToCLI(t *testing.T) {
 
 	srcDir := t.TempDir()
 	outDir := t.TempDir()
+	// Throttled and sized like the receive test: the phase has to be observable
+	// between two 200 ms samples, which a fast transfer would not be.
+	payloadData := bytes.Repeat([]byte("hello from app\n"), 1<<16) // 1 MiB
 	payload := filepath.Join(srcDir, "payload.txt")
-	if err := os.WriteFile(payload, []byte("hello from app\n"), 0o644); err != nil {
+	if err := os.WriteFile(payload, payloadData, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	code := "1234-e2e-app-snd"
@@ -173,9 +218,14 @@ func TestE2EAppSendsToCLI(t *testing.T) {
 		t.Fatalf("newSession: %v", err)
 	}
 	s.run(func(s *session) {
-		doSend(s, []string{payload}, code, sendOptions{RelayAddress: e2eRelayAddress})
+		doSend(s, []string{payload}, code, sendOptions{
+			RelayAddress:   e2eRelayAddress,
+			ThrottleUpload: "500k",
+		})
 	})
-	reportEvents(t, drainEvents(s, 45*time.Second))
+	evs := drainEvents(s, 45*time.Second)
+	reportEvents(t, evs)
+	requirePhaseOrder(t, evs)
 
 	time.Sleep(2 * time.Second)
 	if log, err := os.ReadFile(logPath); err == nil {
@@ -189,7 +239,48 @@ func TestE2EAppSendsToCLI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("payload not received: %v", err)
 	}
-	if string(got) != "hello from app\n" {
-		t.Fatalf("payload mismatch: %q", got)
+	if !bytes.Equal(got, payloadData) {
+		t.Fatalf("payload mismatch: got %d bytes, want %d", len(got), len(payloadData))
+	}
+}
+
+// TestE2EPhaseWaitsForPeer pins the phase the UI reads: with nobody on the
+// other end, every progress event has to stay on "waiting" instead of claiming
+// the transfer is already sending.
+func TestE2EPhaseWaitsForPeer(t *testing.T) {
+	bin := e2eSkip(t)
+	relay := startRelay(t, bin)
+	defer relay.Process.Kill()
+
+	srcDir := t.TempDir()
+	payload := filepath.Join(srcDir, "payload.txt")
+	if err := os.WriteFile(payload, []byte("nobody joins this one\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	s, err := newSession()
+	if err != nil {
+		t.Fatalf("newSession: %v", err)
+	}
+	s.run(func(s *session) {
+		doSend(s, []string{payload}, "1234-e2e-no-peer", sendOptions{RelayAddress: e2eRelayAddress})
+	})
+	// Cancel on the way out and wait for the session to close, so the next test
+	// can claim the single transfer slot.
+	defer func() {
+		s.cancel()
+		drainEvents(s, 15*time.Second)
+	}()
+
+	evs := drainEvents(s, 2*time.Second)
+	reportEvents(t, evs)
+	phases := phasesIn(evs)
+	if len(phases) == 0 {
+		t.Fatal("no progress events while waiting for the peer")
+	}
+	for _, p := range phases {
+		if p != phaseWaiting {
+			t.Fatalf("transfer reported %q with no peer on the other end: %v", p, phases)
+		}
 	}
 }

@@ -92,6 +92,8 @@ abstract class TransferProgress with _$TransferProgress {
 
 enum TransferProgressStatus() {
   initializing,
+
+  /// Started, but the peer has not joined yet, so no data is moving.
   connecting,
   transferring,
   completed,
